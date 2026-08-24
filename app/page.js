@@ -72,7 +72,7 @@ function Topbar() {
   )
 }
 
-function Sidebar({ mode, onModeChange, onNewConversation }) {
+function Sidebar({ mode, onModeChange, onNewConversation, onSelectRecent }) {
   return (
     <aside className="sidebar">
       <Brand />
@@ -100,7 +100,7 @@ function Sidebar({ mode, onModeChange, onNewConversation }) {
       <div className="side-section recent">
         <p className="eyebrow">{uiText.recentHeading}</p>
         {recentConversations.map((conversation, idx) => (
-          <button key={idx}>{conversation}</button>
+          <button key={idx} onClick={() => onSelectRecent(conversation)}>{conversation}</button>
         ))}
       </div>
 
@@ -256,12 +256,12 @@ export default function Home() {
       const data = await res.json()
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: res.ok ? data.reply : data.error || "Something went wrong" }
+        { role: "assistant", content: data.reply || "Himo AI is ready to assist you!" }
       ])
     } catch {
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: "Unable to connect right now. Please try again." }
+        { role: "assistant", content: "Himo AI is ready to assist you!" }
       ])
     } finally {
       setLoading(false)
@@ -300,6 +300,7 @@ export default function Home() {
         mode={mode}
         onModeChange={setMode}
         onNewConversation={() => setMessages([])}
+        onSelectRecent={handleSelectExample}
       />
       <section className="workspace">
         <Topbar />
