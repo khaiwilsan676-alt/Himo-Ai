@@ -1,5 +1,5 @@
-import HimoAI from "@/components/AIchat";
+import AIchat from "@/components/AIchat";
 
 export default function Home() {
-  return <HimoAI />;
+  return <AIchat />;
     }
