@@ -11,48 +11,17 @@ export async function POST(request) {
       );
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: message
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
+    // Yahan tu apna AI/API code baad mein khud add karega.
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error(data);
-      return Response.json(
-        { error: "Gemini API request failed" },
-        { status: 500 }
-      );
-    }
-
-    const reply =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No response";
-
-    return Response.json({ reply });
+    return Response.json({
+      reply: "AI API not connected yet"
+    });
 
   } catch (error) {
     console.error(error);
 
     return Response.json(
-      { error: "AI request failed" },
+      { error: "Request failed" },
       { status: 500 }
     );
   }
