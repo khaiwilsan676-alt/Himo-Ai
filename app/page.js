@@ -1,4 +1,4 @@
-import HimoAI from "@/components/HimoAI";
+import HimoAI from "./HimoAI";
 
 export default function Home() {
   return <HimoAI />;
