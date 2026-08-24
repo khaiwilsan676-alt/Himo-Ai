@@ -126,7 +126,7 @@ function Composer({ mode, value, loading, onChange, onSend }) {
     : `Message Himo ${activeMode.label}...`
 
   return (
-    <div className="composer-container">
+    <div className="composer-wrap">
       <div className="composer">
         <textarea
           value={value}
@@ -167,34 +167,32 @@ function Conversation({ messages, loading }) {
   }, [messages, loading])
 
   return (
-    <div className="messages-scroll-area">
-      <div className="messages-inner">
-        {messages.map((item, index) => (
-          <div className={`message ${item.role}`} key={`${item.role}-${index}`}>
-            <span className="message-avatar">
-              {item.role === "user" ? user.avatar : brand.mark}
-            </span>
-            <div className="message-body">
-              <p className="message-label">
-                {item.role === "user" ? uiText.youLabel : brand.fullName}
-              </p>
-              <div className="message-content">{item.content}</div>
+    <div className="conversation">
+      {messages.map((item, index) => (
+        <div className={`message ${item.role}`} key={`${item.role}-${index}`}>
+          <span className="message-avatar">
+            {item.role === "user" ? user.avatar : brand.mark}
+          </span>
+          <div>
+            <p className="message-label">
+              {item.role === "user" ? uiText.youLabel : brand.fullName}
+            </p>
+            <div className="message-content">{item.content}</div>
+          </div>
+        </div>
+      ))}
+      {loading && (
+        <div className="message assistant">
+          <span className="message-avatar">{brand.mark}</span>
+          <div>
+            <p className="message-label">{brand.fullName}</p>
+            <div className="typing">
+              <i /><i /><i />
             </div>
           </div>
-        ))}
-        {loading && (
-          <div className="message assistant">
-            <span className="message-avatar">{brand.mark}</span>
-            <div className="message-body">
-              <p className="message-label">{brand.fullName}</p>
-              <div className="typing">
-                <i /><i /><i />
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+        </div>
+      )}
+      <div ref={messagesEndRef} />
     </div>
   )
 }
@@ -245,21 +243,21 @@ export default function Home() {
     setMessage("")
     setMessages((current) => [...current, { role: "user", content: prompt }])
 
-    // 1. Direct match check from knowledge base
-    const matchedAnswer = findPredefinedAnswer(prompt)
-    if (matchedAnswer) {
+    // Check predefined AI knowledge dataset first
+    const quickAnswer = findPredefinedAnswer(prompt)
+    if (quickAnswer) {
       setLoading(true)
       setTimeout(() => {
         setMessages((current) => [
           ...current,
-          { role: "assistant", content: matchedAnswer }
+          { role: "assistant", content: quickAnswer }
         ])
         setLoading(false)
       }, 400)
       return
     }
 
-    // 2. Server API route fallback
+    // Fallback API handler
     setLoading(true)
     try {
       const res = await fetch("/api/chat", {
@@ -295,10 +293,11 @@ export default function Home() {
         onNewConversation={() => setMessages([])}
       />
       <section className="workspace">
+        {/* Top Header - Fixed */}
         <Topbar />
 
-        {/* Middle Scrollable Section Only */}
-        <div className="chat-viewport">
+        {/* Middle Canvas - Only this container scrolls */}
+        <div className="canvas">
           {!messages.length ? (
             <Welcome
               mode={mode}
@@ -313,7 +312,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Bottom Fixed Input */}
+        {/* Bottom Dock - Fixed */}
         <div className="bottom-dock">
           <Composer
             mode={mode}
@@ -323,6 +322,11 @@ export default function Home() {
             onSend={() => sendMessage()}
           />
         </div>
+
+        <footer className="footer-note">
+          <span>{brand.fullName}</span>
+          <span>Built for curious minds · {new Date().getFullYear()}</span>
+        </footer>
       </section>
     </main>
   )
