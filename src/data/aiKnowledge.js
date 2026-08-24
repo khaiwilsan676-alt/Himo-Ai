@@ -94,4 +94,3 @@ export function findPredefinedAnswer(query) {
 
   return null
 }
-
