@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { aiKnowledgeBase, findPredefinedAnswer } from "@/data/aiKnowledge"
+import { aiKnowledgeBase, findPredefinedAnswer } from "@/src/data/aiKnowledge"
 
 const brand = {
   name: "himo",
