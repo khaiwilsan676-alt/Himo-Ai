@@ -1,5 +1,5 @@
-import AIchat from "@/components/AIchat";
+import AIChat from "@/components/AIChat";
 
 export default function Home() {
-  return <AIchat />;
+  return <AIChat />;
     }
