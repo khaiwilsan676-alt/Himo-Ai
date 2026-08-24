@@ -1,334 +1,278 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { aiKnowledgeBase, findPredefinedAnswer } from "@/src/data/aiKnowledge"
-
-const brand = {
-  name: "himo",
-  mark: "H",
-  tld: ".ai",
-  fullName: "Himo AI"
-}
-
-const user = {
-  name: "Khaiwilsan",
-  avatar: "KS",
-  plan: "Personal plan"
-}
-
-const modes = [
-  { id: "chat", label: "Chat", icon: "✦", description: "Ask anything" },
-  { id: "code", label: "Code", icon: "</>", description: "Build and debug" },
-  { id: "image", label: "Image", icon: "▧", description: "Create visuals" },
-  { id: "video", label: "Video", icon: "▶", description: "Bring ideas to life" }
-]
-
-const recentConversations = [
-  "Ideas for a new startup",
-  "Refactor auth middleware",
-  "Tokyo travel itinerary"
-]
-
-const uiText = {
-  kicker: "Your creative intelligence",
-  headingMain: "What will ",
-  headingEm: "create",
-  headingEnd: " today?",
-  subtitle: "Chat, code, and bring your ideas to life with Himo AI.",
-  placeholder: "Message Himo AI...",
-  attach: "Attach",
-  disclaimer: "Himo can make mistakes. Check important information.",
-  upgrade: "Upgrade",
-  newConversation: "New conversation",
-  recentHeading: "Recent",
-  settings: "Settings",
-  youLabel: "You"
-}
-
-function Brand({ mobile = false }) {
-  return (
-    <div className={mobile ? "mobile-brand" : "brand"}>
-      <span className="brand-mark">{brand.mark}</span>
-      <span>{brand.name}<span className="brand-dot">{brand.tld}</span></span>
-    </div>
-  )
-}
-
-function Topbar() {
-  return (
-    <header className="topbar">
-      <Brand mobile={true} />
-      <div className="top-actions">
-        <button className="icon-button" aria-label="Search">⌕</button>
-        <button className="upgrade">{uiText.upgrade} <span>↗</span></button>
-      </div>
-    </header>
-  )
-}
-
-function Sidebar({ mode, onModeChange, onNewConversation }) {
-  return (
-    <aside className="sidebar">
-      <Brand />
-      <button className="new-chat" onClick={onNewConversation}>
-        <span>＋</span> {uiText.newConversation} <kbd>⌘ K</kbd>
-      </button>
-
-      <div className="side-section">
-        <p className="eyebrow">Workspace</p>
-        {modes.map((item) => (
-          <button
-            key={item.id}
-            className={`side-mode ${mode === item.id ? "selected" : ""}`}
-            onClick={() => onModeChange(item.id)}
-          >
-            <span className="mode-icon">{item.icon}</span>
-            <span>
-              <strong>{item.label}</strong>
-              <small>{item.description}</small>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className="side-section recent">
-        <p className="eyebrow">{uiText.recentHeading}</p>
-        {recentConversations.map((conversation, idx) => (
-          <button key={idx}>{conversation}</button>
-        ))}
-      </div>
-
-      <div className="sidebar-bottom">
-        <button className="utility"><span>◌</span> {uiText.settings}</button>
-        <div className="profile">
-          <span className="avatar">{user.avatar}</span>
-          <span><strong>{user.name}</strong><small>{user.plan}</small></span>
-          <span className="more">···</span>
-        </div>
-      </div>
-    </aside>
-  )
-}
-
-function Composer({ mode, value, loading, onChange, onSend }) {
-  const activeMode = modes.find((m) => m.id === mode) || modes[0]
-  const isCreator = mode === "image" || mode === "video"
-
-  function handleKeyDown(event) {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
-      event.preventDefault()
-      onSend()
-    }
-  }
-
-  const placeholderText = isCreator
-    ? `Describe the ${mode} you want to create...`
-    : `Message Himo ${activeMode.label}...`
-
-  return (
-    <div className="composer-wrap">
-      <div className="composer">
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholderText}
-          rows={1}
-        />
-        <div className="composer-footer">
-          <div className="composer-tools">
-            <button type="button" aria-label="Attach file">＋</button>
-            <button type="button" className="tool-label">{uiText.attach}</button>
-            <span className="divider" />
-            <button type="button" className="tool-label">
-              {activeMode.icon} {activeMode.label}
-            </button>
-          </div>
-          <button
-            type="button"
-            className="send-button"
-            disabled={!value.trim() || loading}
-            onClick={onSend}
-          >
-            {loading ? "…" : "↑"}
-          </button>
-        </div>
-      </div>
-      <p className="hint">{uiText.disclaimer}</p>
-    </div>
-  )
-}
-
-function Conversation({ messages, loading }) {
-  const messagesEndRef = useRef(null)
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, loading])
-
-  return (
-    <div className="conversation">
-      {messages.map((item, index) => (
-        <div className={`message ${item.role}`} key={`${item.role}-${index}`}>
-          <span className="message-avatar">
-            {item.role === "user" ? user.avatar : brand.mark}
-          </span>
-          <div>
-            <p className="message-label">
-              {item.role === "user" ? uiText.youLabel : brand.fullName}
-            </p>
-            <div className="message-content">{item.content}</div>
-          </div>
-        </div>
-      ))}
-      {loading && (
-        <div className="message assistant">
-          <span className="message-avatar">{brand.mark}</span>
-          <div>
-            <p className="message-label">{brand.fullName}</p>
-            <div className="typing">
-              <i /><i /><i />
-            </div>
-          </div>
-        </div>
-      )}
-      <div ref={messagesEndRef} />
-    </div>
-  )
-}
-
-function Welcome({ mode, onModeChange, onSelectExample }) {
-  const displayExamples = aiKnowledgeBase.slice(0, 4).map((item) => item.question)
-
-  return (
-    <div className="welcome">
-      <div className="welcome-orbit"><span>{brand.mark}</span></div>
-      <p className="kicker">{uiText.kicker}</p>
-      <h1>{uiText.headingMain}<em>{uiText.headingEm}</em>{uiText.headingEnd}</h1>
-      <p className="subtitle">{uiText.subtitle}</p>
-
-      <div className="mode-tabs">
-        {modes.map((item) => (
-          <button
-            key={item.id}
-            className={mode === item.id ? "active" : ""}
-            onClick={() => onModeChange(item.id)}
-          >
-            <span>{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="example-pills">
-        {displayExamples.map((example, idx) => (
-          <button key={idx} className="example-chip" onClick={() => onSelectExample(example)}>
-            {example}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
+import { useState } from "react"
 
 export default function Home() {
-  const [mode, setMode] = useState("chat")
   const [message, setMessage] = useState("")
-  const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  async function sendMessage(value = message) {
-    if (!value.trim() || loading) return
-    const prompt = value.trim()
+  function handleSend() {
+    if (!message.trim()) return
+    console.log("Message sent:", message)
     setMessage("")
-    setMessages((current) => [...current, { role: "user", content: prompt }])
-
-    // Check predefined AI knowledge dataset first
-    const quickAnswer = findPredefinedAnswer(prompt)
-    if (quickAnswer) {
-      setLoading(true)
-      setTimeout(() => {
-        setMessages((current) => [
-          ...current,
-          { role: "assistant", content: quickAnswer }
-        ])
-        setLoading(false)
-      }, 400)
-      return
-    }
-
-    // Fallback API handler
-    setLoading(true)
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt, mode })
-      })
-      const data = await res.json()
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: res.ok ? data.reply : data.error || "Something went wrong" }
-      ])
-    } catch {
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: "Unable to connect right now. Please try again." }
-      ])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSelectExample = (exampleText) => {
-    setMessage(exampleText)
-    sendMessage(exampleText)
   }
 
   return (
     <main className="app-shell">
-      <Sidebar
-        mode={mode}
-        onModeChange={setMode}
-        onNewConversation={() => setMessages([])}
-      />
+      {/* Sidebar */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+        <button className="close-sidebar" onClick={() => setSidebarOpen(false)}>×</button>
+        <div className="sidebar-content">
+          <p className="sidebar-title">Menu</p>
+          <button className="sidebar-item">New Chat</button>
+          <button className="sidebar-item">Settings</button>
+          <button className="sidebar-item">Profile</button>
+        </div>
+      </aside>
+
       <section className="workspace">
-        {/* Top Header - Fixed */}
-        <Topbar />
+        {/* Top Header */}
+        <header className="topbar">
+          <button className="brand-button" onClick={() => setSidebarOpen(true)}>
+            <span className="brand-mark">H</span>
+            <span>himo<span className="brand-dot">.ai</span></span>
+          </button>
+        </header>
 
-        {/* Middle Canvas - Only this container scrolls */}
-        <div className="canvas">
-          {!messages.length ? (
-            <Welcome
-              mode={mode}
-              onModeChange={setMode}
-              onSelectExample={handleSelectExample}
-            />
-          ) : (
-            <Conversation
-              messages={messages}
-              loading={loading}
-            />
-          )}
-        </div>
+        {/* Middle Area - Empty */}
+        <div className="canvas" />
 
-        {/* Bottom Dock - Fixed */}
+        {/* Bottom Input */}
         <div className="bottom-dock">
-          <Composer
-            mode={mode}
-            value={message}
-            loading={loading}
-            onChange={setMessage}
-            onSend={() => sendMessage()}
-          />
+          <div className="composer-wrap">
+            <div className="composer">
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault()
+                    handleSend()
+                  }
+                }}
+                placeholder="Message Himo AI..."
+                rows={1}
+              />
+              <button
+                type="button"
+                className="send-button"
+                disabled={!message.trim()}
+                onClick={handleSend}
+              >
+                ↑
+              </button>
+            </div>
+          </div>
         </div>
-
-        <footer className="footer-note">
-          <span>{brand.fullName}</span>
-          <span>Built for curious minds · {new Date().getFullYear()}</span>
-        </footer>
       </section>
+
+      <style jsx>{`
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        .app-shell {
+          display: flex;
+          height: 100vh;
+          background: #ffffff;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .workspace {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        }
+
+        /* Top Bar */
+        .topbar {
+          height: 60px;
+          padding: 0 24px;
+          display: flex;
+          align-items: center;
+          border-bottom: 1px solid #e5e5e5;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          background: white;
+          z-index: 10;
+        }
+
+        .brand-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 18px;
+          font-weight: 600;
+          color: #1a1a1a;
+        }
+
+        .brand-mark {
+          width: 32px;
+          height: 32px;
+          background: #1a1a1a;
+          color: white;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 16px;
+        }
+
+        .brand-dot {
+          color: #666;
+        }
+
+        /* Sidebar */
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: -300px;
+          width: 300px;
+          height: 100vh;
+          background: white;
+          border-right: 1px solid #e5e5e5;
+          transition: left 0.3s ease;
+          z-index: 100;
+          padding: 20px;
+        }
+
+        .sidebar.open {
+          left: 0;
+        }
+
+        .sidebar-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.3);
+          z-index: 99;
+        }
+
+        .close-sidebar {
+          position: absolute;
+          top: 15px;
+          right: 15px;
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          color: #666;
+        }
+
+        .sidebar-content {
+          margin-top: 40px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .sidebar-title {
+          font-size: 14px;
+          color: #666;
+          margin-bottom: 10px;
+        }
+
+        .sidebar-item {
+          padding: 12px;
+          background: #f5f5f5;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          text-align: left;
+          font-size: 14px;
+          color: #1a1a1a;
+        }
+
+        .sidebar-item:hover {
+          background: #e5e5e5;
+        }
+
+        /* Canvas */
+        .canvas {
+          flex: 1;
+          margin-top: 60px;
+          margin-bottom: 120px;
+          overflow-y: auto;
+        }
+
+        /* Bottom Dock */
+        .bottom-dock {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 20px 24px;
+          background: white;
+          border-top: 1px solid #e5e5e5;
+          z-index: 10;
+        }
+
+        .composer-wrap {
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        .composer {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          border: 1px solid #e5e5e5;
+          border-radius: 12px;
+          background: #fafafa;
+        }
+
+        .composer textarea {
+          flex: 1;
+          border: none;
+          background: none;
+          outline: none;
+          resize: none;
+          font-size: 16px;
+          font-family: inherit;
+          color: #1a1a1a;
+        }
+
+        .composer textarea::placeholder {
+          color: #999;
+        }
+
+        .send-button {
+          width: 36px;
+          height: 36px;
+          background: #1a1a1a;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: opacity 0.2s;
+        }
+
+        .send-button:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        .send-button:not(:disabled):hover {
+          background: #333;
+        }
+      `}</style>
     </main>
   )
-}
-
+          }
