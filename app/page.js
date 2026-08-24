@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Brand, Sidebar } from "../components/himo-sidebar"
+import { Sidebar } from "../components/himo-sidebar"
 import { Composer, Conversation, Topbar, Welcome } from "../components/himo-workspace"
 
 export default function Home() {

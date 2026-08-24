@@ -20,20 +20,17 @@ export async function POST(request) {
       );
     }
 
-    const response = await client.responses.create({
-      model: "gpt-5-mini",
-      input: message
-    });
+    // Yahan tu apna AI/API code baad mein khud add karega.
 
     return Response.json({
-      reply: response.output_text
+      reply: "AI API not connected yet"
     });
 
   } catch (error) {
     console.error(error);
 
     return Response.json(
-      { error: "AI request failed" },
+      { error: "Request failed" },
       { status: 500 }
     );
   }
