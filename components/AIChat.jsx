@@ -16,7 +16,7 @@ const examples = [
   "Make a 10-second travel video"
 ];
 
-export default function HimoAI() {
+export default function AIChat() {
   const [mode, setMode] = useState("chat");
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
