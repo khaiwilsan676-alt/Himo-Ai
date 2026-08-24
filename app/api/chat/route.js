@@ -1,12 +1,17 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 export async function POST(request) {
   try {
     const { message } = await request.json();
+
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json(
+        { error: "Chat is not configured. Add OPENAI_API_KEY to enable Himo AI responses." },
+        { status: 503 }
+      );
+    }
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     if (!message) {
       return Response.json(
