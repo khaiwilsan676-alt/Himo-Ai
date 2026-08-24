@@ -1,5 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-import OpenAI from "openai";
+import { findPredefinedAnswer } from "@/src/data/aiKnowledge";
 
 export async function POST(request) {
   try {
@@ -12,44 +11,19 @@ export async function POST(request) {
       );
     }
 
-    // Try Gemini first if key available
-    if (process.env.GEMINI_API_KEY) {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const systemInstruction = `You are Himo AI, an intelligent creative workspace assistant. Mode: ${mode || "chat"}. Be helpful, clear, and concise.`;
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: message,
-        config: {
-          systemInstruction
-        }
-      });
-
-      return Response.json({
-        reply: response.text || "No response generated."
-      });
+    // Check predefined local knowledge base first
+    const answer = findPredefinedAnswer(message);
+    if (answer) {
+      return Response.json({ reply: answer });
     }
 
-    // Fallback to OpenAI if key available
-    if (process.env.OPENAI_API_KEY) {
-      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: `You are Himo AI, an intelligent creative workspace assistant. Mode: ${mode || "chat"}. Be helpful, clear, and concise.` },
-          { role: "user", content: message }
-        ]
-      });
+    // Default bot response without external AI APIs
+    const modeLabel = mode ? mode : "chat";
+    const defaultReply = `Hello! I am Himo Bot. I am here to help you with ${modeLabel}. You asked: "${message}". How can I assist you further?`;
 
-      return Response.json({
-        reply: completion.choices[0]?.message?.content || "No response generated."
-      });
-    }
-
-    return Response.json(
-      { error: "AI service is not configured. Please add GEMINI_API_KEY to your environment variables." },
-      { status: 503 }
-    );
+    return Response.json({
+      reply: defaultReply
+    });
 
   } catch (error) {
     console.error("Chat API error:", error);

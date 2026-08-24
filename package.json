@@ -7,7 +7,6 @@
   "dependencies": {
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "openai": "latest"
+    "react-dom": "latest"
   }
 }
