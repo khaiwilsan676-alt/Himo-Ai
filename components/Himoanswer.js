@@ -1,7 +1,7 @@
 const knowledgeBase = [
   {
     keywords: ["hello", "hi", "hey", "namaste", "hola"],
-    answer: "Hello! I'm Himo AI. How can I help you today?"
+    answer: "Hello! I'm Himo. How can I help you today?"
   },
   {
     keywords: ["how are you", "how r u", "kaise ho", "kya haal"],
@@ -9,7 +9,7 @@ const knowledgeBase = [
   },
   {
     keywords: ["your name", "who are you", "tum kaun", "aap kaun"],
-    answer: "I'm Himo AI, your creative intelligence assistant. I can help you with questions, coding, and creative tasks."
+    answer: "I'm Himo, your creative intelligence assistant. I can help you with questions, coding, and creative tasks."
   },
   {
     keywords: ["what can you do", "help", "features", "capabilities"],

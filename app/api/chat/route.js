@@ -33,7 +33,7 @@ export async function POST(request) {
                 {
                   parts: [
                     {
-                      text: `You are Himo AI, a helpful creative AI assistant. Mode: ${mode || "chat"}. User message: ${message}`,
+                      text: `You are Himo, a helpful creative AI assistant. Mode: ${mode || "chat"}. User message: ${message}`,
                     },
                   ],
                 },
