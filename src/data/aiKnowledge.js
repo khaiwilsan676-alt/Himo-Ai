@@ -12,7 +12,7 @@ export const aiKnowledgeBase = [
     category: "General",
     keywords: ["who are you", "who made you", "aap kaun ho", "tum kaun ho", "what is himo"],
     question: "Who created you and what can you do?",
-    answer: "I am Himo AI, an intelligent creative workspace assistant. I can assist you with writing, code generation, debugging, logic design, project ideation, and problem-solving across multiple domains."
+    answer: "I am Himo, an intelligent creative workspace assistant. I can assist you with writing, code generation, debugging, logic design, project ideation, and problem-solving across multiple domains."
   },
 
   // Web & Full-Stack Development
