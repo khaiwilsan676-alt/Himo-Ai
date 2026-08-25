@@ -51,7 +51,6 @@ export default function Home() {
       setLoading(false)
     }
   }
-  }
 
   return (
     <main className="app-shell">
