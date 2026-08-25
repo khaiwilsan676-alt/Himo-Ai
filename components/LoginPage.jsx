@@ -18,11 +18,10 @@ export default function LoginPage({ onLoginSuccess }) {
 
   return (
     <div className="login-page-container">
-      {/* Background Video */}
+      {/* Background Video (Unmuted, Original Colors, No Overlay) */}
       <video
         autoPlay
         loop
-        muted
         playsInline
         webkit-playsinline="true"
         className="login-video"
@@ -30,57 +29,63 @@ export default function LoginPage({ onLoginSuccess }) {
         <source src="/VID_20260825_012929_202_bsl.mp4" type="video/mp4" />
       </video>
 
-      {/* Dark Overlay */}
-      <div className="video-overlay" />
+      {/* Bottom Section */}
+      <div className="bottom-wrapper">
+        {/* Buttons Section */}
+        <div className="login-actions">
+          {/* Google White Button */}
+          <button
+            onClick={() => handleFakeLogin('Google')}
+            className="auth-btn google-btn"
+          >
+            <svg className="btn-icon" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span>Continue with Google</span>
+          </button>
 
-      {/* Spacer Top */}
-      <div className="top-space" />
+          {/* Email / Gmail Blue Button with User SVG Icon */}
+          <button
+            onClick={() => handleFakeLogin('Gmail')}
+            className="auth-btn email-blue-btn"
+          >
+            <svg
+              className="btn-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <span>Sign in with Email</span>
+          </button>
+        </div>
 
-      {/* Center Action Buttons */}
-      <div className="login-actions">
-        {/* Google White Button */}
-        <button
-          onClick={() => handleFakeLogin('Google')}
-          className="auth-btn"
-        >
-          <svg className="btn-icon" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-            />
-          </svg>
-          <span>Continue with Google</span>
-        </button>
-
-        {/* Gmail Button */}
-        <button
-          onClick={() => handleFakeLogin('Gmail')}
-          className="auth-btn"
-        >
-          <svg className="btn-icon red-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <span>Sign in with Gmail</span>
-        </button>
-      </div>
-
-      {/* Ekdam Bottom: Terms & Privacy Link */}
-      <div className="bottom-terms">
-        <p onClick={() => setShowTerms(true)} className="terms-text">
-          Login means you agree to the Terms &amp; Privacy Policy
-        </p>
+        {/* Terms & Privacy */}
+        <div className="bottom-terms">
+          <p onClick={() => setShowTerms(true)} className="terms-text">
+            Login means you agree to the Terms &amp; Privacy Policy
+          </p>
+        </div>
       </div>
 
       {/* Terms & Privacy Popup Modal */}
@@ -106,7 +111,7 @@ export default function LoginPage({ onLoginSuccess }) {
           overflow: hidden;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: center;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           user-select: none;
@@ -120,40 +125,30 @@ export default function LoginPage({ onLoginSuccess }) {
           height: 100%;
           object-fit: cover;
           z-index: 0;
-          pointer-events: none;
         }
 
-        .video-overlay {
-          position: absolute;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.45);
-          z-index: 1;
-          pointer-events: none;
-        }
-
-        .top-space {
+        .bottom-wrapper {
           position: relative;
-          z-index: 2;
+          z-index: 10;
           width: 100%;
-          height: 10%;
+          max-width: 360px;
+          padding: 0 20px 24px 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
         }
 
         .login-actions {
-          position: relative;
-          z-index: 2;
           width: 100%;
-          max-width: 320px;
-          padding: 0 16px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
         }
 
         .auth-btn {
           width: 100%;
           padding: 14px 20px;
-          background: #ffffff;
-          color: #1f2937;
           font-size: 0.95rem;
           font-weight: 600;
           border-radius: 9999px;
@@ -163,47 +158,52 @@ export default function LoginPage({ onLoginSuccess }) {
           justify-content: center;
           gap: 12px;
           cursor: pointer;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-          transition: transform 0.1s ease, background-color 0.2s;
-        }
-
-        .auth-btn:hover {
-          background: #f3f4f6;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+          transition: transform 0.1s ease, filter 0.2s ease;
         }
 
         .auth-btn:active {
           transform: scale(0.97);
         }
 
+        .google-btn {
+          background: #ffffff;
+          color: #1f2937;
+        }
+
+        .google-btn:hover {
+          background: #f8fafc;
+        }
+
+        .email-blue-btn {
+          background: #1d4ed8;
+          color: #ffffff;
+        }
+
+        .email-blue-btn:hover {
+          background: #1e40af;
+        }
+
         .btn-icon {
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
           flex-shrink: 0;
         }
 
-        .red-icon {
-          color: #ea4335;
-        }
-
         .bottom-terms {
-          position: relative;
-          z-index: 2;
-          padding-bottom: 24px;
-          padding-left: 16px;
-          padding-right: 16px;
           text-align: center;
         }
 
         .terms-text {
           font-size: 0.78rem;
-          color: rgba(255, 255, 255, 0.85);
+          color: #ffffff;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
           text-decoration: underline;
           cursor: pointer;
-          transition: color 0.2s;
         }
 
         .terms-text:hover {
-          color: #ffffff;
+          color: #e2e8f0;
         }
 
         .modal-backdrop {
