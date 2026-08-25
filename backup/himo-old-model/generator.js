@@ -1,13 +1,17 @@
 import {
   addText,
+  wordToId,
   idToWord,
   vocabularySize,
-} from "../data/vocabulary.js"
+} from "../data/vocabulary"
 
-import { predict } from "./neuralNetwork.js"
+import {
+  predict,
+} from "./neuralNetwork"
 
 function makeInput(text, size) {
   const ids = addText(text)
+
   const vector = new Float32Array(size)
 
   if (!ids.length) return vector
@@ -26,16 +30,25 @@ function makeInput(text, size) {
   return vector
 }
 
-export function generate(prompt, options = {}) {
-  const maxWords = options.maxWords || 24
-  const temperature = options.temperature || 0.8
+export function generate(
+  prompt,
+  options = {}
+) {
+  const maxWords =
+    options.maxWords || 12
+
+  const temperature =
+    options.temperature || 0.8
 
   const size = Math.max(
     8,
     vocabularySize()
   )
 
-  const input = makeInput(prompt, size)
+  const input = makeInput(
+    prompt,
+    size
+  )
 
   const words = []
 
@@ -46,9 +59,20 @@ export function generate(prompt, options = {}) {
       temperature
     )
 
-    const word = idToWord(result.index)
+    const word = idToWord(
+      result.index
+    )
 
-    if (!word || word === "<unk>") {
+    if (
+      !word ||
+      word === "<unk>"
+    ) {
+      break
+    }
+
+    if (
+      words.includes(word)
+    ) {
       break
     }
 
@@ -57,15 +81,22 @@ export function generate(prompt, options = {}) {
     const index =
       result.index % input.length
 
-    input[index] += 0.01
+    input[index] += 0.05
   }
 
   return words.join(" ")
 }
 
-export function generateResponse(prompt) {
-  return generate(prompt, {
-    maxWords: 24,
-    temperature: 0.85,
-  })
+export function generateResponse(
+  prompt
+) {
+  const response = generate(
+    prompt,
+    {
+      maxWords: 16,
+      temperature: 0.85,
+    }
+  )
+
+  return response || "I am still learning."
 }
