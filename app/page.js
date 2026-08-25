@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from "react"
 import { findAnswer } from "@/components/Himoanswer"
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
+  
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -15,13 +18,18 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
-  // Auto-resize textarea like modern chat inputs
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`
     }
   }, [message])
+
+  // Fake Login Handler
+  function handleLogin(provider) {
+    setIsLoggedIn(true)
+  }
 
   function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
@@ -44,6 +52,186 @@ export default function Home() {
     }, 600)
   }
 
+  // 1. Show Login Screen First
+  if (!isLoggedIn) {
+    return (
+      <main className="login-wrapper">
+        {/* Background Video */}
+        <video autoPlay loop muted playsInline className="bg-video">
+          <source src="/VID_20260824_032704_942_bsl.mp4" type="video/mp4" />
+        </video>
+
+        {/* Dark Overlay */}
+        <div className="video-overlay" />
+
+        {/* Bottom Login Box */}
+        <div className="bottom-login-container">
+          {/* Google Button */}
+          <button className="auth-btn google-btn" onClick={() => handleLogin("Google")}>
+            <svg className="btn-icon" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          {/* Gmail Button */}
+          <button className="auth-btn gmail-btn" onClick={() => handleLogin("Gmail")}>
+            <svg className="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Sign in with Gmail
+          </button>
+
+          {/* Clickable Privacy Text */}
+          <p className="privacy-link" onClick={() => setShowTerms(true)}>
+            Login means you agree to the Terms &amp; Privacy Policy
+          </p>
+        </div>
+
+        {/* Terms Popup Modal */}
+        {showTerms && (
+          <div className="terms-modal-overlay" onClick={() => setShowTerms(false)}>
+            <div className="terms-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>Terms &amp; Privacy Policy</h3>
+              <p>
+                By logging in and using Himo, you agree to our Terms of Service and Privacy Policy. Your conversation data is stored locally for session continuity.
+              </p>
+              <button className="modal-close-btn" onClick={() => setShowTerms(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        <style jsx>{`
+          .login-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          }
+          .bg-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+          }
+          .video-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1;
+          }
+          .bottom-login-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 360px;
+            padding: 0 20px 40px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .auth-btn {
+            width: 100%;
+            padding: 14px 20px;
+            background: #ffffff;
+            color: #1f2937;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+            transition: transform 0.1s ease, background-color 0.2s;
+          }
+          .auth-btn:hover {
+            background: #f3f4f6;
+          }
+          .auth-btn:active {
+            transform: scale(0.97);
+          }
+          .gmail-btn {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+          }
+          .btn-icon {
+            width: 20px;
+            height: 20px;
+          }
+          .privacy-link {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.85);
+            text-align: center;
+            margin-top: 6px;
+            cursor: pointer;
+            text-decoration: underline;
+            user-select: none;
+          }
+          .privacy-link:hover {
+            color: #ffffff;
+          }
+          .terms-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+          }
+          .terms-modal {
+            background: #ffffff;
+            color: #111827;
+            padding: 24px;
+            border-radius: 20px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+          }
+          .terms-modal h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+          }
+          .terms-modal p {
+            font-size: 0.88rem;
+            color: #4b5563;
+            line-height: 1.5;
+            margin-bottom: 20px;
+          }
+          .modal-close-btn {
+            width: 100%;
+            padding: 10px;
+            background: #111827;
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+        `}</style>
+      </main>
+    )
+  }
+
+  // 2. Chat Workspace (Rendered after fake login)
   return (
     <main className="app-shell">
       {/* Sidebar Overlay */}
@@ -82,12 +270,13 @@ export default function Home() {
         </div>
 
         <div className="sidebar-footer">
-          <button className="footer-item">
+          <button className="footer-item" onClick={() => setIsLoggedIn(false)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            Settings
+            Logout
           </button>
         </div>
       </aside>
