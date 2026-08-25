@@ -1,8 +1,11 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "himo.ai — Your creative intelligence",
-  description: "Chat, code, and bring your ideas to life with Himo AI."
+  title: "hi Himo — Your creative intelligence",
+  description: "Chat, code, and bring your ideas to life with hi Himo.",
+  icons: {
+    icon: "/logo.png"
+  }
 };
 
 export default function RootLayout({ children }) {
