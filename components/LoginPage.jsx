@@ -1,9 +1,29 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [showTerms, setShowTerms] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    // Video play ensure karne ke liye
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {
+        // Autoplay fallback
+      });
+    }
+  }, []);
+
+  // Screen par kahin bhi first touch/click hone par sound on ho jayega
+  const handleUserInteraction = () => {
+    if (videoRef.current && isMuted) {
+      videoRef.current.muted = false;
+      setIsMuted(false);
+      videoRef.current.play();
+    }
+  };
 
   const handleFakeLogin = (provider) => {
     const fakeUserData = {
@@ -17,11 +37,17 @@ export default function LoginPage({ onLoginSuccess }) {
   };
 
   return (
-    <div className="login-page-container">
-      {/* Background Video (Unmuted, Original Colors, No Overlay) */}
+    <div 
+      className="login-page-container"
+      onClick={handleUserInteraction}
+      onTouchStart={handleUserInteraction}
+    >
+      {/* Background Video */}
       <video
+        ref={videoRef}
         autoPlay
         loop
+        muted={isMuted}
         playsInline
         webkit-playsinline="true"
         className="login-video"
@@ -35,7 +61,10 @@ export default function LoginPage({ onLoginSuccess }) {
         <div className="login-actions">
           {/* Google White Button */}
           <button
-            onClick={() => handleFakeLogin('Google')}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFakeLogin('Google');
+            }}
             className="auth-btn google-btn"
           >
             <svg className="btn-icon" viewBox="0 0 24 24">
@@ -61,7 +90,10 @@ export default function LoginPage({ onLoginSuccess }) {
 
           {/* Email / Gmail Blue Button with User SVG Icon */}
           <button
-            onClick={() => handleFakeLogin('Gmail')}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFakeLogin('Gmail');
+            }}
             className="auth-btn email-blue-btn"
           >
             <svg
@@ -82,7 +114,13 @@ export default function LoginPage({ onLoginSuccess }) {
 
         {/* Terms & Privacy */}
         <div className="bottom-terms">
-          <p onClick={() => setShowTerms(true)} className="terms-text">
+          <p 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowTerms(true);
+            }} 
+            className="terms-text"
+          >
             Login means you agree to the Terms &amp; Privacy Policy
           </p>
         </div>
@@ -159,7 +197,7 @@ export default function LoginPage({ onLoginSuccess }) {
           gap: 12px;
           cursor: pointer;
           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-          transition: transform 0.1s ease, filter 0.2s ease;
+          transition: transform 0.1s ease;
         }
 
         .auth-btn:active {
