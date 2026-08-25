@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import LoginPage from "@/components/LoginPage"
 import { findAnswer } from "@/components/Himoanswer"
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [showTerms, setShowTerms] = useState(false)
-  
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -26,11 +25,6 @@ export default function Home() {
     }
   }, [message])
 
-  // Fake Login Handler
-  function handleLogin(provider) {
-    setIsLoggedIn(true)
-  }
-
   function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
@@ -41,7 +35,6 @@ export default function Home() {
     setMessages((current) => [...current, { role: "user", content: prompt }])
     setLoading(true)
 
-    // Local knowledge base answer simulation
     setTimeout(() => {
       const answer = findAnswer(prompt)
       setMessages((current) => [
@@ -52,188 +45,16 @@ export default function Home() {
     }, 600)
   }
 
-  // 1. Show Login Screen First
+  // Show Login Component first
   if (!isLoggedIn) {
-    return (
-      <main className="login-wrapper">
-        {/* Background Video */}
-        <video autoPlay loop muted playsInline className="bg-video">
-          <source src="/VID_20260824_032704_942_bsl.mp4" type="video/mp4" />
-        </video>
-
-        {/* Dark Overlay */}
-        <div className="video-overlay" />
-
-        {/* Bottom Login Box */}
-        <div className="bottom-login-container">
-          {/* Google Button */}
-          <button className="auth-btn google-btn" onClick={() => handleLogin("Google")}>
-            <svg className="btn-icon" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            Continue with Google
-          </button>
-
-          {/* Gmail Button */}
-          <button className="auth-btn gmail-btn" onClick={() => handleLogin("Gmail")}>
-            <svg className="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            Sign in with Gmail
-          </button>
-
-          {/* Clickable Privacy Text */}
-          <p className="privacy-link" onClick={() => setShowTerms(true)}>
-            Login means you agree to the Terms &amp; Privacy Policy
-          </p>
-        </div>
-
-        {/* Terms Popup Modal */}
-        {showTerms && (
-          <div className="terms-modal-overlay" onClick={() => setShowTerms(false)}>
-            <div className="terms-modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Terms &amp; Privacy Policy</h3>
-              <p>
-                By logging in and using Himo, you agree to our Terms of Service and Privacy Policy. Your conversation data is stored locally for session continuity.
-              </p>
-              <button className="modal-close-btn" onClick={() => setShowTerms(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-
-        <style jsx>{`
-          .login-wrapper {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          }
-          .bg-video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: 0;
-          }
-          .video-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 1;
-          }
-          .bottom-login-container {
-            position: relative;
-            z-index: 2;
-            width: 100%;
-            max-width: 360px;
-            padding: 0 20px 40px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-          }
-          .auth-btn {
-            width: 100%;
-            padding: 14px 20px;
-            background: #ffffff;
-            color: #1f2937;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: 9999px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            cursor: pointer;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
-            transition: transform 0.1s ease, background-color 0.2s;
-          }
-          .auth-btn:hover {
-            background: #f3f4f6;
-          }
-          .auth-btn:active {
-            transform: scale(0.97);
-          }
-          .gmail-btn {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(8px);
-          }
-          .btn-icon {
-            width: 20px;
-            height: 20px;
-          }
-          .privacy-link {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.85);
-            text-align: center;
-            margin-top: 6px;
-            cursor: pointer;
-            text-decoration: underline;
-            user-select: none;
-          }
-          .privacy-link:hover {
-            color: #ffffff;
-          }
-          .terms-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 50;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-          }
-          .terms-modal {
-            background: #ffffff;
-            color: #111827;
-            padding: 24px;
-            border-radius: 20px;
-            max-width: 380px;
-            width: 100%;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
-          }
-          .terms-modal h3 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-          }
-          .terms-modal p {
-            font-size: 0.88rem;
-            color: #4b5563;
-            line-height: 1.5;
-            margin-bottom: 20px;
-          }
-          .modal-close-btn {
-            width: 100%;
-            padding: 10px;
-            background: #111827;
-            color: #ffffff;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-          }
-        `}</style>
-      </main>
-    )
+    return <LoginPage onLoginSuccess={() => setIsLoggedIn(true)} />
   }
 
-  // 2. Chat Workspace (Rendered after fake login)
   return (
     <main className="app-shell">
+      {/* Dynamic 30vh Top Gradient Mesh */}
+      <div className="top-ambient-glow" />
+
       {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
@@ -417,10 +238,27 @@ export default function Home() {
         .app-shell {
           display: flex;
           height: 100vh;
-          background: #131314;
-          color: #e3e3e3;
+          background: #ffffff;
+          color: #1f2937;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
           overflow: hidden;
+          position: relative;
+        }
+
+        /* Top 30vh Blue, Purple, Green Mix Glow fading to Pure White */
+        .top-ambient-glow {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 30vh;
+          background: 
+            radial-gradient(circle at 15% 15%, rgba(66, 133, 244, 0.22), transparent 45%),
+            radial-gradient(circle at 50% 10%, rgba(155, 114, 203, 0.25), transparent 50%),
+            radial-gradient(circle at 85% 20%, rgba(52, 168, 83, 0.20), transparent 45%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, #ffffff 100%);
+          pointer-events: none;
+          z-index: 1;
         }
 
         .workspace {
@@ -429,6 +267,7 @@ export default function Home() {
           flex-direction: column;
           position: relative;
           height: 100vh;
+          z-index: 2;
         }
 
         /* Top Header */
@@ -438,8 +277,7 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #131314;
-          z-index: 10;
+          background: transparent;
         }
 
         .left-nav {
@@ -450,8 +288,8 @@ export default function Home() {
 
         .brand-name {
           font-size: 1.15rem;
-          font-weight: 500;
-          color: #c4c7c5;
+          font-weight: 600;
+          color: #1f2937;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -460,16 +298,18 @@ export default function Home() {
         .brand-badge {
           font-size: 0.75rem;
           padding: 2px 8px;
-          background: #1e1f20;
-          border: 1px solid #333538;
+          background: rgba(255, 255, 255, 0.8);
+          border: 1px solid #e5e7eb;
           border-radius: 12px;
-          color: #9da3a7;
+          color: #4b5563;
+          font-weight: 500;
+          backdrop-filter: blur(4px);
         }
 
         .icon-btn {
-          background: transparent;
-          border: none;
-          color: #c4c7c5;
+          background: rgba(255, 255, 255, 0.6);
+          border: 1px solid #e5e7eb;
+          color: #374151;
           cursor: pointer;
           border-radius: 50%;
           width: 40px;
@@ -477,24 +317,26 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
 
         .icon-btn:hover {
-          background: #282a2c;
+          background: #f3f4f6;
+          color: #111827;
         }
 
         .avatar-chip {
-          width: 34px;
-          height: 34px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
-          background: #4a5568;
+          background: linear-gradient(135deg, #4285f4, #9b72cb);
           color: #ffffff;
           font-size: 0.9rem;
           font-weight: 600;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 0 2px 8px rgba(66, 133, 244, 0.25);
         }
 
         /* Sidebar */
@@ -504,12 +346,14 @@ export default function Home() {
           left: -320px;
           width: 290px;
           height: 100vh;
-          background: #1e1f20;
+          background: #ffffff;
+          border-right: 1px solid #e5e7eb;
           transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 100;
           padding: 16px;
           display: flex;
           flex-direction: column;
+          box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
         }
 
         .sidebar.open {
@@ -519,7 +363,8 @@ export default function Home() {
         .sidebar-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.6);
+          background: rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(2px);
           z-index: 99;
         }
 
@@ -533,20 +378,20 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 12px;
-          background: #282a2c;
-          border: none;
-          color: #e3e3e3;
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          color: #1f2937;
           padding: 12px 18px;
           border-radius: 24px;
           cursor: pointer;
           font-size: 0.9rem;
           font-weight: 500;
           margin-bottom: 24px;
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
 
         .new-chat-btn:hover {
-          background: #333538;
+          background: #e5e7eb;
         }
 
         .sidebar-section {
@@ -557,7 +402,7 @@ export default function Home() {
         .sidebar-label {
           font-size: 0.75rem;
           font-weight: 600;
-          color: #8e918f;
+          color: #9ca3af;
           margin-bottom: 12px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -576,12 +421,14 @@ export default function Home() {
           padding: 10px 14px;
           border-radius: 20px;
           font-size: 0.88rem;
-          color: #c4c7c5;
+          color: #4b5563;
           cursor: pointer;
+          transition: background 0.15s;
         }
 
         .recent-item:hover {
-          background: #282a2c;
+          background: #f3f4f6;
+          color: #111827;
         }
 
         .truncate {
@@ -591,7 +438,7 @@ export default function Home() {
         }
 
         .sidebar-footer {
-          border-top: 1px solid #2d2f31;
+          border-top: 1px solid #e5e7eb;
           padding-top: 12px;
         }
 
@@ -601,16 +448,17 @@ export default function Home() {
           gap: 12px;
           background: transparent;
           border: none;
-          color: #c4c7c5;
+          color: #ef4444;
           padding: 10px 14px;
           border-radius: 20px;
           cursor: pointer;
           font-size: 0.88rem;
+          font-weight: 500;
           width: 100%;
         }
 
         .footer-item:hover {
-          background: #282a2c;
+          background: #fee2e2;
         }
 
         /* Canvas & Hero */
@@ -624,19 +472,18 @@ export default function Home() {
         }
 
         .hero-screen {
-          margin-top: 8vh;
+          margin-top: 6vh;
           animation: fadeIn 0.4s ease-out;
         }
 
         .hero-greeting {
-          margin-bottom: 40px;
+          margin-bottom: 36px;
         }
 
         .gradient-text {
           font-size: 3.2rem;
-          font-weight: 600;
-          background: linear-gradient(74deg, #4285f4 0%, #9b72cb 9%, #d96570 20%, #d96570 24%, #9b72cb 35%, #ffffff 100%);
-          background-size: 400% 100%;
+          font-weight: 700;
+          background: linear-gradient(90deg, #4285f4, #9b72cb, #34a853);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           display: block;
@@ -644,57 +491,61 @@ export default function Home() {
         }
 
         .hero-greeting h1 {
-          font-size: 2.8rem;
-          font-weight: 500;
-          color: #444746;
+          font-size: 2.5rem;
+          font-weight: 600;
+          color: #374151;
           line-height: 1.2;
         }
 
         .suggestion-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 12px;
+          gap: 14px;
         }
 
         .suggestion-card {
-          background: #1e1f20;
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
           padding: 18px;
-          border-radius: 16px;
+          border-radius: 18px;
           cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
+          transition: all 0.2s;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
           min-height: 110px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
         }
 
         .suggestion-card:hover {
-          background: #282a2c;
+          background: #f9fafb;
+          border-color: #cbd5e1;
           transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
         }
 
         .suggestion-card p {
           font-size: 0.95rem;
-          font-weight: 500;
-          color: #e3e3e3;
+          font-weight: 600;
+          color: #1f2937;
         }
 
         .suggestion-card span {
           font-size: 0.8rem;
-          color: #8e918f;
+          color: #6b7280;
         }
 
         /* Message Rows */
         .messages-list {
           display: flex;
           flex-direction: column;
-          gap: 28px;
+          gap: 24px;
           padding-top: 24px;
         }
 
         .message-row {
           display: flex;
-          gap: 18px;
+          gap: 16px;
           max-width: 100%;
         }
 
@@ -708,9 +559,7 @@ export default function Home() {
         }
 
         .gemini-sparkle {
-          background: linear-gradient(135deg, #4285f4, #9b72cb, #d96570);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #4285f4;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -719,14 +568,14 @@ export default function Home() {
         .user-icon {
           width: 32px;
           height: 32px;
-          background: #333538;
+          background: #e5e7eb;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 0.85rem;
           font-weight: 600;
-          color: #e3e3e3;
+          color: #374151;
         }
 
         .message-bubble {
@@ -734,16 +583,18 @@ export default function Home() {
         }
 
         .message-row.user .message-bubble {
-          background: #282a2c;
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
           padding: 12px 18px;
           border-radius: 20px;
           border-top-right-radius: 4px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .message-text {
           font-size: 1rem;
           line-height: 1.65;
-          color: #e3e3e3;
+          color: #1f2937;
           word-break: break-word;
         }
 
@@ -755,7 +606,7 @@ export default function Home() {
           margin-bottom: 0;
         }
 
-        /* Loading Shimmer */
+        /* Shimmer Loading */
         .gemini-shimmer-loader {
           display: flex;
           flex-direction: column;
@@ -767,7 +618,7 @@ export default function Home() {
         .shimmer-line {
           height: 12px;
           border-radius: 6px;
-          background: linear-gradient(90deg, #282a2c 25%, #3c4043 50%, #282a2c 75%);
+          background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
         }
@@ -785,35 +636,37 @@ export default function Home() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Bottom Composer Dock */
+        /* Bottom Pure White Composer Dock */
         .dock-container {
           position: absolute;
           bottom: 0;
           left: 0;
           right: 0;
-          padding: 16px 20px 20px;
-          background: linear-gradient(180deg, transparent 0%, #131314 40%);
+          padding: 16px 20px 24px;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 45%);
           display: flex;
           flex-direction: column;
           align-items: center;
+          z-index: 10;
         }
 
         .composer-shell {
           width: 100%;
           max-width: 800px;
-          background: #1e1f20;
+          background: #ffffff;
           border-radius: 28px;
           padding: 12px 18px;
           display: flex;
           align-items: flex-end;
           gap: 12px;
-          border: 1px solid #2d2f31;
-          transition: border-color 0.2s;
+          border: 1px solid #d1d5db;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+          transition: all 0.2s;
         }
 
         .composer-shell:focus-within {
-          border-color: #444746;
-          background: #202124;
+          border-color: #9b72cb;
+          box-shadow: 0 4px 24px rgba(155, 114, 203, 0.18);
         }
 
         .composer-shell textarea {
@@ -821,7 +674,7 @@ export default function Home() {
           background: transparent;
           border: none;
           outline: none;
-          color: #e3e3e3;
+          color: #111827;
           font-size: 1rem;
           font-family: inherit;
           resize: none;
@@ -831,7 +684,7 @@ export default function Home() {
         }
 
         .composer-shell textarea::placeholder {
-          color: #8e918f;
+          color: #9ca3af;
         }
 
         .composer-actions {
@@ -844,29 +697,30 @@ export default function Home() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: #e3e3e3;
-          color: #131314;
+          background: #111827;
+          color: #ffffff;
           border: none;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: opacity 0.2s, transform 0.1s;
+          transition: all 0.15s;
         }
 
         .send-button-gemini:disabled {
-          background: #282a2c;
-          color: #8e918f;
+          background: #f3f4f6;
+          color: #9ca3af;
           cursor: not-allowed;
         }
 
         .send-button-gemini:not(:disabled):hover {
           transform: scale(1.05);
+          background: #000000;
         }
 
         .disclaimer-text {
           font-size: 0.75rem;
-          color: #8e918f;
+          color: #6b7280;
           margin-top: 10px;
           text-align: center;
         }
