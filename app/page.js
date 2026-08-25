@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import LoginPage from "@/components/LoginPage"
-import { findAnswer } from "@/components/Himoanswer"
 
+import { think } from "@/lib/himoBrain"
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -17,7 +15,7 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
-  // Auto-resize textarea
+  // Auto-resize textarea like modern chat inputs
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
@@ -25,7 +23,7 @@ export default function Home() {
     }
   }, [message])
 
-  function handleSend(textToSend) {
+  async function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
 
@@ -35,26 +33,28 @@ export default function Home() {
     setMessages((current) => [...current, { role: "user", content: prompt }])
     setLoading(true)
 
-    setTimeout(() => {
-      const answer = findAnswer(prompt)
+    try {
+      const answer = await think(prompt)
+
       setMessages((current) => [
         ...current,
         { role: "assistant", content: answer }
       ])
-      setLoading(false)
-    }, 600)
-  }
+    } catch (error) {
+      console.error("Himo brain error:", error)
 
-  // Show Login Component first
-  if (!isLoggedIn) {
-    return <LoginPage onLoginSuccess={() => setIsLoggedIn(true)} />
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: "..." }
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
   }
 
   return (
     <main className="app-shell">
-      {/* Dynamic 30vh Top Gradient Mesh */}
-      <div className="top-ambient-glow" />
-
       {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
@@ -91,13 +91,12 @@ export default function Home() {
         </div>
 
         <div className="sidebar-footer">
-          <button className="footer-item" onClick={() => setIsLoggedIn(false)}>
+          <button className="footer-item">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-            Logout
+            Settings
           </button>
         </div>
       </aside>
@@ -238,27 +237,10 @@ export default function Home() {
         .app-shell {
           display: flex;
           height: 100vh;
-          background: #ffffff;
-          color: #1f2937;
+          background: #131314;
+          color: #e3e3e3;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
           overflow: hidden;
-          position: relative;
-        }
-
-        /* Top 30vh Blue, Purple, Green Mix Glow fading to Pure White */
-        .top-ambient-glow {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 30vh;
-          background: 
-            radial-gradient(circle at 15% 15%, rgba(66, 133, 244, 0.22), transparent 45%),
-            radial-gradient(circle at 50% 10%, rgba(155, 114, 203, 0.25), transparent 50%),
-            radial-gradient(circle at 85% 20%, rgba(52, 168, 83, 0.20), transparent 45%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, #ffffff 100%);
-          pointer-events: none;
-          z-index: 1;
         }
 
         .workspace {
@@ -267,7 +249,6 @@ export default function Home() {
           flex-direction: column;
           position: relative;
           height: 100vh;
-          z-index: 2;
         }
 
         /* Top Header */
@@ -277,7 +258,8 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: transparent;
+          background: #131314;
+          z-index: 10;
         }
 
         .left-nav {
@@ -288,8 +270,8 @@ export default function Home() {
 
         .brand-name {
           font-size: 1.15rem;
-          font-weight: 600;
-          color: #1f2937;
+          font-weight: 500;
+          color: #c4c7c5;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -298,18 +280,16 @@ export default function Home() {
         .brand-badge {
           font-size: 0.75rem;
           padding: 2px 8px;
-          background: rgba(255, 255, 255, 0.8);
-          border: 1px solid #e5e7eb;
+          background: #1e1f20;
+          border: 1px solid #333538;
           border-radius: 12px;
-          color: #4b5563;
-          font-weight: 500;
-          backdrop-filter: blur(4px);
+          color: #9da3a7;
         }
 
         .icon-btn {
-          background: rgba(255, 255, 255, 0.6);
-          border: 1px solid #e5e7eb;
-          color: #374151;
+          background: transparent;
+          border: none;
+          color: #c4c7c5;
           cursor: pointer;
           border-radius: 50%;
           width: 40px;
@@ -317,26 +297,24 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.2s;
+          transition: background 0.2s;
         }
 
         .icon-btn:hover {
-          background: #f3f4f6;
-          color: #111827;
+          background: #282a2c;
         }
 
         .avatar-chip {
-          width: 36px;
-          height: 36px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #4285f4, #9b72cb);
+          background: #4a5568;
           color: #ffffff;
           font-size: 0.9rem;
           font-weight: 600;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 2px 8px rgba(66, 133, 244, 0.25);
         }
 
         /* Sidebar */
@@ -346,14 +324,12 @@ export default function Home() {
           left: -320px;
           width: 290px;
           height: 100vh;
-          background: #ffffff;
-          border-right: 1px solid #e5e7eb;
+          background: #1e1f20;
           transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 100;
           padding: 16px;
           display: flex;
           flex-direction: column;
-          box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
         }
 
         .sidebar.open {
@@ -363,8 +339,7 @@ export default function Home() {
         .sidebar-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.3);
-          backdrop-filter: blur(2px);
+          background: rgba(0, 0, 0, 0.6);
           z-index: 99;
         }
 
@@ -378,20 +353,20 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 12px;
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
-          color: #1f2937;
+          background: #282a2c;
+          border: none;
+          color: #e3e3e3;
           padding: 12px 18px;
           border-radius: 24px;
           cursor: pointer;
           font-size: 0.9rem;
           font-weight: 500;
           margin-bottom: 24px;
-          transition: all 0.2s;
+          transition: background 0.2s;
         }
 
         .new-chat-btn:hover {
-          background: #e5e7eb;
+          background: #333538;
         }
 
         .sidebar-section {
@@ -402,7 +377,7 @@ export default function Home() {
         .sidebar-label {
           font-size: 0.75rem;
           font-weight: 600;
-          color: #9ca3af;
+          color: #8e918f;
           margin-bottom: 12px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -421,14 +396,12 @@ export default function Home() {
           padding: 10px 14px;
           border-radius: 20px;
           font-size: 0.88rem;
-          color: #4b5563;
+          color: #c4c7c5;
           cursor: pointer;
-          transition: background 0.15s;
         }
 
         .recent-item:hover {
-          background: #f3f4f6;
-          color: #111827;
+          background: #282a2c;
         }
 
         .truncate {
@@ -438,7 +411,7 @@ export default function Home() {
         }
 
         .sidebar-footer {
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid #2d2f31;
           padding-top: 12px;
         }
 
@@ -448,17 +421,16 @@ export default function Home() {
           gap: 12px;
           background: transparent;
           border: none;
-          color: #ef4444;
+          color: #c4c7c5;
           padding: 10px 14px;
           border-radius: 20px;
           cursor: pointer;
           font-size: 0.88rem;
-          font-weight: 500;
           width: 100%;
         }
 
         .footer-item:hover {
-          background: #fee2e2;
+          background: #282a2c;
         }
 
         /* Canvas & Hero */
@@ -472,18 +444,19 @@ export default function Home() {
         }
 
         .hero-screen {
-          margin-top: 6vh;
+          margin-top: 8vh;
           animation: fadeIn 0.4s ease-out;
         }
 
         .hero-greeting {
-          margin-bottom: 36px;
+          margin-bottom: 40px;
         }
 
         .gradient-text {
           font-size: 3.2rem;
-          font-weight: 700;
-          background: linear-gradient(90deg, #4285f4, #9b72cb, #34a853);
+          font-weight: 600;
+          background: linear-gradient(74deg, #4285f4 0%, #9b72cb 9%, #d96570 20%, #d96570 24%, #9b72cb 35%, #ffffff 100%);
+          background-size: 400% 100%;
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           display: block;
@@ -491,61 +464,57 @@ export default function Home() {
         }
 
         .hero-greeting h1 {
-          font-size: 2.5rem;
-          font-weight: 600;
-          color: #374151;
+          font-size: 2.8rem;
+          font-weight: 500;
+          color: #444746;
           line-height: 1.2;
         }
 
         .suggestion-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 14px;
+          gap: 12px;
         }
 
         .suggestion-card {
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
+          background: #1e1f20;
           padding: 18px;
-          border-radius: 18px;
+          border-radius: 16px;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: background 0.2s, transform 0.1s;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
           min-height: 110px;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
         }
 
         .suggestion-card:hover {
-          background: #f9fafb;
-          border-color: #cbd5e1;
+          background: #282a2c;
           transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
         }
 
         .suggestion-card p {
           font-size: 0.95rem;
-          font-weight: 600;
-          color: #1f2937;
+          font-weight: 500;
+          color: #e3e3e3;
         }
 
         .suggestion-card span {
           font-size: 0.8rem;
-          color: #6b7280;
+          color: #8e918f;
         }
 
         /* Message Rows */
         .messages-list {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 28px;
           padding-top: 24px;
         }
 
         .message-row {
           display: flex;
-          gap: 16px;
+          gap: 18px;
           max-width: 100%;
         }
 
@@ -559,7 +528,9 @@ export default function Home() {
         }
 
         .gemini-sparkle {
-          color: #4285f4;
+          background: linear-gradient(135deg, #4285f4, #9b72cb, #d96570);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -568,14 +539,14 @@ export default function Home() {
         .user-icon {
           width: 32px;
           height: 32px;
-          background: #e5e7eb;
+          background: #333538;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 0.85rem;
           font-weight: 600;
-          color: #374151;
+          color: #e3e3e3;
         }
 
         .message-bubble {
@@ -583,18 +554,16 @@ export default function Home() {
         }
 
         .message-row.user .message-bubble {
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
+          background: #282a2c;
           padding: 12px 18px;
           border-radius: 20px;
           border-top-right-radius: 4px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .message-text {
           font-size: 1rem;
           line-height: 1.65;
-          color: #1f2937;
+          color: #e3e3e3;
           word-break: break-word;
         }
 
@@ -606,7 +575,7 @@ export default function Home() {
           margin-bottom: 0;
         }
 
-        /* Shimmer Loading */
+        /* Loading Shimmer */
         .gemini-shimmer-loader {
           display: flex;
           flex-direction: column;
@@ -618,7 +587,7 @@ export default function Home() {
         .shimmer-line {
           height: 12px;
           border-radius: 6px;
-          background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+          background: linear-gradient(90deg, #282a2c 25%, #3c4043 50%, #282a2c 75%);
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
         }
@@ -636,37 +605,35 @@ export default function Home() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Bottom Pure White Composer Dock */
+        /* Bottom Composer Dock */
         .dock-container {
           position: absolute;
           bottom: 0;
           left: 0;
           right: 0;
-          padding: 16px 20px 24px;
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 45%);
+          padding: 16px 20px 20px;
+          background: linear-gradient(180deg, transparent 0%, #131314 40%);
           display: flex;
           flex-direction: column;
           align-items: center;
-          z-index: 10;
         }
 
         .composer-shell {
           width: 100%;
           max-width: 800px;
-          background: #ffffff;
+          background: #1e1f20;
           border-radius: 28px;
           padding: 12px 18px;
           display: flex;
           align-items: flex-end;
           gap: 12px;
-          border: 1px solid #d1d5db;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-          transition: all 0.2s;
+          border: 1px solid #2d2f31;
+          transition: border-color 0.2s;
         }
 
         .composer-shell:focus-within {
-          border-color: #9b72cb;
-          box-shadow: 0 4px 24px rgba(155, 114, 203, 0.18);
+          border-color: #444746;
+          background: #202124;
         }
 
         .composer-shell textarea {
@@ -674,7 +641,7 @@ export default function Home() {
           background: transparent;
           border: none;
           outline: none;
-          color: #111827;
+          color: #e3e3e3;
           font-size: 1rem;
           font-family: inherit;
           resize: none;
@@ -684,7 +651,7 @@ export default function Home() {
         }
 
         .composer-shell textarea::placeholder {
-          color: #9ca3af;
+          color: #8e918f;
         }
 
         .composer-actions {
@@ -697,30 +664,29 @@ export default function Home() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: #111827;
-          color: #ffffff;
+          background: #e3e3e3;
+          color: #131314;
           border: none;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: all 0.15s;
+          transition: opacity 0.2s, transform 0.1s;
         }
 
         .send-button-gemini:disabled {
-          background: #f3f4f6;
-          color: #9ca3af;
+          background: #282a2c;
+          color: #8e918f;
           cursor: not-allowed;
         }
 
         .send-button-gemini:not(:disabled):hover {
           transform: scale(1.05);
-          background: #000000;
         }
 
         .disclaimer-text {
           font-size: 0.75rem;
-          color: #6b7280;
+          color: #8e918f;
           margin-top: 10px;
           text-align: center;
         }
