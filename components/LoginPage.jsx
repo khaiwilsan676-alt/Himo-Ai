@@ -1,17 +1,19 @@
-Import React, { useState } from 'react';
+"use client"
 
-export default function LoginPage() {
+import React, { useState } from 'react';
+
+export default function LoginPage({ onLoginSuccess }) {
   const [showTerms, setShowTerms] = useState(false);
-  const [user, setUser] = useState(null);
 
-  // Fake Auth Handler
   const handleFakeLogin = (provider) => {
-    setUser({
+    const fakeUserData = {
       name: "Demo User",
       email: provider === 'Google' ? "user@gmail.com" : "demo@gmail.com",
       provider: provider
-    });
-    alert(`${provider} Login Successful (Fake Auth)`);
+    };
+    if (onLoginSuccess) {
+      onLoginSuccess(fakeUserData);
+    }
   };
 
   return (
@@ -28,8 +30,8 @@ export default function LoginPage() {
         Your browser does not support the video tag.
       </video>
 
-      {/* Dark Overlay for better contrast */}
-      <div className="absolute inset-0 bg-black/40 z-10" />
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/45 z-10" />
 
       {/* Bottom Action Section */}
       <div className="relative z-20 w-full max-w-sm px-6 pb-8 flex flex-col items-center gap-3">
@@ -37,7 +39,7 @@ export default function LoginPage() {
         {/* Google White Button */}
         <button
           onClick={() => handleFakeLogin('Google')}
-          className="w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-full shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95"
+          className="w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold rounded-full shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95 cursor-pointer"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -56,17 +58,17 @@ export default function LoginPage() {
               fill="#EA4335"
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
-          </video>
+          </svg>
           <span>Continue with Google</span>
         </button>
 
         {/* Gmail Button */}
         <button
           onClick={() => handleFakeLogin('Gmail')}
-          className="w-full py-3.5 px-4 bg-white/90 hover:bg-white text-gray-800 font-semibold rounded-full shadow-lg flex items-center justify-center gap-3 backdrop-blur-sm transition-transform active:scale-95"
+          className="w-full py-3.5 px-4 bg-white/90 hover:bg-white text-gray-800 font-semibold rounded-full shadow-lg flex items-center justify-center gap-3 backdrop-blur-sm transition-transform active:scale-95 cursor-pointer"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
           <span>Sign in with Gmail</span>
         </button>
@@ -74,7 +76,7 @@ export default function LoginPage() {
         {/* Terms & Privacy Clickable Text */}
         <p
           onClick={() => setShowTerms(true)}
-          className="text-xs text-white/80 hover:text-white underline text-center mt-3 cursor-pointer select-none transition-colors"
+          className="text-xs text-white/85 hover:text-white underline text-center mt-3 cursor-pointer select-none transition-colors"
         >
           Login means you agree to the Terms & Privacy Policy
         </p>
@@ -82,15 +84,21 @@ export default function LoginPage() {
 
       {/* Terms & Privacy Popup Modal */}
       {showTerms && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-white text-gray-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowTerms(false)}
+        >
+          <div 
+            className="bg-white text-gray-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-bold mb-2">Terms & Privacy Policy</h3>
             <p className="text-sm text-gray-600 mb-4 leading-relaxed">
               By using this app, you agree to our Terms of Service and Privacy Policy. Your data is secure, and you have complete control over your account settings.
             </p>
             <button
               onClick={() => setShowTerms(false)}
-              className="w-full py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
+              className="w-full py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors cursor-pointer"
             >
               Close
             </button>
