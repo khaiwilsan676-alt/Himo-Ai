@@ -111,9 +111,12 @@ export default function Home() {
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
-            <span className="brand-name">
-              Himo <span className="brand-badge">2.5 Flash</span>
-            </span>
+            <div className="brand-container">
+              <img src="/logo.png" alt="hi Himo Logo" className="brand-logo" />
+              <span className="brand-name">
+                hi Himo <span className="brand-badge">2.5 Flash</span>
+              </span>
+            </div>
           </div>
           <div className="user-profile-badge">
             <div className="avatar-chip">U</div>
@@ -204,7 +207,7 @@ export default function Home() {
                   handleSend()
                 }
               }}
-              placeholder="Ask Himo..."
+              placeholder="Ask hi Himo..."
               rows={1}
             />
             <div className="composer-actions">
@@ -221,7 +224,7 @@ export default function Home() {
             </div>
           </div>
           <p className="disclaimer-text">
-            Himo may display inaccurate info, so double-check its responses.
+            hi Himo may display inaccurate info, so double-check its responses.
           </p>
         </div>
       </section>
@@ -265,6 +268,19 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 16px;
+        }
+
+        .brand-container {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .brand-logo {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+          border-radius: 6px;
         }
 
         .brand-name {
