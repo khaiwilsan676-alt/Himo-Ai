@@ -112,6 +112,7 @@ export default function Home() {
               </svg>
             </button>
             <span className="brand-name">
+              <img src="/logo.png" alt="Himo Logo" className="brand-logo" />
               Himo <span className="brand-badge">2.5 Flash</span>
             </span>
           </div>
@@ -274,6 +275,13 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 8px;
+        }
+
+        .brand-logo {
+          width: 28px;
+          height: 28px;
+          object-fit: contain;
+          border-radius: 6px;
         }
 
         .brand-badge {
