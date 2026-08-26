@@ -55,6 +55,18 @@ export default function LoginPage({ onLoginSuccess }) {
         <source src="/VID_20260825_012929_202_bsl.mp4" type="video/mp4" />
       </video>
 
+      {/* Top Branding Section (15vh top spacing + Curved Image + Himo Text) */}
+      <div className="top-brand-wrapper">
+        <div className="brand-image-container">
+          <img 
+            src="/IMG_20260826_084111.jpg" 
+            alt="Himo Logo" 
+            className="brand-logo-img"
+          />
+        </div>
+        <h1 className="brand-title">Himo</h1>
+      </div>
+
       {/* Bottom Section */}
       <div className="bottom-wrapper">
         {/* Buttons Section */}
@@ -149,7 +161,7 @@ export default function LoginPage({ onLoginSuccess }) {
           overflow: hidden;
           display: flex;
           flex-direction: column;
-          justify-content: flex-end;
+          justify-content: space-between;
           align-items: center;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           user-select: none;
@@ -163,6 +175,42 @@ export default function LoginPage({ onLoginSuccess }) {
           height: 100%;
           object-fit: cover;
           z-index: 0;
+        }
+
+        /* Top Brand Section Style */
+        .top-brand-wrapper {
+          position: relative;
+          z-index: 10;
+          margin-top: 15vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .brand-image-container {
+          width: 90px;
+          height: 90px;
+          border-radius: 22px; /* Curved corners */
+          overflow: hidden;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          background: #000;
+        }
+
+        .brand-logo-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .brand-title {
+          font-size: 2rem;
+          font-weight: 800;
+          color: #ffffff;
+          letter-spacing: 1px;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+          margin: 0;
         }
 
         .bottom-wrapper {
