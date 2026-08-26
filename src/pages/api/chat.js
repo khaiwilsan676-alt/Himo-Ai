@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 let memoryStore = {
   facts: {
     user_name: "Gagandeep",
@@ -149,18 +147,16 @@ function processHimoBrain(userInput) {
   return `Maine '${clean}' process kiya. Agar ye koi fact hai toh format mein likho: 'X is Y' ya 'When I say ${clean} say <answer>'.`;
 }
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const message = body.message || "";
-
-    if (!message.trim()) {
-      return NextResponse.json({ reply: "Message cannot be empty." }, { status: 400 });
-    }
-
-    const reply = processHimoBrain(message);
-    return NextResponse.json({ reply, active_subject: memoryStore.lastSubject });
-  } catch (error) {
-    return NextResponse.json({ reply: "Internal Server Error in Himo Brain." }, { status: 500 });
+export default function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
+
+  const message = req.body?.message || "";
+  if (!message.trim()) {
+    return res.status(400).json({ reply: "Message cannot be empty." });
+  }
+
+  const reply = processHimoBrain(message);
+  return res.status(200).json({ reply, active_subject: memoryStore.lastSubject });
 }
