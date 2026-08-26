@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react"
 
-import { think } from "@/lib/himoBrain"
 export default function Home() {
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
@@ -34,7 +33,13 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const answer = await think(prompt)
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt }),
+      })
+      const data = await res.json()
+      const answer = data.reply || "No response received."
 
       setMessages((current) => [
         ...current,
@@ -42,10 +47,9 @@ export default function Home() {
       ])
     } catch (error) {
       console.error("Himo brain error:", error)
-
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: "..." }
+        { role: "assistant", content: "Connection error: Unable to reach Himo cloud brain." }
       ])
     } finally {
       setLoading(false)
@@ -699,4 +703,3 @@ export default function Home() {
     </main>
   )
 }
-
