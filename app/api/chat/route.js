@@ -50,7 +50,7 @@ function processHimoBrain(userInput) {
     }
   }
 
-  if (["hi", "hello", "hey", "himo", "yo", "namaste"].includes(lower)) {
+  if (["hi", "hello", "hey", "himo", "yo", "namaste", "hi himo"].includes(lower)) {
     return "Hey! Himo Cloud Engine is active. Batao kya query hai?";
   }
 
