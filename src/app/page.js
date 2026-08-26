@@ -1,6 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { auth, googleProvider } from "./lib/firebase"
+import { 
+  signInWithPopup, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut 
+} from "firebase/auth"
 
 const ENCYCLOPEDIA = {
   alphabets: [
@@ -72,7 +79,7 @@ const DEFAULT_MEMORY = {
     "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
     "who made you": "Main ek autonomous private AI engine hoon. Creator details classified hain.",
     "hello himo": "Yo! Himo Omni Engine active hai. Aaj kya create ya solve karna hai?",
-    "what can you do": "Main 100% offline code generate karta hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
+    "what can you do": "Main 100% offline code generate کرتا hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
     "kaise ho": "Ekdum solid! Fully independent aur top efficiency par active hoon.",
   }
 };
@@ -142,12 +149,16 @@ function getIndianScaleLookup(numStr) {
   return "Infinite Vedic Order";
 }
 
-// ----------------------------------------------------
-// LOGIN PAGE COMPONENT
-// ----------------------------------------------------
 function LoginPage({ onLoginSuccess }) {
   const [showTerms, setShowTerms] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -164,15 +175,55 @@ function LoginPage({ onLoginSuccess }) {
     }
   };
 
-  const handleFakeLogin = (provider) => {
-    const fakeUserData = {
-      name: "Demo User",
-      email: provider === 'Google' ? "user@gmail.com" : "demo@gmail.com",
-      provider: provider,
-      photoURL: "/IMG_20260826_084111.jpg"
-    };
-    if (onLoginSuccess) {
-      onLoginSuccess(fakeUserData);
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const userData = {
+        name: user.displayName || user.email.split('@')[0],
+        email: user.email,
+        photoURL: user.photoURL || "/IMG_20260826_084111.jpg"
+      };
+      localStorage.setItem("userEmail", userData.email);
+      localStorage.setItem("userName", userData.name);
+      localStorage.setItem("userPhoto", userData.photoURL);
+      if (onLoginSuccess) onLoginSuccess(userData);
+    } catch (error) {
+      setErrorMsg("Google Sign-In failed: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailAuthSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      let userCredential;
+      if (isSignUp) {
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      }
+      const user = userCredential.user;
+      const userData = {
+        name: user.displayName || user.email.split('@')[0],
+        email: user.email,
+        photoURL: user.photoURL || "/IMG_20260826_084111.jpg"
+      };
+      localStorage.setItem("userEmail", userData.email);
+      localStorage.setItem("userName", userData.name);
+      localStorage.setItem("userPhoto", userData.photoURL);
+      if (onLoginSuccess) onLoginSuccess(userData);
+    } catch (error) {
+      setErrorMsg(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -206,12 +257,15 @@ function LoginPage({ onLoginSuccess }) {
       </div>
 
       <div className="bottom-wrapper">
+        {errorMsg && <div className="error-banner">{errorMsg}</div>}
+
         <div className="login-actions">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleFakeLogin('Google');
+              handleGoogleLogin();
             }}
+            disabled={loading}
             className="auth-btn google-btn"
           >
             <svg className="btn-icon" viewBox="0 0 24 24">
@@ -220,13 +274,13 @@ function LoginPage({ onLoginSuccess }) {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>Continue with Google</span>
+            <span>{loading ? "Signing in..." : "Continue with Google"}</span>
           </button>
 
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleFakeLogin('Gmail');
+              setIsEmailModalOpen(true);
             }}
             className="auth-btn email-blue-btn"
           >
@@ -245,11 +299,44 @@ function LoginPage({ onLoginSuccess }) {
         </div>
       </div>
 
+      {isEmailModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsEmailModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>{isSignUp ? "Create Account" : "Sign In with Email"}</h3>
+            <form onSubmit={handleEmailAuthSubmit} className="email-form">
+              <input 
+                type="email" 
+                placeholder="Enter email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                required 
+                className="modal-input"
+              />
+              <input 
+                type="password" 
+                placeholder="Enter password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+                className="modal-input"
+              />
+              <button type="submit" disabled={loading} className="modal-btn">
+                {loading ? "Processing..." : (isSignUp ? "Sign Up" : "Login")}
+              </button>
+              <p className="toggle-auth-mode" onClick={() => setIsSignUp(!isSignUp)}>
+                {isSignUp ? "Already have an account? Login" : "Don't have an account? Sign Up"}
+              </p>
+            </form>
+            <button className="modal-close-btn" onClick={() => setIsEmailModalOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       {showTerms && (
         <div className="modal-backdrop" onClick={() => setShowTerms(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Terms &amp; Privacy Policy</h3>
-            <p>By logging in, you agree to our Terms of Service and Privacy Policy. Your session data is safely managed locally.</p>
+            <p>By logging in, you agree to our Terms of Service and Privacy Policy. Your session data is safely managed via Firebase.</p>
             <button className="modal-btn" onClick={() => setShowTerms(false)}>Close</button>
           </div>
         </div>
@@ -263,6 +350,7 @@ function LoginPage({ onLoginSuccess }) {
         .brand-logo-img { width: 100%; height: 100%; object-fit: cover; }
         .brand-title { font-size: 2rem; font-weight: 800; color: #ffffff; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); margin: 0; }
         .bottom-wrapper { position: relative; z-index: 10; width: 100%; max-width: 360px; padding: 0 20px 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .error-banner { background: rgba(239, 68, 68, 0.9); color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; text-align: center; width: 100%; }
         .login-actions { width: 100%; display: flex; flex-direction: column; gap: 12px; }
         .auth-btn { width: 100%; padding: 14px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 9999px; border: none; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.1s ease; }
         .auth-btn:active { transform: scale(0.97); }
@@ -274,18 +362,18 @@ function LoginPage({ onLoginSuccess }) {
         .bottom-terms { text-align: center; }
         .terms-text { font-size: 0.78rem; color: #ffffff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); text-decoration: underline; cursor: pointer; }
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
-        .modal-content { background: #ffffff; color: #111827; border-radius: 24px; max-width: 360px; width: 100%; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4); }
-        .modal-content h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; }
-        .modal-content p { font-size: 0.88rem; color: #4b5563; line-height: 1.5; margin-bottom: 20px; }
-        .modal-btn { width: 100%; padding: 12px; background: #111827; color: #ffffff; border-radius: 9999px; border: none; font-weight: 600; cursor: pointer; }
+        .modal-content { background: #ffffff; color: #111827; border-radius: 24px; max-width: 360px; width: 100%; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; gap: 12px; }
+        .modal-content h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; }
+        .email-form { display: flex; flex-direction: column; gap: 10px; }
+        .modal-input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; outline: none; }
+        .modal-btn { width: 100%; padding: 10px; background: #1d4ed8; color: #ffffff; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+        .toggle-auth-mode { font-size: 0.8rem; color: #2563eb; text-align: center; cursor: pointer; margin-top: 4px; }
+        .modal-close-btn { background: transparent; border: none; color: #6b7280; font-size: 0.85rem; cursor: pointer; text-align: center; margin-top: 4px; }
       `}</style>
     </div>
   );
 }
 
-// ----------------------------------------------------
-// MAIN HIMO CHAT PAGE COMPONENT
-// ----------------------------------------------------
 function HimoChatPage({ user, onLogout }) {
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
@@ -635,14 +723,13 @@ function HimoChatPage({ user, onLogout }) {
         .app-shell { display: flex; height: 100vh; width: 100vw; background: #131314; color: #e3e3e3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: fixed; top: 0; left: 0; }
         .workspace { flex: 1; display: flex; flex-direction: column; position: relative; height: 100vh; width: 100%; overflow: hidden; }
         
-        .topbar { height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #131314; z-index: 10; border-bottom: none !important; box-shadow: none !important; border: none !important; }
+        .topbar { height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #131314; z-index: 10; border: none !important; box-shadow: none !important; }
         .left-nav { display: flex; align-items: center; gap: 16px; }
         .brand-name { font-size: 1.15rem; font-weight: 600; color: #c4c7c5; display: flex; align-items: center; gap: 8px; }
         .brand-badge { font-size: 0.72rem; padding: 2px 8px; background: #23272f; border: 1px solid #383f4d; border-radius: 12px; color: #61dafb; font-weight: 500; }
         .icon-btn { background: transparent; border: none; color: #c4c7c5; cursor: pointer; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
         .icon-btn:hover { background: #282a2c; }
 
-        /* FIXED IMAGE STRETCHING BUG (Strict Width/Height constraints) */
         .topbar-avatar-img { width: 34px !important; height: 34px !important; min-width: 34px !important; min-height: 34px !important; max-width: 34px !important; max-height: 34px !important; border-radius: 50% !important; object-fit: cover !important; display: block; }
         .user-dp-img { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; object-fit: cover !important; border: 1px solid rgba(255,255,255,0.2); display: block; }
         .chat-user-icon-img { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; max-width: 32px !important; max-height: 32px !important; border-radius: 50% !important; object-fit: cover !important; display: block; margin-top: 3px; flex-shrink: 0; }
@@ -693,25 +780,41 @@ function HimoChatPage({ user, onLogout }) {
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem("userEmail")
-    if (savedEmail) {
-      setUser({
-        email: savedEmail,
-        name: localStorage.getItem("userName") || savedEmail.split('@')[0],
-        photoURL: localStorage.getItem("userPhoto") || "/IMG_20260826_084111.jpg"
-      })
-    }
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          photoURL: firebaseUser.photoURL || "/IMG_20260826_084111.jpg"
+        });
+      } else {
+        setUser(null);
+      }
+      setInitializing(false);
+    });
+
+    return () => unsubscribe();
   }, [])
 
   const handleLoginSuccess = (userData) => {
     setUser(userData)
   }
 
-  const handleLogout = () => {
-    setUser(null)
-    localStorage.clear()
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      localStorage.clear();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (initializing) {
+    return <div style={{ background: '#131314', width: '100vw', height: '100vh' }}></div>
   }
 
   if (!user) {
@@ -720,4 +823,3 @@ export default function App() {
 
   return <HimoChatPage user={user} onLogout={handleLogout} />
 }
-

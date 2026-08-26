@@ -9,6 +9,7 @@
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/status-bar": "^8.0.3",
+    "firebase": "^12.18.0",
     "next": "latest",
     "openai": "latest",
     "react": "latest",
