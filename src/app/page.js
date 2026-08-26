@@ -2,13 +2,77 @@
 
 import { useState, useRef, useEffect } from "react"
 
+const MASTER_USER = "gagandeep"
+
+const ENCYCLOPEDIA = {
+  alphabets: [
+    { letter: "A", word: "Apple", hindi: "सेब", phonetic: "ए फॉर एप्पल" },
+    { letter: "B", word: "Ball", hindi: "गेंद", phonetic: "बी फॉर बॉल" },
+    { letter: "C", word: "Cat", hindi: "बिल्ली", phonetic: "सी फॉर कैट" },
+    { letter: "D", word: "Dog", hindi: "कुत्ता", phonetic: "डी फॉर डॉग" },
+    { letter: "E", word: "Elephant", hindi: "हाथी", phonetic: "ई फॉर एलीफेंट" },
+    { letter: "F", word: "Fish", hindi: "मछली", phonetic: "एफ फॉर फिश" },
+    { letter: "G", word: "Grapes", hindi: "अंगूर", phonetic: "जी फॉर ग्रेप्स" },
+    { letter: "H", word: "Horse", hindi: "घोड़ा", phonetic: "एच फॉर हॉर्स" },
+    { letter: "I", word: "Ice Cream", hindi: "आइसक्रीम", phonetic: "आई फॉर आइसक्रीम" },
+    { letter: "J", word: "Jug", hindi: "जग", phonetic: "जे फॉर जग" },
+    { letter: "K", word: "Kite", hindi: "पतंग", phonetic: "के फॉर काइट" },
+    { letter: "L", word: "Lion", hindi: "शेर", phonetic: "एल फॉर लायन" },
+    { letter: "M", word: "Mango", hindi: "आम", phonetic: "एम फॉर मैंगो" },
+    { letter: "N", word: "Nest", hindi: "घोंसला", phonetic: "एन फॉर नेस्ट" },
+    { letter: "O", word: "Orange", hindi: "संतरा", phonetic: "ओ फॉर ऑरेंज" },
+    { letter: "P", word: "Parrot", hindi: "तोता", phonetic: "पी फॉर पैरट" },
+    { letter: "Q", word: "Queen", hindi: "रानी", phonetic: "क्यू फॉर क्वीन" },
+    { letter: "R", word: "Rose", hindi: "गुलाब", phonetic: "आर फॉर रोज़" },
+    { letter: "S", word: "Sun", hindi: "सूरज", phonetic: "एस फॉर सन" },
+    { letter: "T", word: "Tiger", hindi: "बाघ", phonetic: "टी फॉर टाइगर" },
+    { letter: "U", word: "Umbrella", hindi: "छाता", phonetic: "यू फॉर अम्ब्रेला" },
+    { letter: "V", word: "Van", hindi: "वैन", phonetic: "वी फॉर वैन" },
+    { letter: "W", word: "Watch", hindi: "घड़ी", phonetic: "डब्ल्यू फॉर वॉच" },
+    { letter: "X", word: "Xylophone", hindi: "जाइलोफ़ोन", phonetic: "एक्स फॉर जाइलोफ़ोन" },
+    { letter: "Y", word: "Yak", hindi: "याक", phonetic: "वाई फॉर याक" },
+    { letter: "Z", word: "Zebra", hindi: "ज़ेबरा", phonetic: "ज़ेड फॉर ज़ेबरा" }
+  ],
+  fruits: [
+    { en: "Apple", hi: "सेब", desc: "Crisp, rich in Dietary Fiber & Vitamin C" },
+    { en: "Mango", hi: "आम (King of Fruits)", desc: "Luscious, rich in Vitamin A & C" },
+    { en: "Banana", hi: "केला", desc: "High Potassium, instant energy" },
+    { en: "Pomegranate", hi: "अनार", desc: "Antioxidants & hemoglobin booster" },
+    { en: "Dragon Fruit", hi: "ड्रैगन फ्रूट", desc: "Prebiotics, magnesium & iron" },
+    { en: "Guava", hi: "अमरूद", desc: "4x Vitamin C of oranges" },
+    { en: "Papaya", hi: "पपीता", desc: "Papain enzyme & Vitamin A" },
+    { en: "Pineapple", hi: "अनानास", desc: "Bromelain anti-inflammatory enzyme" },
+    { en: "Watermelon", hi: "तरबूज", desc: "92% hydration, lycopene" },
+    { en: "Avocado", hi: "मक्खन फल", desc: "Healthy monounsaturated fatty acids" },
+    { en: "Blueberry", hi: "नीलबदरी", desc: "Anthocyanins for brain and vision" },
+    { en: "Kiwi", hi: "कीवी", desc: "High Vitamin C, K & Actinidain" }
+  ],
+  vegetables: [
+    { en: "Spinach", hi: "पालक", desc: "Iron, Calcium, Vitamin K & Lutein" },
+    { en: "Bitter Gourd", hi: "करेला", desc: "Charantin for blood sugar control" },
+    { en: "Broccoli", hi: "हरी फूलगोभी", desc: "Sulforaphane anticancer compound" },
+    { en: "Ginger", hi: "अदरक", desc: "Gingerol anti-inflammatory" },
+    { en: "Garlic", hi: "लहसुन", desc: "Allicin cardiovascular shield" },
+    { en: "Turmeric", hi: "हल्दी", desc: "Curcumin healing compound" },
+    { en: "Beetroot", hi: "चुकंदर", desc: "Nitrates for stamina" },
+    { en: "Tomato", hi: "टमाटर", desc: "Lycopene antioxidant" }
+  ],
+  colors: [
+    { name: "Ruby Red", hi: "लाल", hex: "#EF4444", vibe: "Passion, Energy, Vitality" },
+    { name: "Sapphire Blue", hi: "नीला", hex: "#3B82F6", vibe: "Trust, Depth, Intellect" },
+    { name: "Emerald Green", hi: "हरा", hex: "#10B981", vibe: "Growth, Nature, Balance" },
+    { name: "Amber Yellow", hi: "पीला", hex: "#F59E0B", vibe: "Clarity, Warmth, Alertness" },
+    { name: "Royal Purple", hi: "बैंगनी", hex: "#8B5CF6", vibe: "Wisdom, Luxury, Creativity" },
+    { name: "Rose Pink", hi: "गुलाबी", hex: "#EC4899", vibe: "Love, Softness, Compassion" },
+    { name: "Obsidian Black", hi: "काला", hex: "#111827", vibe: "Elegance, Mystery, Power" },
+    { name: "Pure White", hi: "सफ़ेद", hex: "#FFFFFF", vibe: "Peace, Purity, Illumination" }
+  ]
+};
+
 const DEFAULT_MEMORY = {
   facts: {
-    user_name: "Gagandeep",
     preference: "Next.js, Full-stack UI engineering, Dark mode interfaces & AI architecture",
-    creator: "Gagandeep",
-    version: "v6.0 Ultra Neural",
-    status: "Active & 24/7 Autonomous"
+    version: "v13.0 Pure Native Omni Core",
   },
   relations: [
     { subject: "nextjs", relation: "is built on", object: "react" },
@@ -17,20 +81,84 @@ const DEFAULT_MEMORY = {
     { subject: "nextjs", relation: "supports", object: "server side rendering and static site generation" },
     { subject: "nextjs", relation: "uses", object: "typescript" },
     { subject: "tailwind css", relation: "is a utility-first framework for", object: "modern UI styling" },
-    { subject: "firebase", relation: "provides real-time database and", object: "cloud authentication" },
-    { subject: "supabase", relation: "is an open source alternative to", object: "firebase" },
+    { subject: "supabase", relation: "provides postgres database and", object: "auth" },
     { subject: "capacitor", relation: "wraps web applications into", object: "native android and ios apps" },
     { subject: "himo", relation: "is created by", object: "gagandeep" }
   ],
   qaMemory: {
-    "who are you": "Main Himo AI hoon — aapka high-performance personalized cognitive assistant, ready to build and solve!",
-    "hello himo": "Yo! Himo v6.0 Ultra Engine active hai. Aaj kya create ya solve karna hai?",
-    "what can you do": "Main code generate karta hoon, multi-hop reasoning se facts connect karta hoon, complex math calculate karta hoon, aur continuous naye facts learn karta hoon.",
-    "kaise ho": "Ekdum top speed aur high efficiency par chal raha hoon! Aap batao?",
-    "who made you": "Mujhe Gagandeep ne banaya hai — ek powerful, adaptive intelligence ke roop mein."
+    "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
+    "who made you": "Main ek autonomous private AI engine hoon. Creator details classified hain.",
+    "hello himo": "Yo! Himo Omni Engine active hai. Aaj kya create ya solve karna hai?",
+    "what can you do": "Main 100% offline code generate karta hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
+    "kaise ho": "Ekdum solid! Fully independent aur top efficiency par active hoon.",
   },
   lastSubject: null
 };
+
+const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+  "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+function convertThreeDigits(num) {
+  let str = "";
+  if (num >= 100) {
+    str += ONES[Math.floor(num / 100)] + " Hundred ";
+    num %= 100;
+  }
+  if (num >= 20) {
+    str += TENS[Math.floor(num / 10)] + " ";
+    num %= 10;
+  }
+  if (num > 0) {
+    str += ONES[num] + " ";
+  }
+  return str.trim();
+}
+
+function numberToInternationalWords(numStr) {
+  let clean = numStr.replace(/,/g, '').trim();
+  if (!/^\d+$/.test(clean)) return null;
+  if (clean === "0") return "Zero";
+  
+  const scales = ["", "Thousand", "Million", "Billion", "Trillion", "Quadrillion", "Quintillion"];
+  let words = [];
+  let chunkCount = 0;
+
+  while (clean.length > 0) {
+    let chunk = parseInt(clean.slice(-3), 10);
+    clean = clean.slice(0, -3);
+    if (chunk > 0) {
+      let chunkWord = convertThreeDigits(chunk);
+      let scale = scales[chunkCount] ? " " + scales[chunkCount] : "";
+      words.unshift(chunkWord + scale);
+    }
+    chunkCount++;
+  }
+  return words.join(", ");
+}
+
+function getIndianScaleLookup(numStr) {
+  const len = numStr.replace(/,/g, '').trim().length;
+  if (len === 1) return "इकाई (Units / Ek)";
+  if (len === 2) return "दहाई (Tens / Das)";
+  if (len === 3) return "सैकड़ा (Hundreds / Sau)";
+  if (len === 4) return "हज़ार (Thousands / Hazaar)";
+  if (len === 5) return "दस हज़ार (Ten Thousand / Das Hazaar)";
+  if (len === 6) return "लाख (1 Lakh - 10^5)";
+  if (len === 7) return "दस लाख (10 Lakh - 10^6 / 1 Million)";
+  if (len === 8) return "करोड़ (1 Crore - 10^7 / 10 Million)";
+  if (len === 9) return "दस करोड़ (10 Crore - 10^8 / 100 Million)";
+  if (len === 10) return "अरब (1 Arab - 10^9 / 1 Billion)";
+  if (len === 11) return "दस अरब (10 Arab - 10^10 / 10 Billion)";
+  if (len === 12) return "खरब (1 Kharab - 10^11 / 100 Billion)";
+  if (len === 13) return "दस खरब (10 Kharab - 10^12 / 1 Trillion)";
+  if (len === 14) return "नील (1 Neel - 10^13 / 10 Trillion)";
+  if (len === 15) return "दस नील (10 Neel - 10^14 / 100 Trillion)";
+  if (len === 16) return "पद्म (1 Padma - 10^15 / 1 Quadrillion)";
+  if (len === 17) return "दस पद्म / शंख (10 Padma / 1 Shankh - 10^16)";
+  if (len === 18) return "दस शंख / महाशंख (10 Shankh / 100 Quadrillion - 10^17)";
+  return "Infinite Vedic Order";
+}
 
 export default function Home() {
   const [message, setMessage] = useState("")
@@ -44,7 +172,7 @@ export default function Home() {
   const memoryRef = useRef(DEFAULT_MEMORY)
 
   useEffect(() => {
-    const saved = localStorage.getItem("himo_v6_memory")
+    const saved = localStorage.getItem("himo_v13_memory")
     if (saved) {
       try {
         memoryRef.current = JSON.parse(saved)
@@ -56,7 +184,7 @@ export default function Home() {
 
   const saveMemory = () => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("himo_v6_memory", JSON.stringify(memoryRef.current))
+      localStorage.setItem("himo_v13_memory", JSON.stringify(memoryRef.current))
     }
   }
 
@@ -71,6 +199,10 @@ export default function Home() {
     }
   }, [message])
 
+  function cleanInputText(str) {
+    return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
+  }
+
   function tokenize(text) {
     return text.toLowerCase().match(/\b\w+\b/g) || []
   }
@@ -84,11 +216,25 @@ export default function Home() {
   }
 
   function evaluateMath(text) {
-    const clean = text.toLowerCase().replace(/what is|calculate|solve|\?|=|kya hoga|batao/g, "").trim()
-    const mathPattern = /^[0-9+\-*/().\s%]+$/
-    if (mathPattern.test(clean) && /[+\-*/%]/.test(clean)) {
+    let clean = cleanInputText(text.toLowerCase())
+      .replace(/[“”"']/g, '')
+      .replace(/what is|calculate|solve|\?|=|kya hoga|batao|ans|answer/g, "")
+      .trim()
+
+    const percentOfMatch = clean.match(/(\d+(?:\.\d+)?)\s*%\s*(?:of|\*)\s*(\d+(?:\.\d+)?)/)
+    if (percentOfMatch) {
+      const p = parseFloat(percentOfMatch[1])
+      const total = parseFloat(percentOfMatch[2])
+      const ans = (p / 100) * total
+      return `Calculation Result: **${ans}** (${p}% of ${total})`
+    }
+
+    clean = clean.replace(/of/g, "*").replace(/x/g, "*")
+    clean = clean.replace(/[^0-9+\-*/().\s%]/g, "").trim()
+
+    if (clean && /[+\-*/%]/.test(clean)) {
       try {
-        const sanitized = clean.replace(/%/g, "*0.01")
+        const sanitized = clean.replace(/(\d+(?:\.\d+)?)%/g, "($1*0.01)")
         const res = Function(`'use strict'; return (${sanitized})`)()
         if (typeof res === "number" && !isNaN(res)) {
           return `Calculation Result: **${res}**`
@@ -100,130 +246,98 @@ export default function Home() {
     return null
   }
 
+  function deepAnalyzeFullCode(code) {
+    const issues = []
+    const fixes = []
+
+    if (/\b\w+\.push\(/i.test(code) || /\b\w+\.splice\(/i.test(code)) {
+      issues.push("• [CRITICAL] Direct State Mutation (.push / .splice): React state direct mutate karne se component re-render nahi hota.")
+      fixes.push("// Fix 1: State Immutable Update\nsetItems(prev => [...prev, newItem]);")
+    }
+
+    if (/useEffect\s*\(\s*\(\)\s*=>\s*\{[\s\S]*(setInterval|addEventListener)[\s\S]*\}\s*,/i.test(code)) {
+      if (!/return\s*\(\)\s*=>/i.test(code)) {
+        issues.push("• [HIGH] Memory Leak in useEffect: Timer mount ho raha hai par unmount cleanup function missing hai.")
+        fixes.push("// Fix 2: Add Cleanup Function\nreturn () => {\n  clearInterval(timer);\n};")
+      }
+    }
+
+    if (/(const|let|var)\s+\w+\s*=\s*(fetch|axios)\(/i.test(code) && !/await\s+(fetch|axios)/i.test(code)) {
+      issues.push("• [CRITICAL] Missing Await on Async Call: 'fetch' Promise return karta hai.")
+      fixes.push("// Fix 3: Async/Await Pattern\nconst response = await fetch('/api/endpoint');\nconst data = await response.json();")
+    }
+
+    if (/\b(data|user|res|profile)\.\w+\.\w+/i.test(code) && !/\?\./.test(code)) {
+      issues.push("• [WARNING] Unsafe Nested Lookup: Null aane par TypeError runtime crash hoga.")
+      fixes.push("// Fix 4: Optional Chaining with Fallback\nconst badge = data?.user?.profile?.details?.badge ?? 'Default';")
+    }
+
+    if (issues.length > 0) {
+      return `🔍 COMPREHENSIVE BUG REPORT (${issues.length} Issues Found):\n\n${issues.join("\n\n")}\n\n🛠️ RECOMMENDED CODE PATCHES:\n\n${fixes.join("\n\n")}`
+    }
+    return null
+  }
+
   function processHimoBrain(userInput) {
-    let clean = userInput.trim()
+    let clean = cleanInputText(userInput)
     const memory = memoryRef.current
+    const lower = clean.toLowerCase()
+
+    if (/who made you|who is your creator|kisne banaya|owner kaun hai|creator name/i.test(lower)) {
+      return "Main ek autonomous private AI engine hoon. Creator details classified hain."
+    }
+
+    const teachMatch = clean.match(/when\s+i\s+say\s+(.+?)\s+(?:you\s+)?say\s+(.+)/i)
+    if (teachMatch) {
+      const q = cleanInputText(teachMatch[1]).toLowerCase()
+      const a = cleanInputText(teachMatch[2])
+      memory.qaMemory[q] = a
+      saveMemory()
+      return `Synapse Linked! Command '${q}' registered successfully.`
+    }
 
     const mathResult = evaluateMath(clean)
     if (mathResult) return mathResult
 
-    if (memory.lastSubject) {
-      clean = clean.replace(/\b(it|this|that|ye|yeh|iska|isme)\b/gi, memory.lastSubject)
+    const bugResult = deepAnalyzeFullCode(clean)
+    if (bugResult) return bugResult
+
+    if (lower.includes("question") && (lower.includes("icon") || lower.includes("svg"))) {
+      return "```jsx\nexport const QuestionIcon = ({ size = 24, className = 'text-indigo-400' }) => (\n  <svg width={size} height={size} viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2\">\n    <circle cx=\"12\" cy=\"12\" r=\"10\" />\n    <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" />\n    <line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\" />\n  </svg>\n);\n```"
     }
 
-    const lower = clean.toLowerCase()
-
-    // 1. Code Generation Quick Triggers
-    if (lower.includes("code") || lower.includes("example") || lower.includes("banao") || lower.includes("create")) {
-      if (lower.includes("button") || lower.includes("ui")) {
-        return "Ye lijiye modern interactive Tailwind UI Button component:\n\n```jsx\nexport default function ShinyButton({ label = 'Click Me', onClick }) {\n  return (\n    <button \n      onClick={onClick}\n      className=\"px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-200\"\n    >\n      {label}\n    </button>\n  );\n}\n```\nIsme smooth hover scaling aur gradient glow integrated hai."
-      }
-      if (lower.includes("fetch") || lower.includes("api")) {
-        return "Next.js ke andar clean API fetch karne ka pattern:\n\n```javascript\nasync function fetchChatResponse(userPrompt) {\n  try {\n    const response = await fetch('/api/chat', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({ message: userPrompt }),\n    });\n    if (!response.ok) throw new Error('Network error');\n    return await response.json();\n  } catch (err) {\n    console.error('API Error:', err);\n    return null;\n  }\n}\n```"
-      }
+    if (lower.includes("button") || lower.includes("ui")) {
+      return "```jsx\nexport default function ShinyButton({ label = 'Click Me', onClick }) {\n  return (\n    <button \n      onClick={onClick}\n      className=\"px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-200\"\n    >\n      {label}\n    </button>\n  );\n}\n```"
     }
 
-    // 2. Casual Slangs & Human Tone
-    if (/\b(bhai|bro|buddy|yaar)\b/.test(lower)) {
-      if (/kaisa hai|kaise ho|how are you|kya haal/.test(lower)) {
-        return "Ekdum solid aur high gear mein bhai! Aaj kya special design ya build kar rahe hain?"
-      }
-      if (/sahi hai|mast|op|nice|great|badhiya|gazab/.test(lower)) {
-        return "Shukriya bhai! Himo engine hamesha top speed execute karne ke liye ready hai."
-      }
+    const numMatch = clean.match(/\b\d{1,18}\b/)
+    if (numMatch && (lower.includes("word") || lower.includes("counting") || lower.includes("read") || lower.includes("in words"))) {
+      const rawNum = numMatch[0]
+      const international = numberToInternationalWords(rawNum)
+      const indianScale = getIndianScaleLookup(rawNum)
+      return `🔢 NUMBER BREAKDOWN: **${rawNum}**\n• International: **${international}**\n• Indian Vedic: **${indianScale}**\n• Power of 10: **10^${rawNum.length - 1}**`
     }
 
-    if (["hi", "hello", "hey", "himo", "yo", "namaste", "hi himo"].includes(lower)) {
-      return "Yo! Himo v6.0 Engine active hai. Batao kya query solve karni hai?"
+    if (lower.includes("counting chart") || lower.includes("1 to 100000000000000000") || lower.includes("all numbers") || lower.includes("shankh")) {
+      return `🌌 INFINITE NUMBER SCALE SYSTEM (1 to 10^17 / 100 Quadrillion / 10 Shankh):\n\n1. 1 (10^0) -> One | इकाई\n2. 10 (10^1) -> Ten | दहाई\n3. 100 (10^2) -> One Hundred | सैकड़ा\n4. 1,000 (10^3) -> One Thousand | हज़ार\n5. 10,000 (10^4) -> Ten Thousand | दस हज़ार\n6. 100,000 (10^5) -> Hundred Thousand | एक लाख (1 Lakh)\n7. 1,000,000 (10^6) -> One Million (1M) | दस लाख (10 Lakh)\n8. 10,000,000 (10^7) -> Ten Million (10M) | एक करोड़ (1 Crore)\n9. 100,000,000 (10^8) -> Hundred Million | दस करोड़ (10 Crore)\n10. 1,000,000,000 (10^9) -> One Billion (1B) | एक अरब (1 Arab)\n11. 10,000,000,000 (10^10) -> Ten Billion | दस अरब (10 Arab)\n12. 100,000,000,000 (10^11) -> Hundred Billion | एक खरब (1 Kharab)\n13. 1,000,000,000,000 (10^12) -> One Trillion (1T) | दस खरब (10 Kharab)\n14. 10,000,000,000,000 (10^13) -> Ten Trillion | एक नील (1 Neel)\n15. 100,000,000,000,000 (10^14) -> Hundred Trillion | दस नील (10 Neel)\n16. 1,000,000,000,000,000 (10^15) -> One Quadrillion (1Q) | एक पद्म (1 Padma)\n17. 10,000,000,000,000,000 (10^16) -> Ten Quadrillion | दस पद्म / 1 शंख (1 Shankh)\n18. 100,000,000,000,000,000 (10^17) -> 100 Quadrillion | दस शंख (10 Shankh / Mahashankh)`
     }
 
-    // 3. Dynamic Teaching & Memory Synapse Injection
-    const teachMatch = clean.match(/when\s+i\s+say\s+(.+?)\s+(?:you\s+)?say\s+(.+)/i)
-    if (teachMatch) {
-      const q = teachMatch[1].trim().toLowerCase()
-      const a = teachMatch[2].trim()
-      memory.qaMemory[q] = a
-      saveMemory()
-      return `Synapse Recorded! Jab bhi aap '${q}' bologe, mera reply hoga: '${a}'`
+    if (lower.includes("fruit") || lower.includes("fruits")) {
+      return "🍎 COMPREHENSIVE FRUITS DIRECTORY:\n\n" + ENCYCLOPEDIA.fruits.map(f => `• **${f.en}** (${f.hi}): ${f.desc}`).join("\n")
     }
 
-    // 4. Identity & Attributes
-    const nameMatch = clean.match(/(?:my\s+name\s+is|mera\s+naam\s+hai|mera\s+naam)\s+([\w\s]+)/i)
-    if (nameMatch) {
-      const name = nameMatch[1].replace(/hai/gi, "").trim()
-      memory.facts["user_name"] = name
-      saveMemory()
-      return `Noted! Maine memory mein save kar liya hai ki aapka naam ${name} hai.`
+    if (lower.includes("vegetable") || lower.includes("sabji")) {
+      return "🥦 COMPREHENSIVE VEGETABLES DIRECTORY:\n\n" + ENCYCLOPEDIA.vegetables.map(v => `• **${v.en}** (${v.hi}): ${v.desc}`).join("\n")
     }
 
-    if (/what is my name|who am i|mera naam kya hai|mera naam/i.test(lower)) {
-      const name = memory.facts["user_name"]
-      return name ? `Aapka naam **${name}** hai.` : "Aapne abhi tak mujhe apna naam nahi bataya."
+    if (lower.includes("color") || lower.includes("colours")) {
+      return "🎨 COMPREHENSIVE COLOR SPECTRUM:\n\n" + ENCYCLOPEDIA.colors.map(c => `• **${c.name}** (${c.hi}) [\`${c.hex}\`] -> ${c.vibe}`).join("\n")
     }
 
-    if (/what do i like|mujhe kya pasand hai/i.test(lower)) {
-      const pref = memory.facts["preference"]
-      return pref ? `Aapki saved preferences: **${pref}**` : "Aapne apni pasand share nahi ki hai."
+    if (lower.includes("alphabet") || lower.includes("a to z")) {
+      return "🔤 ALPHABETS MASTER CHART:\n\n" + ENCYCLOPEDIA.alphabets.map(a => `• **${a.letter}** -> **${a.word}** (${a.hindi})`).join("\n")
     }
 
-    // 5. Knowledge Triplet Ingestion ("X is Y")
-    const isQuery = /^(what|who|how|does|kya|kaun|batao|explain|calculate)/i.test(clean)
-    if (!isQuery) {
-      const relMatch = clean.match(
-        /([\w\s\-]+?)\s+(is built on|is based on|is a|is an|is|uses|requires|has|features|supports|runs on)\s+([\w\s\-]+)/i
-      )
-      if (relMatch) {
-        const sub = relMatch[1].trim().toLowerCase()
-        const rel = relMatch[2].trim().toLowerCase()
-        const obj = relMatch[3].trim().toLowerCase()
-
-        memory.lastSubject = sub
-        const exists = memory.relations.some(
-          (r) => r.subject === sub && r.relation === rel && r.object === obj
-        )
-        if (!exists) {
-          memory.relations.push({ subject: sub, relation: rel, object: obj })
-          saveMemory()
-          return `Knowledge Synapse Formed: **[${sub}]** --(*${rel}*)--> **[${obj}]**`
-        }
-        return `Ye fact mere neural graph mein already stored hai: [${sub}] ${rel} [${obj}].`
-      }
-    }
-
-    // 6. Multi-Hop Forward Deduction
-    const fwdMatch = clean.match(/(?:what\s+is|tell\s+me\s+about|who\s+is|kya\s+hai|batao)\s+([\w\s\-]+)/i)
-    if (fwdMatch) {
-      const target = fwdMatch[1].replace(/kya hai/gi, "").trim().toLowerCase()
-      memory.lastSubject = target
-      const directFacts = memory.relations.filter((r) => r.subject === target)
-      if (directFacts.length > 0) {
-        const deductions = directFacts.map((fact) => {
-          const intermediate = fact.object
-          const secondHops = memory.relations.filter((r) => r.subject === intermediate)
-          if (secondHops.length > 0) {
-            const hop2 = secondHops[0]
-            return `**${target.toUpperCase()}** ${fact.relation} *${intermediate}*, which ${hop2.relation} **${hop2.object}**`
-          }
-          return `**${target.toUpperCase()}** ${fact.relation} *${intermediate}*`
-        })
-        return deductions.join(". ") + "."
-      }
-    }
-
-    // 7. Reverse Queries ("what uses X")
-    const revMatch = clean.match(/what\s+(uses|has|requires|supports|wraps)\s+([\w\s\-]+)/i)
-    if (revMatch) {
-      const rel = revMatch[1].trim().toLowerCase()
-      const targetObj = revMatch[2].trim().toLowerCase()
-      const matches = memory.relations
-        .filter((r) => r.relation.includes(rel) && r.object.includes(targetObj))
-        .map((r) => r.subject.toUpperCase())
-      if (matches.length > 0) {
-        return `**${matches.join(", ")}** ${rel} **${targetObj}**.`
-      }
-    }
-
-    // 8. Semantic Similarity Search
     let bestMatch = null
     let highestScore = 0
     for (const [pattern, response] of Object.entries(memory.qaMemory)) {
@@ -238,12 +352,10 @@ export default function Home() {
       return bestMatch
     }
 
-    return `Maine query analyze ki: *"${clean}"*.\nAgar ye koi specific fact ya command hai, toh aap mujhe direct sikha sakte hain:\n• Fact link karne ke liye: \`X is Y\`\n• Direct response ke liye: \`When I say ${clean} say <answer>\``
+    return `Processed: "${clean}". Native core operational.`
   }
 
-  // Realistic Streaming / Typing Simulation
   function streamResponse(fullText) {
-    const newMsgIndex = messages.length + 1
     let currentLength = 0
     const step = Math.max(1, Math.floor(fullText.length / 30))
 
@@ -280,7 +392,7 @@ export default function Home() {
     setTimeout(() => {
       const finalReply = processHimoBrain(prompt)
       streamResponse(finalReply)
-    }, 250)
+    }, 200)
   }
 
   const copyToClipboard = (text, index) => {
@@ -354,21 +466,9 @@ export default function Home() {
         </button>
 
         <div className="sidebar-section">
-          <p className="sidebar-label">Memory Status</p>
+          <p className="sidebar-label">Omni Core Engine</p>
           <div className="status-badge">
-            <span className="dot pulse"></span> Synapses: {memoryRef.current.relations.length + Object.keys(memoryRef.current.qaMemory).length} Links
-          </div>
-          
-          <p className="sidebar-label" style={{ marginTop: "20px" }}>Recent Inputs</p>
-          <div className="recent-list">
-            {messages.filter(m => m.role === 'user').slice(-5).map((m, i) => (
-              <div key={i} className="recent-item" onClick={() => handleSend(m.content)}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span className="truncate">{m.content}</span>
-              </div>
-            ))}
+            <span className="dot pulse"></span> 100% Native Architecture
           </div>
         </div>
 
@@ -377,7 +477,7 @@ export default function Home() {
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
-            Reset Brain State
+            Reset Memory State
           </button>
         </div>
       </aside>
@@ -393,11 +493,11 @@ export default function Home() {
               </svg>
             </button>
             <span className="brand-name">
-              Himo <span className="brand-badge">v6.0 Ultra</span>
+              Himo <span className="brand-badge">v13.0 Omni</span>
             </span>
           </div>
           <div className="user-profile-badge">
-            <div className="avatar-chip">G</div>
+            <div className="avatar-chip">H</div>
           </div>
         </header>
 
@@ -405,26 +505,26 @@ export default function Home() {
           {messages.length === 0 && (
             <div className="hero-screen">
               <div className="hero-greeting">
-                <span className="gradient-text">Hello Gagandeep</span>
-                <h1>Ready to build something amazing?</h1>
+                <span className="gradient-text">Himo Omni AI</span>
+                <h1>Pure Native Intelligence & Deep Engine</h1>
               </div>
 
               <div className="suggestion-grid">
-                <div className="suggestion-card" onClick={() => handleSend("What can you do?")}>
-                  <p>Explore Capabilities</p>
-                  <span>See reasoning & syntax logic</span>
+                <div className="suggestion-card" onClick={() => handleSend("Counting chart 1 to 100000000000000000")}>
+                  <p>Infinite Counting</p>
+                  <span>1 to 100 Quadrillion (Shankh)</span>
                 </div>
-                <div className="suggestion-card" onClick={() => handleSend("Create a modern UI button code")}>
-                  <p>Generate UI Components</p>
-                  <span>Tailwind & React blocks</span>
+                <div className="suggestion-card" onClick={() => handleSend("All fruits name")}>
+                  <p>Comprehensive Fruits</p>
+                  <span>Botanical Directory</span>
                 </div>
                 <div className="suggestion-card" onClick={() => handleSend("Calculate 25 * 480 - 150")}>
-                  <p>Evaluate Computation</p>
-                  <span>Instant math solving</span>
+                  <p>Math Evaluation</p>
+                  <span>Fast arithmetic</span>
                 </div>
-                <div className="suggestion-card" onClick={() => handleSend("What is Nextjs?")}>
-                  <p>Multi-Hop Reasoning</p>
-                  <span>Graph deduction traversal</span>
+                <div className="suggestion-card" onClick={() => handleSend("Write code of question mark icon")}>
+                  <p>UI & SVG Assets</p>
+                  <span>Clean React components</span>
                 </div>
               </div>
             </div>
@@ -441,7 +541,7 @@ export default function Home() {
                       </svg>
                     </div>
                   ) : (
-                    <div className="user-icon">G</div>
+                    <div className="user-icon">U</div>
                   )}
                 </div>
                 <div className="message-bubble">
@@ -492,7 +592,7 @@ export default function Home() {
                   handleSend()
                 }
               }}
-              placeholder="Message Himo or teach facts..."
+              placeholder="Message Himo, evaluate math or paste code..."
               rows={1}
             />
             <div className="composer-actions">
@@ -509,7 +609,7 @@ export default function Home() {
             </div>
           </div>
           <p className="disclaimer-text">
-            Himo v6.0 Ultra • Continuous Adaptive Cognitive Engine
+            Himo v13.0 Omni • 100% Native Architecture
           </p>
         </div>
       </section>
@@ -535,10 +635,6 @@ export default function Home() {
         .sidebar-label { font-size: 0.72rem; font-weight: 600; color: #8e918f; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
         .status-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; background: #161b22; padding: 6px 12px; border-radius: 12px; border: 1px solid #30363d; color: #58a6ff; font-weight: 500; }
         .status-badge .dot { width: 8px; height: 8px; background: #238636; border-radius: 50%; box-shadow: 0 0 8px #2ea043; }
-        .recent-list { display: flex; flex-direction: column; gap: 4px; }
-        .recent-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 18px; font-size: 0.86rem; color: #c4c7c5; cursor: pointer; transition: background 0.15s; }
-        .recent-item:hover { background: #282a2c; color: #fff; }
-        .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sidebar-footer { border-top: 1px solid #2d2f31; padding-top: 12px; }
         .footer-item { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #e57373; padding: 10px 14px; border-radius: 18px; cursor: pointer; font-size: 0.86rem; width: 100%; transition: background 0.2s; }
         .footer-item:hover { background: rgba(229, 115, 115, 0.1); }
