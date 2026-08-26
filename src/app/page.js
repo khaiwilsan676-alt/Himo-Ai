@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { auth, googleProvider } from "../lib/firebase"
+import { evaluateAdvancedMath } from "../lib/mathEngine"
 import { 
   signInWithPopup, 
   signInWithEmailAndPassword, 
@@ -148,6 +149,51 @@ function getIndianScaleLookup(numStr) {
   if (len === 18) return "दस शंख / महाशंख (10 Shankh / 100 Quadrillion - 10^17)";
   return "Infinite Vedic Order";
 }
+
+const openDB = () => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return reject("No window");
+    const request = indexedDB.open("HimoChatDB", 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains("sessions")) {
+        db.createObjectStore("sessions", { keyPath: "id", autoIncrement: true });
+      }
+    };
+  });
+};
+
+const saveSessionToIDB = async (session) => {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction("sessions", "readwrite");
+      const store = transaction.objectStore("sessions");
+      const request = session.id ? store.put(session) : store.add({ ...session, timestamp: Date.now() });
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const getAllSessionsFromIDB = async () => {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction("sessions", "readonly");
+      const store = transaction.objectStore("sessions");
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (e) {
+    return [];
+  }
+};
 
 function LoginPage({ onLoginSuccess }) {
   const [showTerms, setShowTerms] = useState(false);
@@ -377,6 +423,8 @@ function LoginPage({ onLoginSuccess }) {
 function HimoChatPage({ user, onLogout }) {
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
+  const [sessions, setSessions] = useState([])
+  const [currentSessionId, setCurrentSessionId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
@@ -389,6 +437,14 @@ function HimoChatPage({ user, onLogout }) {
   const userPhoto = user?.photoURL || user?.photoUrl || localStorage.getItem("userPhoto") || "/IMG_20260826_084111.jpg";
 
   useEffect(() => {
+    getAllSessionsFromIDB().then((savedSessions) => {
+      if (savedSessions && savedSessions.length > 0) {
+        setSessions(savedSessions);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
@@ -398,6 +454,38 @@ function HimoChatPage({ user, onLogout }) {
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`
     }
   }, [message])
+
+  const saveCurrentSession = async (msgs) => {
+    if (msgs.length === 0) return;
+    const title = msgs[0]?.content ? msgs[0].content.substring(0, 30) + "..." : "New Session";
+    const sessionData = {
+      id: currentSessionId || Date.now(),
+      title,
+      messages: msgs,
+      timestamp: Date.now()
+    };
+    await saveSessionToIDB(sessionData);
+    const updatedSessions = await getAllSessionsFromIDB();
+    setSessions(updatedSessions);
+    if (!currentSessionId) {
+      setCurrentSessionId(sessionData.id);
+    }
+  };
+
+  const handleNewSession = async () => {
+    if (messages.length > 0) {
+      await saveCurrentSession(messages);
+    }
+    setMessages([]);
+    setCurrentSessionId(null);
+    setSidebarOpen(false);
+  };
+
+  const loadSession = (session) => {
+    setMessages(session.messages);
+    setCurrentSessionId(session.id);
+    setSidebarOpen(false);
+  };
 
   function cleanInputText(str) {
     return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
@@ -411,43 +499,13 @@ function HimoChatPage({ user, onLogout }) {
     return intersection.size / Math.sqrt(t1.size * t2.size)
   }
 
-  function evaluateMath(text) {
-    let clean = cleanInputText(text.toLowerCase())
-      .replace(/[“”"']/g, '')
-      .replace(/what is|calculate|solve|\?|=|kya hoga|batao|ans|answer/g, "")
-      .trim()
-
-    const percentOfMatch = clean.match(/(\d+(?:\.\d+)?)\s*%\s*(?:of|\*)\s*(\d+(?:\.\d+)?)/)
-    if (percentOfMatch) {
-      const p = parseFloat(percentOfMatch[1])
-      const total = parseFloat(percentOfMatch[2])
-      const ans = (p / 100) * total
-      return `Calculation Result: **${ans}** (${p}% of ${total})`
-    }
-
-    clean = clean.replace(/of/g, "*").replace(/x/g, "*")
-    clean = clean.replace(/[^0-9+\-*/().\s%]/g, "").trim()
-
-    if (clean && /[+\-*/%]/.test(clean)) {
-      try {
-        const sanitized = clean.replace(/(\d+(?:\.\d+)?)%/g, "($1*0.01)")
-        const res = Function(`'use strict'; return (${sanitized})`)()
-        if (typeof res === "number" && !isNaN(res)) {
-          return `Calculation Result: **${res}**`
-        }
-      } catch (e) {
-        return null
-      }
-    }
-    return null
-  }
-
   function processHimoBrain(userInput) {
     let clean = cleanInputText(userInput)
     const memory = memoryRef.current
     const lower = clean.toLowerCase()
 
-    const mathResult = evaluateMath(clean)
+    // Using the dedicated external Math Engine for +, -, ×, ÷, π, √, %
+    const mathResult = evaluateAdvancedMath(clean)
     if (mathResult) return mathResult
 
     if (lower.includes("question") && (lower.includes("icon") || lower.includes("svg"))) {
@@ -499,11 +557,12 @@ function HimoChatPage({ user, onLogout }) {
     return `Processed: "${clean}". Native core operational.`
   }
 
-  function streamResponse(fullText) {
+  function streamResponse(fullText, updatedMessages) {
     let currentLength = 0
     const step = Math.max(1, Math.floor(fullText.length / 30))
 
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }])
+    const newMsgsWithAssistant = [...updatedMessages, { role: "assistant", content: "" }];
+    setMessages(newMsgsWithAssistant);
 
     const interval = setInterval(() => {
       currentLength += step
@@ -511,6 +570,8 @@ function HimoChatPage({ user, onLogout }) {
         currentLength = fullText.length
         clearInterval(interval)
         setLoading(false)
+        const finalMsgs = [...updatedMessages, { role: "assistant", content: fullText }];
+        saveCurrentSession(finalMsgs);
       }
       const partial = fullText.substring(0, currentLength)
       setMessages((prev) => {
@@ -530,12 +591,13 @@ function HimoChatPage({ user, onLogout }) {
     setMessage("")
     if (textareaRef.current) textareaRef.current.style.height = "auto"
 
-    setMessages((current) => [...current, { role: "user", content: prompt }])
+    const updatedMessages = [...messages, { role: "user", content: prompt }];
+    setMessages(updatedMessages)
     setLoading(true)
 
     setTimeout(() => {
       const finalReply = processHimoBrain(prompt)
-      streamResponse(finalReply)
+      streamResponse(finalReply, updatedMessages)
     }, 200)
   }
 
@@ -553,7 +615,7 @@ function HimoChatPage({ user, onLogout }) {
           </button>
         </div>
 
-        <button className="new-chat-btn" onClick={() => { setMessages([]); setSidebarOpen(false); }}>
+        <button className="new-chat-btn" onClick={handleNewSession}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -569,9 +631,25 @@ function HimoChatPage({ user, onLogout }) {
               className="user-dp-img"
               onError={(e)=>{e.target.src = "/IMG_20260826_084111.jpg"}}
             />
-            <div className="overflow-hidden">
-              <p className="user-name truncate">{userName}</p>
-              <p className="user-email truncate">{userEmail}</p>
+            <div className="overflow-hidden flex-1 min-w-0">
+              <p className="user-name truncate m-0">{userName}</p>
+              <p className="user-email truncate m-0">{userEmail}</p>
+            </div>
+          </div>
+
+          <div className="history-drawer">
+            <p className="sidebar-label" style={{ marginTop: '16px' }}>Chat History</p>
+            <div className="history-list">
+              {sessions.map((s) => (
+                <div 
+                  key={s.id} 
+                  className={`history-item truncate ${currentSessionId === s.id ? 'active' : ''}`}
+                  onClick={() => loadSession(s)}
+                >
+                  {s.title}
+                </div>
+              ))}
+              {sessions.length === 0 && <p className="no-history">No saved sessions</p>}
             </div>
           </div>
         </div>
@@ -731,19 +809,28 @@ function HimoChatPage({ user, onLogout }) {
         .icon-btn:hover { background: #282a2c; }
 
         .topbar-avatar-img { width: 34px !important; height: 34px !important; min-width: 34px !important; min-height: 34px !important; max-width: 34px !important; max-height: 34px !important; border-radius: 50% !important; object-fit: cover !important; display: block; }
-        .user-dp-img { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; object-fit: cover !important; border: 1px solid rgba(255,255,255,0.2); display: block; }
+        .user-dp-img { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; object-fit: cover !important; border: 1px solid rgba(255,255,255,0.2); display: block; flex-shrink: 0; }
         .chat-user-icon-img { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; max-width: 32px !important; max-height: 32px !important; border-radius: 50% !important; object-fit: cover !important; display: block; margin-top: 3px; flex-shrink: 0; }
 
         .sidebar { position: fixed; top: 0; left: -320px; width: 290px; height: 100vh; background: #1e1f20; transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; padding: 16px; display: flex; flex-direction: column; border-right: 1px solid #282a2c; }
         .sidebar.open { left: 0; }
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 99; backdrop-filter: blur(2px); }
         .sidebar-header { display: flex; justify-content: flex-start; margin-bottom: 16px; }
-        .new-chat-btn { display: flex; align-items: center; gap: 12px; background: #282a2c; border: 1px solid #383b40; color: #e3e3e3; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-size: 0.9rem; margin-bottom: 24px; }
-        .sidebar-section { flex: 1; }
-        .sidebar-label { font-size: 0.72rem; font-weight: 600; color: #8e918f; margin-bottom: 10px; text-transform: uppercase; }
-        .user-info-box { background: #161b22; padding: 12px; border-radius: 12px; border: 1px solid #30363d; }
-        .user-name { font-size: 0.9rem; font-weight: 600; color: #ffffff; }
-        .user-email { font-size: 0.78rem; color: #8b949e; margin-top: 2px; }
+        .new-chat-btn { display: flex; align-items: center; gap: 12px; background: #282a2c; border: 1px solid #383b40; color: #e3e3e3; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-size: 0.9rem; margin-bottom: 24px; width: 100%; }
+        .sidebar-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .sidebar-label { font-size: 0.72rem; font-weight: 600; color: #8e918f; margin-bottom: 8px; text-transform: uppercase; }
+        
+        .user-info-box { background: #161b22; padding: 10px 12px; border-radius: 12px; border: 1px solid #30363d; display: flex; align-items: center; gap: 12px; width: 100%; }
+        .user-name { font-size: 0.88rem; font-weight: 600; color: #ffffff; width: 100%; }
+        .user-email { font-size: 0.75rem; color: #8b949e; margin-top: 2px; width: 100%; }
+        
+        .history-drawer { flex: 1; display: flex; flex-direction: column; overflow: hidden; margin-top: 12px; }
+        .history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+        .history-item { font-size: 0.84rem; color: #c4c7c5; padding: 8px 12px; border-radius: 8px; cursor: pointer; background: #232528; border: 1px solid transparent; }
+        .history-item:hover { background: #2d2f33; }
+        .history-item.active { background: #2d323b; border-color: #3b4252; color: #ffffff; }
+        .no-history { font-size: 0.78rem; color: #8e918f; font-style: italic; }
+
         .sidebar-footer { border-top: 1px solid #2d2f31; padding-top: 12px; }
         .footer-item { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #e57373; padding: 10px 14px; border-radius: 18px; cursor: pointer; font-size: 0.86rem; width: 100%; }
         
