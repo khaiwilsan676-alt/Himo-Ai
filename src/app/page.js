@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import LoginPage from "../components/LoginPage"
 
+// ENCYCLOPEDIA & CORE BRAIN DATA
 const ENCYCLOPEDIA = {
   alphabets: [
     { letter: "A", word: "Apple", hindi: "सेब", phonetic: "ए फॉर एप्पल" },
@@ -72,7 +74,7 @@ const DEFAULT_MEMORY = {
     "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
     "who made you": "Main ek autonomous private AI engine hoon. Creator details classified hain.",
     "hello himo": "Yo! Himo Omni Engine active hai. Aaj kya create ya solve karna hai?",
-    "what can you do": "Main 100% offline code generate کرتا हूँ, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
+    "what can you do": "Main 100% offline code generate karta hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
     "kaise ho": "Ekdum solid! Fully independent aur top efficiency par active hoon.",
   }
 };
@@ -143,147 +145,6 @@ function getIndianScaleLookup(numStr) {
 }
 
 // ----------------------------------------------------
-// LOGIN PAGE COMPONENT
-// ----------------------------------------------------
-function LoginPage({ onLoginSuccess }) {
-  const [showTerms, setShowTerms] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const videoRef = useRef(null);
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, []);
-
-  const handleUserInteraction = () => {
-    if (videoRef.current && isMuted) {
-      videoRef.current.muted = false;
-      setIsMuted(false);
-      videoRef.current.play();
-    }
-  };
-
-  const handleFakeLogin = (provider) => {
-    const fakeUserData = {
-      name: "Demo User",
-      email: provider === 'Google' ? "user@gmail.com" : "demo@gmail.com",
-      provider: provider
-    };
-    if (onLoginSuccess) {
-      onLoginSuccess(fakeUserData);
-    }
-  };
-
-  return (
-    <div 
-      className="login-page-container"
-      onClick={handleUserInteraction}
-      onTouchStart={handleUserInteraction}
-    >
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted={isMuted}
-        playsInline
-        webkit-playsinline="true"
-        className="login-video"
-      >
-        <source src="/VID_20260825_012929_202_bsl.mp4" type="video/mp4" />
-      </video>
-
-      {/* Top Branding Section (15vh top spacing + Curved Image + Himo Text) */}
-      <div className="top-brand-wrapper">
-        <div className="brand-image-container">
-          <img 
-            src="/IMG_20260826_084111.jpg" 
-            alt="Himo Logo" 
-            className="brand-logo-img"
-          />
-        </div>
-        <h1 className="brand-title">Himo</h1>
-      </div>
-
-      <div className="bottom-wrapper">
-        <div className="login-actions">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFakeLogin('Google');
-            }}
-            className="auth-btn google-btn"
-          >
-            <svg className="btn-icon" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-            </svg>
-            <span>Continue with Google</span>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFakeLogin('Gmail');
-            }}
-            className="auth-btn email-blue-btn"
-          >
-            <svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span>Sign in with Email</span>
-          </button>
-        </div>
-
-        <div className="bottom-terms">
-          <p onClick={(e) => { e.stopPropagation(); setShowTerms(true); }} className="terms-text">
-            Login means you agree to the Terms &amp; Privacy Policy
-          </p>
-        </div>
-      </div>
-
-      {showTerms && (
-        <div className="modal-backdrop" onClick={() => setShowTerms(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>Terms &amp; Privacy Policy</h3>
-            <p>By logging in, you agree to our Terms of Service and Privacy Policy. Your session data is safely managed locally.</p>
-            <button className="modal-btn" onClick={() => setShowTerms(false)}>Close</button>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        .login-page-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; align-items: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
-        .login-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-        .top-brand-wrapper { position: relative; z-index: 10; margin-top: 15vh; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        .brand-image-container { width: 90px; height: 90px; border-radius: 22px; overflow: hidden; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.2); background: #000; }
-        .brand-logo-img { width: 100%; height: 100%; object-fit: cover; }
-        .brand-title { font-size: 2rem; font-weight: 800; color: #ffffff; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); margin: 0; }
-        .bottom-wrapper { position: relative; z-index: 10; width: 100%; max-width: 360px; padding: 0 20px 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-        .login-actions { width: 100%; display: flex; flex-direction: column; gap: 12px; }
-        .auth-btn { width: 100%; padding: 14px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 9999px; border: none; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.1s ease; }
-        .auth-btn:active { transform: scale(0.97); }
-        .google-btn { background: #ffffff; color: #1f2937; }
-        .google-btn:hover { background: #f8fafc; }
-        .email-blue-btn { background: #1d4ed8; color: #ffffff; }
-        .email-blue-btn:hover { background: #1e40af; }
-        .btn-icon { width: 20px; height: 20px; flex-shrink: 0; }
-        .bottom-terms { text-align: center; }
-        .terms-text { font-size: 0.78rem; color: #ffffff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); text-decoration: underline; cursor: pointer; }
-        .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
-        .modal-content { background: #ffffff; color: #111827; border-radius: 24px; max-width: 360px; width: 100%; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4); }
-        .modal-content h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; }
-        .modal-content p { font-size: 0.88rem; color: #4b5563; line-height: 1.5; margin-bottom: 20px; }
-        .modal-btn { width: 100%; padding: 12px; background: #111827; color: #ffffff; border-radius: 9999px; border: none; font-weight: 600; cursor: pointer; }
-      `}</style>
-    </div>
-  );
-}
-
-// ----------------------------------------------------
 // MAIN HIMO CHAT PAGE COMPONENT
 // ----------------------------------------------------
 function HimoChatPage({ user, onLogout }) {
@@ -296,6 +157,11 @@ function HimoChatPage({ user, onLogout }) {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const memoryRef = useRef(DEFAULT_MEMORY)
+
+  // Extract user display info based strictly on Gmail / Email & DP
+  const userEmail = user?.email || localStorage.getItem("userEmail") || "user@gmail.com";
+  const userName = user?.displayName || userEmail.split('@')[0];
+  const userPhoto = user?.photoURL || user?.photoUrl || localStorage.getItem("userPhoto") || "/default-avatar.png";
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -351,33 +217,6 @@ function HimoChatPage({ user, onLogout }) {
     return null
   }
 
-  function deepAnalyzeFullCode(code) {
-    const issues = []
-    const fixes = []
-
-    if (/\b\w+\.push\(/i.test(code) || /\b\w+\.splice\(/i.test(code)) {
-      issues.push("• [CRITICAL] Direct State Mutation (.push / .splice): React state direct mutate karne se component re-render nahi hota.")
-      fixes.push("// Fix 1: State Immutable Update\nsetItems(prev => [...prev, newItem]);")
-    }
-
-    if (/useEffect\s*\(\s*\(\)\s*=>\s*\{[\s\S]*(setInterval|addEventListener)[\s\S]*\}\s*,/i.test(code)) {
-      if (!/return\s*\(\)\s*=>/i.test(code)) {
-        issues.push("• [HIGH] Memory Leak in useEffect: Timer mount ho raha hai par unmount cleanup function missing hai.")
-        fixes.push("// Fix 2: Add Cleanup Function\nreturn () => {\n  clearInterval(timer);\n};")
-      }
-    }
-
-    if (/(const|let|var)\s+\w+\s*=\s*(fetch|axios)\(/i.test(code) && !/await\s+(fetch|axios)/i.test(code)) {
-      issues.push("• [CRITICAL] Missing Await on Async Call: 'fetch' Promise return karta hai.")
-      fixes.push("// Fix 3: Async/Await Pattern\nconst response = await fetch('/api/endpoint');\nconst data = await response.json();")
-    }
-
-    if (issues.length > 0) {
-      return `🔍 COMPREHENSIVE BUG REPORT (${issues.length} Issues Found):\n\n${issues.join("\n\n")}\n\n🛠️ RECOMMENDED CODE PATCHES:\n\n${fixes.join("\n\n")}`
-    }
-    return null
-  }
-
   function processHimoBrain(userInput) {
     let clean = cleanInputText(userInput)
     const memory = memoryRef.current
@@ -385,9 +224,6 @@ function HimoChatPage({ user, onLogout }) {
 
     const mathResult = evaluateMath(clean)
     if (mathResult) return mathResult
-
-    const bugResult = deepAnalyzeFullCode(clean)
-    if (bugResult) return bugResult
 
     if (lower.includes("question") && (lower.includes("icon") || lower.includes("svg"))) {
       return "```jsx\nexport const QuestionIcon = ({ size = 24, className = 'text-indigo-400' }) => (\n  <svg width={size} height={size} viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2\">\n    <circle cx=\"12\" cy=\"12\" r=\"10\" />\n    <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" />\n    <line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\" />\n  </svg>\n);\n```"
@@ -402,7 +238,7 @@ function HimoChatPage({ user, onLogout }) {
     }
 
     if (lower.includes("counting chart") || lower.includes("1 to 100000000000000000") || lower.includes("shankh")) {
-      return `🌌 INFINITE NUMBER SCALE SYSTEM (1 to 10^17 / 100 Quadrillion / 10 Shankh):\n\n1. 1 (10^0) -> One | इकाई\n2. 1,000 (10^3) -> One Thousand | हज़ार\n3. 100,000 (10^5) -> Hundred Thousand | एक लाख (1 Lakh)\n4. 10,000,000 (10^7) -> Ten Million | एक करोड़ (1 Crore)\n5. 1,000,000,000 (10^9) -> One Billion (1B) | एक अरब (1 Arab)\n6. 1,000,000,000,000 (10^12) -> One Trillion (1T) | दस खरब (10 Kharab)\n7. 10,000,000,000,000,000 (10^16) -> Ten Quadrillion | दस पद्म / 1 शंख (1 Shankh)`
+      return `🌌 INFINITE NUMBER SCALE SYSTEM (1 to 10^17 / 100 Quadrillion / 10 Shankh):\n\n1. 1 (10^0) -> One | इकाई\n2. 1,000 (10^3) -> One Thousand | हज़ार\n3. 100,000 (10^5) -> Hundred Thousand | एक लाख (1 Lakh)\n4. 10,000,000 (10^7) -> Ten Million (10M) | एक करोड़ (1 Crore)\n5. 1,000,000,000 (10^9) -> One Billion (1B) | एक अरब (1 Arab)\n6. 1,000,000,000,000 (10^12) -> One Trillion (1T) | दस खरब (10 Kharab)\n7. 10,000,000,000,000,000 (10^16) -> Ten Quadrillion | दस पद्म / 1 शंख (1 Shankh)`
     }
 
     if (lower.includes("fruit") || lower.includes("fruits")) {
@@ -501,9 +337,17 @@ function HimoChatPage({ user, onLogout }) {
 
         <div className="sidebar-section">
           <p className="sidebar-label">Logged in as</p>
-          <div className="user-info-box">
-            <p className="user-name">{user?.name || "Demo User"}</p>
-            <p className="user-email">{user?.email || "user@gmail.com"}</p>
+          <div className="user-info-box flex items-center gap-3">
+            <img 
+              src={userPhoto} 
+              alt="DP" 
+              className="w-10 h-10 rounded-full object-cover border border-white/20"
+              onError={(e)=>{(e.target as HTMLImageElement).src = "/default-avatar.png"}}
+            />
+            <div className="overflow-hidden">
+              <p className="user-name truncate">{userName}</p>
+              <p className="user-email truncate">{userEmail}</p>
+            </div>
           </div>
         </div>
 
@@ -534,7 +378,12 @@ function HimoChatPage({ user, onLogout }) {
             </span>
           </div>
           <div className="user-profile-badge">
-            <div className="avatar-chip">{user?.name?.[0] || "U"}</div>
+            <img 
+              src={userPhoto} 
+              alt="Profile" 
+              className="avatar-chip object-cover"
+              onError={(e)=>{(e.target as HTMLImageElement).src = "/default-avatar.png"}}
+            />
           </div>
         </header>
 
@@ -578,7 +427,12 @@ function HimoChatPage({ user, onLogout }) {
                       </svg>
                     </div>
                   ) : (
-                    <div className="user-icon">{user?.name?.[0] || "U"}</div>
+                    <img 
+                      src={userPhoto} 
+                      alt="U" 
+                      className="user-icon object-cover"
+                      onError={(e)=>{(e.target as HTMLImageElement).src = "/default-avatar.png"}}
+                    />
                   )}
                 </div>
                 <div className="message-bubble">
@@ -636,7 +490,7 @@ function HimoChatPage({ user, onLogout }) {
         .brand-badge { font-size: 0.72rem; padding: 2px 8px; background: #23272f; border: 1px solid #383f4d; border-radius: 12px; color: #61dafb; font-weight: 500; }
         .icon-btn { background: transparent; border: none; color: #c4c7c5; cursor: pointer; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
         .icon-btn:hover { background: #282a2c; }
-        .avatar-chip { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #ffffff; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+        .avatar-chip { width: 34px; height: 34px; border-radius: 50%; background: #333538; display: flex; align-items: center; justify-content: center; }
         .sidebar { position: fixed; top: 0; left: -320px; width: 290px; height: 100vh; background: #1e1f20; transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; padding: 16px; display: flex; flex-direction: column; border-right: 1px solid #282a2c; }
         .sidebar.open { left: 0; }
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 99; backdrop-filter: blur(2px); }
@@ -663,7 +517,7 @@ function HimoChatPage({ user, onLogout }) {
         .message-row { display: flex; gap: 16px; max-width: 100%; }
         .message-row.user { flex-direction: row-reverse; }
         .gemini-sparkle { color: #9b72cb; margin-top: 3px; }
-        .user-icon { width: 32px; height: 32px; background: #333538; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600; color: #e3e3e3; margin-top: 3px; }
+        .user-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-top: 3px; }
         .message-bubble { max-width: 85%; }
         .message-row.user .message-bubble { background: #282a2c; padding: 12px 18px; border-radius: 20px; border-top-right-radius: 4px; border: 1px solid #333538; }
         .message-text { font-size: 1rem; line-height: 1.68; color: #e3e3e3; }
@@ -685,22 +539,23 @@ export default function App() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("himo_logged_user")
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser))
-      } catch (e) {}
+    const savedEmail = localStorage.getItem("userEmail")
+    if (savedEmail) {
+      setUser({
+        email: savedEmail,
+        name: localStorage.getItem("userName") || savedEmail.split('@')[0],
+        photoURL: localStorage.getItem("userPhoto") || "/default-avatar.png"
+      })
     }
   }, [])
 
   const handleLoginSuccess = (userData) => {
     setUser(userData)
-    localStorage.setItem("himo_logged_user", JSON.stringify(userData))
   }
 
   const handleLogout = () => {
     setUser(null)
-    localStorage.removeItem("himo_logged_user")
+    localStorage.clear()
   }
 
   if (!user) {
