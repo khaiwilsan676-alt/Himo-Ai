@@ -618,11 +618,19 @@ function HimoChatPage({ user, onLogout }) {
         </div>
       </section>
 
+      <style jsx global>{`
+        html, body {
+          overscroll-behavior-y: none;
+          touch-action: pan-x pan-y;
+          -webkit-text-size-adjust: 100%;
+        }
+      `}</style>
+
       <style jsx>{`
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        .app-shell { display: flex; height: 100vh; background: #131314; color: #e3e3e3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
-        .workspace { flex: 1; display: flex; flex-direction: column; position: relative; height: 100vh; }
-        .topbar { height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #131314; z-index: 10; border-bottom: 1px solid #1e1f20; }
+        * { margin: 0; padding: 0; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word; }
+        .app-shell { display: flex; height: 100vh; width: 100vw; background: #131314; color: #e3e3e3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: fixed; top: 0; left: 0; }
+        .workspace { flex: 1; display: flex; flex-direction: column; position: relative; height: 100vh; width: 100%; overflow: hidden; }
+        .topbar { height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #131314; z-index: 10; border-bottom: none !important; box-shadow: none !important; }
         .left-nav { display: flex; align-items: center; gap: 16px; }
         .brand-name { font-size: 1.15rem; font-weight: 600; color: #c4c7c5; display: flex; align-items: center; gap: 8px; }
         .brand-badge { font-size: 0.72rem; padding: 2px 8px; background: #23272f; border: 1px solid #383f4d; border-radius: 12px; color: #61dafb; font-weight: 500; }
@@ -641,7 +649,7 @@ function HimoChatPage({ user, onLogout }) {
         .user-email { font-size: 0.78rem; color: #8b949e; margin-top: 2px; }
         .sidebar-footer { border-top: 1px solid #2d2f31; padding-top: 12px; }
         .footer-item { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #e57373; padding: 10px 14px; border-radius: 18px; cursor: pointer; font-size: 0.86rem; width: 100%; }
-        .canvas { flex: 1; overflow-y: auto; padding: 0 16px 200px 16px; max-width: 860px; width: 100%; margin: 0 auto; }
+        .canvas { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 16px 200px 16px; max-width: 860px; width: 100%; margin: 0 auto; }
         .hero-screen { margin-top: 6vh; }
         .hero-greeting { margin-bottom: 36px; }
         .gradient-text { font-size: 3.4rem; font-weight: 700; background: linear-gradient(74deg, #4285f4 0%, #9b72cb 25%, #d96570 50%, #ffffff 100%); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: block; margin-bottom: 6px; }
@@ -651,18 +659,18 @@ function HimoChatPage({ user, onLogout }) {
         .suggestion-card:hover { background: #25272a; }
         .suggestion-card p { font-size: 0.92rem; font-weight: 500; color: #e3e3e3; }
         .suggestion-card span { font-size: 0.78rem; color: #8e918f; }
-        .messages-list { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; }
-        .message-row { display: flex; gap: 16px; max-width: 100%; }
+        .messages-list { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; width: 100%; }
+        .message-row { display: flex; gap: 16px; max-width: 100%; width: 100%; }
         .message-row.user { flex-direction: row-reverse; }
-        .gemini-sparkle { color: #9b72cb; margin-top: 3px; }
-        .user-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-top: 3px; }
-        .message-bubble { max-width: 85%; }
+        .gemini-sparkle { color: #9b72cb; margin-top: 3px; flex-shrink: 0; }
+        .user-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-top: 3px; flex-shrink: 0; }
+        .message-bubble { max-width: 85%; min-width: 0; }
         .message-row.user .message-bubble { background: #282a2c; padding: 12px 18px; border-radius: 20px; border-top-right-radius: 4px; border: 1px solid #333538; }
-        .message-text { font-size: 1rem; line-height: 1.68; color: #e3e3e3; }
+        .message-text { font-size: 1rem; line-height: 1.68; color: #e3e3e3; word-break: break-word; overflow-wrap: break-word; }
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 20px; background: linear-gradient(180deg, transparent 0%, #131314 45%); display: flex; flex-direction: column; align-items: center; }
         .composer-shell { width: 100%; max-width: 840px; background: #1e1f20; border-radius: 28px; padding: 12px 18px; display: flex; align-items: flex-end; gap: 12px; border: 1px solid #2d2f31; }
         .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #e3e3e3; font-size: 1rem; resize: none; max-height: 160px; line-height: 1.5; padding-top: 4px; }
-        .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #e3e3e3; color: #131314; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #e3e3e3; color: #131314; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         .send-button-gemini:disabled { background: #282a2c; color: #8e918f; cursor: not-allowed; }
         .disclaimer-text { font-size: 0.74rem; color: #8e918f; margin-top: 10px; text-align: center; }
       `}</style>
@@ -670,9 +678,6 @@ function HimoChatPage({ user, onLogout }) {
   )
 }
 
-// ----------------------------------------------------
-// ROOT CONTROLLER APP
-// ----------------------------------------------------
 export default function App() {
   const [user, setUser] = useState(null)
 
@@ -702,3 +707,4 @@ export default function App() {
 
   return <HimoChatPage user={user} onLogout={handleLogout} />
 }
+
