@@ -194,7 +194,6 @@ function LoginPage({ onLoginSuccess }) {
         <source src="/VID_20260825_012929_202_bsl.mp4" type="video/mp4" />
       </video>
 
-      {/* Top Branding Section (15vh top spacing + Curved Image + Himo Text) */}
       <div className="top-brand-wrapper">
         <div className="brand-image-container">
           <img 
@@ -479,7 +478,7 @@ function HimoChatPage({ user, onLogout }) {
             <img 
               src={userPhoto} 
               alt="DP" 
-              className="w-10 h-10 rounded-full object-cover border border-white/20"
+              className="user-dp-img"
               onError={(e)=>{e.target.src = "/IMG_20260826_084111.jpg"}}
             />
             <div className="overflow-hidden">
@@ -519,7 +518,7 @@ function HimoChatPage({ user, onLogout }) {
             <img 
               src={userPhoto} 
               alt="Profile" 
-              className="avatar-chip object-cover w-9 h-9 rounded-full"
+              className="topbar-avatar-img"
               onError={(e)=>{e.target.src = "/IMG_20260826_084111.jpg"}}
             />
           </div>
@@ -568,7 +567,7 @@ function HimoChatPage({ user, onLogout }) {
                     <img 
                       src={userPhoto} 
                       alt="U" 
-                      className="user-icon object-cover w-8 h-8 rounded-full"
+                      className="chat-user-icon-img"
                       onError={(e)=>{e.target.src = "/IMG_20260826_084111.jpg"}}
                     />
                   )}
@@ -623,6 +622,11 @@ function HimoChatPage({ user, onLogout }) {
           overscroll-behavior-y: none;
           touch-action: pan-x pan-y;
           -webkit-text-size-adjust: 100%;
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
         }
       `}</style>
 
@@ -630,13 +634,19 @@ function HimoChatPage({ user, onLogout }) {
         * { margin: 0; padding: 0; box-sizing: border-box; word-break: break-word; overflow-wrap: break-word; }
         .app-shell { display: flex; height: 100vh; width: 100vw; background: #131314; color: #e3e3e3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: fixed; top: 0; left: 0; }
         .workspace { flex: 1; display: flex; flex-direction: column; position: relative; height: 100vh; width: 100%; overflow: hidden; }
-        .topbar { height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #131314; z-index: 10; border-bottom: none !important; box-shadow: none !important; }
+        
+        .topbar { height: 64px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: #131314; z-index: 10; border-bottom: none !important; box-shadow: none !important; border: none !important; }
         .left-nav { display: flex; align-items: center; gap: 16px; }
         .brand-name { font-size: 1.15rem; font-weight: 600; color: #c4c7c5; display: flex; align-items: center; gap: 8px; }
         .brand-badge { font-size: 0.72rem; padding: 2px 8px; background: #23272f; border: 1px solid #383f4d; border-radius: 12px; color: #61dafb; font-weight: 500; }
         .icon-btn { background: transparent; border: none; color: #c4c7c5; cursor: pointer; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
         .icon-btn:hover { background: #282a2c; }
-        .avatar-chip { width: 34px; height: 34px; border-radius: 50%; background: #333538; display: flex; align-items: center; justify-content: center; }
+
+        /* FIXED IMAGE STRETCHING BUG (Strict Width/Height constraints) */
+        .topbar-avatar-img { width: 34px !important; height: 34px !important; min-width: 34px !important; min-height: 34px !important; max-width: 34px !important; max-height: 34px !important; border-radius: 50% !important; object-fit: cover !important; display: block; }
+        .user-dp-img { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; object-fit: cover !important; border: 1px solid rgba(255,255,255,0.2); display: block; }
+        .chat-user-icon-img { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; max-width: 32px !important; max-height: 32px !important; border-radius: 50% !important; object-fit: cover !important; display: block; margin-top: 3px; flex-shrink: 0; }
+
         .sidebar { position: fixed; top: 0; left: -320px; width: 290px; height: 100vh; background: #1e1f20; transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; padding: 16px; display: flex; flex-direction: column; border-right: 1px solid #282a2c; }
         .sidebar.open { left: 0; }
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); z-index: 99; backdrop-filter: blur(2px); }
@@ -649,6 +659,7 @@ function HimoChatPage({ user, onLogout }) {
         .user-email { font-size: 0.78rem; color: #8b949e; margin-top: 2px; }
         .sidebar-footer { border-top: 1px solid #2d2f31; padding-top: 12px; }
         .footer-item { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #e57373; padding: 10px 14px; border-radius: 18px; cursor: pointer; font-size: 0.86rem; width: 100%; }
+        
         .canvas { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 16px 200px 16px; max-width: 860px; width: 100%; margin: 0 auto; }
         .hero-screen { margin-top: 6vh; }
         .hero-greeting { margin-bottom: 36px; }
@@ -659,14 +670,16 @@ function HimoChatPage({ user, onLogout }) {
         .suggestion-card:hover { background: #25272a; }
         .suggestion-card p { font-size: 0.92rem; font-weight: 500; color: #e3e3e3; }
         .suggestion-card span { font-size: 0.78rem; color: #8e918f; }
+        
         .messages-list { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; width: 100%; }
         .message-row { display: flex; gap: 16px; max-width: 100%; width: 100%; }
         .message-row.user { flex-direction: row-reverse; }
         .gemini-sparkle { color: #9b72cb; margin-top: 3px; flex-shrink: 0; }
-        .user-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-top: 3px; flex-shrink: 0; }
+        
         .message-bubble { max-width: 85%; min-width: 0; }
         .message-row.user .message-bubble { background: #282a2c; padding: 12px 18px; border-radius: 20px; border-top-right-radius: 4px; border: 1px solid #333538; }
         .message-text { font-size: 1rem; line-height: 1.68; color: #e3e3e3; word-break: break-word; overflow-wrap: break-word; }
+        
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 20px; background: linear-gradient(180deg, transparent 0%, #131314 45%); display: flex; flex-direction: column; align-items: center; }
         .composer-shell { width: 100%; max-width: 840px; background: #1e1f20; border-radius: 28px; padding: 12px 18px; display: flex; align-items: flex-end; gap: 12px; border: 1px solid #2d2f31; }
         .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #e3e3e3; font-size: 1rem; resize: none; max-height: 160px; line-height: 1.5; padding-top: 4px; }
