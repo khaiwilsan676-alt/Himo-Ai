@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { auth, googleProvider } from "./lib/firebase"
+import { auth, googleProvider } from "../lib/firebase"
 import { 
   signInWithPopup, 
   signInWithEmailAndPassword, 
@@ -79,7 +79,7 @@ const DEFAULT_MEMORY = {
     "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
     "who made you": "Main ek autonomous private AI engine hoon. Creator details classified hain.",
     "hello himo": "Yo! Himo Omni Engine active hai. Aaj kya create ya solve karna hai?",
-    "what can you do": "Main 100% offline code generate کرتا hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
+    "what can you do": "Main 100% offline code generate karta hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
     "kaise ho": "Ekdum solid! Fully independent aur top efficiency par active hoon.",
   }
 };
