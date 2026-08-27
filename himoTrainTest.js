@@ -47,7 +47,7 @@ function generateAutomaticAnswer(query) {
     return `💻 Himo Technical Synthesizer:\n"${capitalized}" is a powerful architectural concept in software engineering utilizing syntax parsing, modular logic, and runtime execution.`;
   }
 
-  return `🧠 Himo Autonomous Intelligence Report:\nRegarding "${capitalized}", our cognitive engine breaks this down into three core pillars:\n1. Core Definition: Represents a functional category with defined properties.\n2. Operational Mechanics: Interacts directly with environmental or digital structures.\n3. Utility: Used extensively for optimization and problem-solving.`;
+  return `🧠 Himo Himo Response:\nRegarding "${capitalized}", our cognitive engine breaks this down into three core pillars:\n1. Core Definition: Represents a functional category with defined properties.\n2. Operational Mechanics: Interacts directly with environmental or digital structures.\n3. Utility: Used extensively for optimization and problem-solving.`;
 }
 
 function processHimoBrain(userInput) {
