@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 function cleanText(text) {
   if (!text) return '';
   let cleaned = text.replace(/https?:\/\/\S+|www\.\S+/g, '');
@@ -23,7 +20,7 @@ export async function POST(req) {
     const query = (body.query || body.message || body.prompt || '').trim();
 
     if (!query) {
-      return NextResponse.json({ response: 'Please kuch search ya query type karo.' });
+      return NextResponse.json({ response: 'Please enter a query.' });
     }
 
     const qLower = query.toLowerCase();
@@ -35,12 +32,10 @@ export async function POST(req) {
 
     const snippets = [];
     
-    // Wikipedia API call
     try {
       const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`;
       const res = await fetch(wikiUrl, {
-        headers: { 'User-Agent': 'HimoAI/2.0' },
-        cache: 'no-store'
+        headers: { 'User-Agent': 'HimoAI/2.0' }
       });
       if (res.ok) {
         const data = await res.json();
@@ -62,7 +57,7 @@ export async function POST(req) {
         output += `• ${s}\n\n`;
       });
     } else {
-      output += `'${query}' ke baare me filhaal koi match nahi mila. Rephrase karke search karo.`;
+      output += `'${query}' ke baare me exact live details match nahi hui. Rephrase karke search karo.`;
     }
 
     return NextResponse.json({ response: output });
