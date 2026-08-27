@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useRef, useEffect } from 'react';
 
@@ -8,20 +8,18 @@ export default function LoginPage({ onLoginSuccess }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
-    // Video play ensure karne ke liye
     if (videoRef.current) {
-      videoRef.current.play().catch(() => {
-        // Autoplay fallback
+      videoRef.current.play().catch((error) => {
+        console.log("Autoplay prevented:", error);
       });
     }
   }, []);
 
-  // Screen par kahin bhi first touch/click hone par sound on ho jayega
   const handleUserInteraction = () => {
     if (videoRef.current && isMuted) {
       videoRef.current.muted = false;
       setIsMuted(false);
-      videoRef.current.play();
+      videoRef.current.play().catch(() => {});
     }
   };
 
@@ -31,8 +29,11 @@ export default function LoginPage({ onLoginSuccess }) {
       email: provider === 'Google' ? "user@gmail.com" : "demo@gmail.com",
       provider: provider
     };
-    if (onLoginSuccess) {
+    
+    if (typeof onLoginSuccess === 'function') {
       onLoginSuccess(fakeUserData);
+    } else {
+      console.warn("onLoginSuccess prop is missing from parent component.");
     }
   };
 
@@ -49,13 +50,12 @@ export default function LoginPage({ onLoginSuccess }) {
         loop
         muted={isMuted}
         playsInline
-        webkit-playsinline="true"
         className="login-video"
       >
         <source src="/VID_20260825_012929_202_bsl.mp4" type="video/mp4" />
       </video>
 
-      {/* Top Branding Section (15vh top spacing + Curved Image + Himo Text) */}
+      {/* Top Branding Section */}
       <div className="top-brand-wrapper">
         <div className="brand-image-container">
           <img 
@@ -69,7 +69,6 @@ export default function LoginPage({ onLoginSuccess }) {
 
       {/* Bottom Section */}
       <div className="bottom-wrapper">
-        {/* Buttons Section */}
         <div className="login-actions">
           {/* Google White Button */}
           <button
@@ -100,7 +99,7 @@ export default function LoginPage({ onLoginSuccess }) {
             <span>Continue with Google</span>
           </button>
 
-          {/* Email / Gmail Blue Button with User SVG Icon */}
+          {/* Email Blue Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -177,7 +176,6 @@ export default function LoginPage({ onLoginSuccess }) {
           z-index: 0;
         }
 
-        /* Top Brand Section Style */
         .top-brand-wrapper {
           position: relative;
           z-index: 10;
@@ -191,7 +189,7 @@ export default function LoginPage({ onLoginSuccess }) {
         .brand-image-container {
           width: 90px;
           height: 90px;
-          border-radius: 22px; /* Curved corners */
+          border-radius: 22px;
           overflow: hidden;
           box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
           border: 2px solid rgba(255, 255, 255, 0.2);
@@ -345,4 +343,3 @@ export default function LoginPage({ onLoginSuccess }) {
     </div>
   );
 }
-
