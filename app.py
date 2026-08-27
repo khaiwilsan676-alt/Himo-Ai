@@ -3,8 +3,11 @@ import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify, render_template_string
+from flask_cors import CORS
 
 app = Flask(__name__)
+# Sabhi origins (Capacitor/Android APK) ke liye CORS enable
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -64,6 +67,10 @@ def web_search(query):
     return snippets, direct_code
 
 def format_himo_response(user_query):
+    query_lower = user_query.lower().strip()
+    if query_lower in ["hi", "hii", "hello", "hii himo", "hi himo"]:
+        return "Yo! Himo Omni Engine active hai. Live Web Search & Code Extractor ready hai. Kya find ya build karna hai?"
+
     snippets, direct_code = web_search(user_query)
     
     output = "According to Himo:\n\n"
@@ -76,7 +83,7 @@ def format_himo_response(user_query):
         for s in snippets:
             output += f"• {s}\n\n"
     else:
-        output += f"No data found for '{user_query}'."
+        output += f"'{user_query}' par filhaal koi real-time data match nahi hua."
     return output
 
 HTML_TEMPLATE = """
@@ -84,7 +91,7 @@ HTML_TEMPLATE = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Himo AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -92,8 +99,6 @@ HTML_TEMPLATE = """
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen font-sans">
-
-    <!-- Header -->
     <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 flex items-center justify-between">
         <div class="flex items-center space-x-3">
             <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">H</div>
@@ -106,17 +111,15 @@ HTML_TEMPLATE = """
         </div>
     </header>
 
-    <!-- Chat Box -->
     <main id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-w-4xl w-full mx-auto">
         <div class="flex gap-3">
             <div class="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold shrink-0">H</div>
             <div class="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-200 leading-relaxed shadow-sm max-w-[85%]">
-                Himo AI ready hai bhai! Kuch bhi pucho ya code likhwao.
+                Himo AI ready hai bhai! Kuch bhi pucho ya code extract karwao.
             </div>
         </div>
     </main>
 
-    <!-- Input Box -->
     <footer class="border-t border-slate-800 bg-slate-900/90 p-4">
         <form id="chat-form" class="max-w-4xl mx-auto flex items-center gap-2">
             <input 
@@ -164,7 +167,6 @@ HTML_TEMPLATE = """
             appendMessage('user', text);
             userInput.value = '';
 
-            // Loading state
             const loadingDiv = document.createElement('div');
             loadingDiv.id = 'loading';
             loadingDiv.className = 'flex gap-3';
@@ -178,7 +180,8 @@ HTML_TEMPLATE = """
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             try {
-                const res = await fetch('/api/chat', {
+                // Absolute URL di hai taaki APK WebView seedhe live Vercel endpoint hit kare
+                const res = await fetch('https://himo-ai-six.vercel.app/api/chat', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({query: text})
@@ -188,7 +191,7 @@ HTML_TEMPLATE = """
                 appendMessage('himo', data.response);
             } catch (err) {
                 document.getElementById('loading').remove();
-                appendMessage('himo', 'Error: Request connect nahi ho saki.');
+                appendMessage('himo', 'Error: APK Backend se connect nahi ho paya. Internet check karein.');
             }
         });
     </script>
@@ -196,12 +199,15 @@ HTML_TEMPLATE = """
 </html>
 """
 
-@app.route('/')
-def home():
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def home(path):
     return render_template_string(HTML_TEMPLATE)
 
-@app.route('/api/chat', methods=['POST'])
+@app.route('/api/chat', methods=['POST', 'OPTIONS'])
 def chat():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "ok"}), 200
     data = request.get_json() or {}
     query = data.get('query', '')
     if not query:
