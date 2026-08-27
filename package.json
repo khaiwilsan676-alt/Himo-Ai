@@ -14,5 +14,6 @@
     "openai": "latest",
     "react": "latest",
     "react-dom": "latest"
-  }
+  },
+  "type": "module"
 }

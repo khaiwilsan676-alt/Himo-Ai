@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { auth, googleProvider } from "../lib/firebase"
 import { evaluateAdvancedMath } from "../lib/mathEngine"
+import { generateAutomaticAnswer } from "../lib/aiEngine"
+import { teachHimo, queryLearnedHimo } from "../lib/autonomousTrainer"
 import { 
   signInWithPopup, 
   signInWithEmailAndPassword, 
@@ -78,9 +80,9 @@ const ENCYCLOPEDIA = {
 const DEFAULT_MEMORY = {
   qaMemory: {
     "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
-    "who made you": "Main ek autonomous private AI engine hoon. Creator details classified hain.",
-    "hello himo": "Yo! Himo Omni Engine active hai. Aaj kya create ya solve karna hai?",
-    "what can you do": "Main 100% offline code generate karta hoon, deep bugs fix karta hoon, math evaluate karta hoon, infinite counting decode karta hoon aur real-time facts learn karta hoon.",
+    "who made you": "Main ek autonomous private AI engine hoon. Creator ID: 8Gef8W6R5DQyhJeKVtDVURHg5Wv2.",
+    "hello himo": "Yo! Himo Omni Engine active hai. Creator ID verified. Aaj kya create ya solve karna hai?",
+    "what can you do": "Main 100% offline code generate karta hoon, math evaluate karta hoon, aur creator ke sikhane par khud ko human ki tarah train karta hoon.",
     "kaise ho": "Ekdum solid! Fully independent aur top efficiency par active hoon.",
   }
 };
@@ -499,15 +501,35 @@ function HimoChatPage({ user, onLogout }) {
     return intersection.size / Math.sqrt(t1.size * t2.size)
   }
 
-  function processHimoBrain(userInput) {
+  async function processHimoBrain(userInput) {
     let clean = cleanInputText(userInput)
     const memory = memoryRef.current
     const lower = clean.toLowerCase()
 
-    // Using the dedicated external Math Engine for +, -, ×, ÷, π, √, %
+    // 0. Creator Training Command e.g. "teach: [question] = [answer]"
+    if (lower.startsWith("teach:")) {
+      const parts = clean.substring(6).split("=");
+      if (parts.length === 2) {
+        const q = parts[0].trim();
+        const a = parts[1].trim();
+        await teachHimo(q, a);
+        return `🧠 **Autonomous Training Successful!**\nCreator ID (8Gef8W6R5DQyhJeKVtDVURHg5Wv2) verified.\nI have successfully learned and stored this permanently:\n• **Q:** ${q}\n• **A:** ${a}`;
+      } else {
+        return `⚠️ **Training Syntax Error:** Please use format -> \`teach: your question = your answer\``;
+      }
+    }
+
+    // 1. Check Self-Learned Human Memory (IndexedDB)
+    const learnedAnswer = await queryLearnedHimo(clean);
+    if (learnedAnswer) {
+      return `🧠 [Self-Trained Memory]: ${learnedAnswer}`;
+    }
+
+    // 2. Math Engine Check
     const mathResult = evaluateAdvancedMath(clean)
     if (mathResult) return mathResult
 
+    // 3. Encyclopedia / Master Charts Check
     if (lower.includes("question") && (lower.includes("icon") || lower.includes("svg"))) {
       return "```jsx\nexport const QuestionIcon = ({ size = 24, className = 'text-indigo-400' }) => (\n  <svg width={size} height={size} viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"2\">\n    <circle cx=\"12\" cy=\"12\" r=\"10\" />\n    <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" />\n    <line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\" />\n  </svg>\n);\n```"
     }
@@ -550,11 +572,12 @@ function HimoChatPage({ user, onLogout }) {
       }
     }
 
-    if (highestScore >= 0.35 && bestMatch) {
+    if (highestScore >= 0.30 && bestMatch) {
       return bestMatch
     }
 
-    return `Processed: "${clean}". Native core operational.`
+    // 4. Automatic Intelligent Knowledge Synthesizer
+    return generateAutomaticAnswer(clean);
   }
 
   function streamResponse(fullText, updatedMessages) {
@@ -584,7 +607,7 @@ function HimoChatPage({ user, onLogout }) {
     }, 16)
   }
 
-  function handleSend(textToSend) {
+  async function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
 
@@ -595,8 +618,8 @@ function HimoChatPage({ user, onLogout }) {
     setMessages(updatedMessages)
     setLoading(true)
 
-    setTimeout(() => {
-      const finalReply = processHimoBrain(prompt)
+    setTimeout(async () => {
+      const finalReply = await processHimoBrain(prompt)
       streamResponse(finalReply, updatedMessages)
     }, 200)
   }
@@ -703,18 +726,9 @@ function HimoChatPage({ user, onLogout }) {
                   <p>Infinite Counting</p>
                   <span>1 to 100 Quadrillion (Shankh)</span>
                 </div>
-                <div className="suggestion-card" onClick={() => handleSend("All fruits name")}>
-                  <p>Comprehensive Fruits</p>
-                  <span>Botanical Directory</span>
-                </div>
-                <div className="suggestion-card" onClick={() => handleSend("Calculate 25 * 480 - 150")}>
-                  <p>Math Evaluation</p>
-                  <span>Fast arithmetic</span>
-                </div>
-                <div className="suggestion-card" onClick={() => handleSend("Write code of question mark icon")}>
-                  <p>UI & SVG Assets</p>
-                  <span>Clean React components</span>
-                </div>
+                <div className="suggestion-card" onClick={() => handleSend("All fruits name")}><p>Comprehensive Fruits</p><span>Botanical Directory</span></div>
+                <div className="suggestion-card" onClick={() => handleSend("Calculate 25 * 480 - 150")}><p>Math Evaluation</p><span>Fast arithmetic</span></div>
+                <div className="suggestion-card" onClick={() => handleSend("teach: what is ai = AI is artificial intelligence created by creator 8Gef8W6R5DQyhJeKVtDVURHg5Wv2")}><p>Train Himo</p><span>Teach custom facts</span></div>
               </div>
             </div>
           )}
@@ -763,7 +777,7 @@ function HimoChatPage({ user, onLogout }) {
                   handleSend()
                 }
               }}
-              placeholder="Message Himo, evaluate math or paste code..."
+              placeholder="Ask anything or train Himo via 'teach: question = answer'..."
               rows={1}
             />
             <div className="composer-actions">
@@ -779,7 +793,7 @@ function HimoChatPage({ user, onLogout }) {
               </button>
             </div>
           </div>
-          <p className="disclaimer-text">Himo v13.0 Omni • 100% Native Architecture</p>
+          <p className="disclaimer-text">Himo v13.0 Omni • Creator ID: 8Gef8W6R5DQyhJeKVtDVURHg5Wv2</p>
         </div>
       </section>
 
@@ -854,7 +868,7 @@ function HimoChatPage({ user, onLogout }) {
         .message-row.user .message-bubble { background: #282a2c; padding: 12px 18px; border-radius: 20px; border-top-right-radius: 4px; border: 1px solid #333538; }
         .message-text { font-size: 1rem; line-height: 1.68; color: #e3e3e3; word-break: break-word; overflow-wrap: break-word; }
         
-        .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 20px; background: linear-gradient(180deg, transparent 0%, #131314 45%); display: flex; flex-direction: column; align-items: center; }
+        .dock-container { position: bottom; left: 0; right: 0; padding: 16px 20px 20px; background: linear-gradient(180deg, transparent 0%, #131314 45%); display: flex; flex-direction: column; align-items: center; }
         .composer-shell { width: 100%; max-width: 840px; background: #1e1f20; border-radius: 28px; padding: 12px 18px; display: flex; align-items: flex-end; gap: 12px; border: 1px solid #2d2f31; }
         .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #e3e3e3; font-size: 1rem; resize: none; max-height: 160px; line-height: 1.5; padding-top: 4px; }
         .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #e3e3e3; color: #131314; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
