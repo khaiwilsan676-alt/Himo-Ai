@@ -25,7 +25,6 @@ async function webSearch(query: string): Promise<string[]> {
     });
     const html = await res.text();
     
-    // Regex se snippet extract karo
     const regex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
     let match;
     while ((match = regex.exec(html)) !== null && snippets.length < 4) {
@@ -36,7 +35,7 @@ async function webSearch(query: string): Promise<string[]> {
       }
     }
   } catch (e) {
-    // Fallback if search fails
+    // Search error handled
   }
   return snippets;
 }
@@ -48,16 +47,25 @@ export async function POST(req: Request) {
 
     if (!query) {
       return NextResponse.json({ response: 'Query empty hai.' }, {
-        headers: { 'Access-Control-Allow-Origin': '*' }
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
       });
     }
 
     const qLower = query.toLowerCase();
     if (['hi', 'hii', 'hello', 'hii himo', 'hi himo'].includes(qLower)) {
       return NextResponse.json({
-        response: 'Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Kya find ya code karwana hai?'
+        response: 'Yo! Himo Omni Engine active hai. Live Web Search & Code Extractor ready hai. Kya find ya build karna hai?',
+        reply: 'Yo! Himo Omni Engine active hai. Live Web Search & Code Extractor ready hai. Kya find ya build karna hai?'
       }, {
-        headers: { 'Access-Control-Allow-Origin': '*' }
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
       });
     }
 
@@ -69,7 +77,7 @@ export async function POST(req: Request) {
         output += `• ${s}\n\n`;
       });
     } else {
-      output += `'${query}' ke baare me filhaal exact real-time details match nahi hui. Rephrase karke search karo.`;
+      output += `'${query}' ke baare me filhaal koi real-time data match nahi hua. Rephrase karke search karo.`;
     }
 
     return NextResponse.json({ 
@@ -85,7 +93,10 @@ export async function POST(req: Request) {
       }
     });
   } catch (error) {
-    return NextResponse.json({ response: 'Himo Engine Error.' }, { status: 500 });
+    return NextResponse.json({ response: 'Himo Engine Error.' }, { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }
 
