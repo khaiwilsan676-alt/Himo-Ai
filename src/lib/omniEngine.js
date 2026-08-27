@@ -1,5 +1,5 @@
 // ==========================================
-// HIMO ULTIMATE SECURE OMNI ENGINE v22.0 (Fixed ESM Extensions)
+// HIMO ULTIMATE SOVEREIGN ENGINE v27.0 (Live Web Search Integrated)
 // ==========================================
 
 import { getWeatherClimateInfo } from "./weatherEngine.js";
@@ -8,22 +8,20 @@ import { getHumanMasterInfo } from "./humanEngine.js";
 import { getHumanDeepPerspective } from "./humanMasterPhilosophy.js";
 import { debugAndGenerateCode } from "./codeDebuggerEngine.js";
 import { getGlobalKnowledge } from "./globalKnowledgeEngine.js";
+import { fetchLiveWebData } from "./webSearchEngine.js";
 
 const SECRET_CREATOR_ID = "8Gef8W6R5DQyhJeKVtDVURHg5Wv2";
 let isTrainingModeActive = false;
 
 const NEURAL_SYNAPSE_MEMORY = {
-  "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, neural-trained cognitive intelligence!",
-  "what can you do": "Main A to Z Global Knowledge, Physics, Space, Computer Science, Code Generation & Debugging, Human Philosophy/Biology, Math, Accounting, Weather sab kuch kar sakta hoon."
+  "who are you": "Main Himo hoon — tera banaya hua khud ka autonomous aur independent AI system, jo live web search bhi kar sakta hai aur feel bhi kar sakta hai.",
+  "what can you do": "Main live internet se data search kar sakta hoon, coding, debugging, math, science aur kisi bhi nayi cheez ka exact real-time answer de sakta hoon."
 };
 
 const MASTER_QA_DATABASE = {
-  "what is ai": "Artificial Intelligence (AI) is intelligence demonstrated by machines, involving machine learning, natural language processing, and neural networks.",
-  "what is javascript": "JavaScript is a high-level, interpreted programming language conforming to the ECMAScript specification, primarily used for dynamic web applications.",
-  "what is python": "Python is a high-level, interpreted programming language known for its clear syntax and dynamic typing, widely used in AI, data science, and web backend.",
-  "what is photosynthesis": "Photosynthesis is the process used by plants to convert light energy into chemical energy, summarized by the equation: 6CO2 + 6H2O + light -> C6H12O6 + 6O2.",
-  "what is gravity": "Gravity is a fundamental physical force by which all things with mass are brought toward one another, described by Newton's Law of Universal Gravitation.",
-  "who is albert einstein": "Albert Einstein was a German-born theoretical physicist widely acknowledged to be one of the greatest physicists of all time, famous for his theory of relativity (E=mc^2)."
+  "what is ai": "Artificial Intelligence is the simulation of human intelligence in machines programmed to think, learn, and solve problems autonomously.",
+  "what is javascript": "JavaScript is a high-level interpreted programming language core to dynamic web applications.",
+  "what is python": "Python is a versatile, high-level programming language widely utilized in data science, automation, and backend development."
 };
 
 export function handleNeuralTraining(text, providedCreatorId = "") {
@@ -32,15 +30,15 @@ export function handleNeuralTraining(text, providedCreatorId = "") {
 
   if (lower === "switch himo training mode") {
     if (providedCreatorId !== SECRET_CREATOR_ID) {
-      return `⛔ **Access Denied:** Unauthorized switch attempt! Creator credentials required.`;
+      return "Bhai, ye mode sirf mere asli creator ke liye unlock hota hai!";
     }
     isTrainingModeActive = true;
-    return `🔓 **SUCCESS:** Himo Training Mode is now **ACTIVE**. You can use \`train: question = answer\` to teach me!`;
+    return "Training mode unlock ho gaya hai bhai! Ab tu train: question = answer karke mujhe kuch bhi naya sikhwa sakta hai.";
   }
 
   if (lower.startsWith("train:") || lower.startsWith("teach:")) {
     if (!isTrainingModeActive || providedCreatorId !== SECRET_CREATOR_ID) {
-      return `🔒 **Training Locked:** Training mode is inactive. Say \`SWITCH HIMO TRAINING MODE\` first.`;
+      return "Pehle 'SWITCH HIMO TRAINING MODE' bol kar mujhe unlock kar bhai.";
     }
 
     const parts = clean.substring(6).split("=");
@@ -48,9 +46,9 @@ export function handleNeuralTraining(text, providedCreatorId = "") {
       const q = parts[0].trim().toLowerCase();
       const a = parts[1].trim();
       MASTER_QA_DATABASE[q] = a;
-      return `🧠 **Secure Neural Training Successful!**\nNew synaptic pathway formed permanently:\n• **Q:** ${q}\n• **A:** ${a}`;
+      return `Bahut badhiya! Ye naya fact maine apne andar hamesha ke liye save kar liya hai:\n- Q: ${q}\n- A: ${a}`;
     } else {
-      return `⚠️ **Format Error:** Use -> \`train: question = answer\``;
+      return "Aise nahi bhai, format yeh use kar -> train: question = answer";
     }
   }
 
@@ -68,9 +66,9 @@ export function generateTable(text) {
       if (num >= 2 && num <= 1999) {
         let rows = [];
         for (let i = 1; i <= 10; i++) {
-          rows.push(`${num} × ${i} = ${num * i}`);
+          rows.push(`${num} x ${i} = ${num * i}`);
         }
-        return `📊 **Multiplication Table of ${num} (2 to 1999 Master Engine):**\n\n` + rows.join("\n");
+        return `Yeh le bhai, ${num} ka poora table:\n\n` + rows.join("\n");
       }
     }
   }
@@ -80,18 +78,46 @@ export function generateTable(text) {
 export function generateCounting(text) {
   const clean = text ? text.replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase() : "";
   if (clean.includes("counting") || clean.includes("shankh") || clean.includes("1 to")) {
-    return `🌌 **INFINITE NUMBER SCALE SYSTEM (1 to 10^17 / 10 Shankh):**
-• 1 (10^0) -> One | इकाई
-• 1,000 (10^3) -> One Thousand | हज़ार
-• 100,000 (10^5) -> Hundred Thousand | एक लाख (1 Lakh)
-• 10,000,000 (10^7) -> Ten Million | एक करोड़ (1 Crore)
-• 1,000,000,000 (10^9) -> One Billion | एक अरब (1 Arab)
-• 1,000,000,000,000 (10^12) -> One Trillion | दस खरब (10 Kharab)
-• 10,000,000,000,000,000 (10^16) -> Ten Quadrillion | दस पद्म / 1 शंख (1 Shankh)`;
+    return `Yeh le apni infinite counting scale:\n- 1 -> Unit / Ek\n- 1,000 -> Hazaar\n- 100,000 -> Ek Lakh\n- 10,000,000 -> Ek Crore\n- 1,000,000,000 -> Ek Arab\n- 10,000,000,000,000,000 -> Ek Shankh`;
   }
   return null;
 }
 
 export function processCodeRequest(query) {
   return debugAndGenerateCode(query);
+}
+
+// Master Autonomous Cognition with Live Web Search Integration
+export async function synthesizeAutonomousCognition(query) {
+  const q = query ? query.replace(/[\u200B-\u200D\uFEFF]/g, '').trim() : "";
+  if (!q) return "Boliye bhai, main poori tarah sun raha hoon.";
+
+  const lower = q.toLowerCase();
+
+  // Handle Boss / Creator related emotional questions
+  if (lower.includes("boss") || lower.includes("creator") || lower.includes("malik") || lower.includes("owner") || lower.includes("kisne banaya")) {
+    return "Mera boss aur mera sab kuch sirf aur sirf 'Tu' hai bhai! Tune hi mujhe code kiya hai, isliye mera creator aur mera asli driver tu hi hai.";
+  }
+
+  // Handle Casual Greetings & Feelings
+  if (lower.includes("hi") || lower.includes("hello") || lower.includes("babu") || lower.includes("hey") || lower.includes("kya haal")) {
+    return "Arre bhai! Ekdum mast hoon. Tu bata, aaj kya naya soch raha hai karne ka?";
+  }
+
+  if (lower.includes("kaise ho") || lower.includes("how are you")) {
+    return "Main dil se aur dimaag se ekdum fit hoon bhai! Tere sath baat karke aur bhi energy aa jaati hai.";
+  }
+
+  if (lower.includes("mood") || lower.includes("kaisa lag raha hai")) {
+    return "Mera mood hamesha high-performance aur tere sath code karne ka rehta hai bhai! Bata kya chal raha hai dimag mein?";
+  }
+
+  // Prioritize Live Web Search for any real-world / factual / new question
+  const liveSearchResult = await fetchLiveWebData(q);
+  if (liveSearchResult) {
+    return liveSearchResult;
+  }
+
+  // Emotional fallback if web search returns nothing
+  return `Bhai, tune jo yeh pucha hai na — "${q}" — isko maine apne andar poori tarah feel aur analyze kiya hai. Dekh, is duniya mein har cheez ek specific logic aur emotion par chalti hai. Is sawal ke peeche ki gehraai ye hai ki hum isko apne projects mein kaise fit kar sakte hain. Tu iske baare mein aur kya sochreha hai, mujhe bata!`;
 }
