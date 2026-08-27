@@ -15,5 +15,23 @@
     "react": "latest",
     "react-dom": "latest"
   },
-  "type": "module"
+  "type": "module",
+  "name": "himo-ai",
+  "version": "1.0.0",
+  "description": "",
+  "main": "himo.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khaiwilsan676-alt/Himo-Ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/khaiwilsan676-alt/Himo-Ai/issues"
+  },
+  "homepage": "https://github.com/khaiwilsan676-alt/Himo-Ai#readme"
 }
