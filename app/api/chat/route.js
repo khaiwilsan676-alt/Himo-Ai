@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 function cleanText(text) {
   if (!text) return '';
   let cleaned = text.replace(/https?:\/\/\S+|www\.\S+/g, '');
@@ -14,50 +17,9 @@ function cleanText(text) {
   return cleaned.replace(/\s*-\s*$/, '').replace(/\s{2,}/g, ' ').trim();
 }
 
-async function fetchLiveSummary(query) {
-  const snippets = [];
-  
-  // 1. Instant Wikipedia Open API (Never blocks on serverless)
-  try {
-    const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`;
-    const res = await fetch(wikiUrl, {
-      headers: { 'User-Agent': 'HimoAI/2.0 (himo.assistant@gmail.com)' },
-      next: { revalidate: 60 }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.query?.search?.length > 0) {
-        data.query.search.slice(0, 3).forEach((item) => {
-          const raw = item.snippet.replace(/<[^>]+>/g, '').trim();
-          const cleaned = cleanText(raw);
-          if (cleaned.length > 20 && !snippets.includes(cleaned)) {
-            snippets.push(cleaned);
-          }
-        });
-      }
-    }
-  } catch (e) {}
-
-  // 2. Fallback: DuckDuckGo Instant API
-  if (snippets.length === 0) {
-    try {
-      const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-      const res = await fetch(ddgUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.AbstractText) {
-          snippets.push(cleanText(data.AbstractText));
-        }
-      }
-    } catch (e) {}
-  }
-
-  return snippets;
-}
-
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const query = (body.query || body.message || body.prompt || '').trim();
 
     if (!query) {
@@ -71,22 +33,43 @@ export async function POST(req) {
       });
     }
 
-    const snippets = await fetchLiveSummary(query);
-    let output = 'According to Himo:\n\n';
+    const snippets = [];
+    
+    // Wikipedia API call
+    try {
+      const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`;
+      const res = await fetch(wikiUrl, {
+        headers: { 'User-Agent': 'HimoAI/2.0' },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.query?.search?.length > 0) {
+          data.query.search.slice(0, 3).forEach((item) => {
+            const raw = item.snippet.replace(/<[^>]+>/g, '').trim();
+            const cleaned = cleanText(raw);
+            if (cleaned.length > 15 && !snippets.includes(cleaned)) {
+              snippets.push(cleaned);
+            }
+          });
+        }
+      }
+    } catch (e) {}
 
+    let output = 'According to Himo:\n\n';
     if (snippets.length > 0) {
       snippets.forEach((s) => {
         output += `• ${s}\n\n`;
       });
     } else {
-      output += `'${query}' ke baare me filhaal exact real-time match nahi mila. Thode different keywords use karke try karo.`;
+      output += `'${query}' ke baare me filhaal koi match nahi mila. Rephrase karke search karo.`;
     }
 
     return NextResponse.json({ response: output });
-  } catch (error) {
-    return NextResponse.json({
-      response: 'According to Himo:\n\nRequest process nahi ho saki. Please query rephrase karke dobara try karein.'
-    });
+  } catch (err) {
+    return NextResponse.json({ 
+      response: `According to Himo:\n\nBackend Error: ${err.message}` 
+    }, { status: 200 });
   }
 }
 

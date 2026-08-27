@@ -25,13 +25,21 @@ export default function Home() {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ query: userMsg })
       });
+
+      if (!res.ok) {
+        throw new Error(`HTTP Status ${res.status}`);
+      }
+
       const data = await res.json();
-      setMessages((prev) => [...prev, { sender: 'himo', text: data.response || data.reply || 'No response.' }]);
+      setMessages((prev) => [...prev, { sender: 'himo', text: data.response || data.reply || 'No response data.' }]);
     } catch (err) {
-      setMessages((prev) => [...prev, { sender: 'himo', text: 'Error: Server connect nahi ho paya.' }]);
+      setMessages((prev) => [...prev, { sender: 'himo', text: `Connection Error: ${err.message}. Please check connection.` }]);
     } finally {
       setLoading(false);
     }
@@ -39,7 +47,6 @@ export default function Home() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#020617', color: '#f8fafc', fontFamily: 'sans-serif' }}>
-      {/* Header */}
       <header style={{ padding: '16px', borderBottom: '1px solid #1e293b', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ width: '36px', height: '36px', backgroundColor: '#4f46e5', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>H</div>
         <div>
@@ -48,7 +55,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Chat Messages */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {messages.map((m, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -70,14 +76,13 @@ export default function Home() {
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <div style={{ padding: '12px 16px', borderRadius: '16px', backgroundColor: '#0f172a', border: '1px solid #1e293b', fontSize: '14px', color: '#94a3b8', fontStyle: 'italic' }}>
-              Himo web search kar raha hai...
+              Himo search kar raha hai...
             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </main>
 
-      {/* Input Box */}
       <footer style={{ padding: '12px', borderTop: '1px solid #1e293b', backgroundColor: '#0f172a' }}>
         <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px' }}>
           <input
