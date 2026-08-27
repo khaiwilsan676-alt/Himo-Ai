@@ -33,5 +33,10 @@
   "bugs": {
     "url": "https://github.com/khaiwilsan676-alt/Himo-Ai/issues"
   },
-  "homepage": "https://github.com/khaiwilsan676-alt/Himo-Ai#readme"
+  "homepage": "https://github.com/khaiwilsan676-alt/Himo-Ai#readme",
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "typescript": "^7.0.2"
+  }
 }
