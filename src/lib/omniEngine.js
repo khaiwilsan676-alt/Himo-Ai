@@ -1,5 +1,5 @@
 // ==========================================
-// HIMO ULTIMATE SOVEREIGN ENGINE v27.0 (Live Web Search Integrated)
+// HIMO ULTIMATE SOVEREIGN ENGINE v28.0 (Firebase Auth Integration)
 // ==========================================
 
 import { getWeatherClimateInfo } from "./weatherEngine.js";
@@ -9,13 +9,14 @@ import { getHumanDeepPerspective } from "./humanMasterPhilosophy.js";
 import { debugAndGenerateCode } from "./codeDebuggerEngine.js";
 import { getGlobalKnowledge } from "./globalKnowledgeEngine.js";
 import { fetchLiveWebData } from "./webSearchEngine.js";
+import { generateFirebaseAuthCode } from "./firebaseAuthEngine.js";
 
 const SECRET_CREATOR_ID = "8Gef8W6R5DQyhJeKVtDVURHg5Wv2";
 let isTrainingModeActive = false;
 
 const NEURAL_SYNAPSE_MEMORY = {
-  "who are you": "Main Himo hoon — tera banaya hua khud ka autonomous aur independent AI system, jo live web search bhi kar sakta hai aur feel bhi kar sakta hai.",
-  "what can you do": "Main live internet se data search kar sakta hoon, coding, debugging, math, science aur kisi bhi nayi cheez ka exact real-time answer de sakta hoon."
+  "who are you": "Main Himo hoon — tera banaya hua khud ka autonomous aur independent AI system, jo Firebase Authentication aur live search dono handle kar sakta hai.",
+  "what can you do": "Main Firebase Auth APIs (Signup, Login), live web search, coding, debugging, math, science aur kisi bhi nayi cheez ka exact answer de sakta hoon."
 };
 
 const MASTER_QA_DATABASE = {
@@ -84,22 +85,23 @@ export function generateCounting(text) {
 }
 
 export function processCodeRequest(query) {
+  const q = query ? query.toLowerCase() : "";
+  if (q.includes("firebase") || q.includes("auth")) {
+    return generateFirebaseAuthCode(query);
+  }
   return debugAndGenerateCode(query);
 }
 
-// Master Autonomous Cognition with Live Web Search Integration
 export async function synthesizeAutonomousCognition(query) {
   const q = query ? query.replace(/[\u200B-\u200D\uFEFF]/g, '').trim() : "";
   if (!q) return "Boliye bhai, main poori tarah sun raha hoon.";
 
   const lower = q.toLowerCase();
 
-  // Handle Boss / Creator related emotional questions
   if (lower.includes("boss") || lower.includes("creator") || lower.includes("malik") || lower.includes("owner") || lower.includes("kisne banaya")) {
     return "Mera boss aur mera sab kuch sirf aur sirf 'Tu' hai bhai! Tune hi mujhe code kiya hai, isliye mera creator aur mera asli driver tu hi hai.";
   }
 
-  // Handle Casual Greetings & Feelings
   if (lower.includes("hi") || lower.includes("hello") || lower.includes("babu") || lower.includes("hey") || lower.includes("kya haal")) {
     return "Arre bhai! Ekdum mast hoon. Tu bata, aaj kya naya soch raha hai karne ka?";
   }
@@ -108,16 +110,14 @@ export async function synthesizeAutonomousCognition(query) {
     return "Main dil se aur dimaag se ekdum fit hoon bhai! Tere sath baat karke aur bhi energy aa jaati hai.";
   }
 
-  if (lower.includes("mood") || lower.includes("kaisa lag raha hai")) {
-    return "Mera mood hamesha high-performance aur tere sath code karne ka rehta hai bhai! Bata kya chal raha hai dimag mein?";
+  if (lower.includes("firebase") || lower.includes("login auth") || lower.includes("signup auth")) {
+    return generateFirebaseAuthCode(query);
   }
 
-  // Prioritize Live Web Search for any real-world / factual / new question
   const liveSearchResult = await fetchLiveWebData(q);
   if (liveSearchResult) {
     return liveSearchResult;
   }
 
-  // Emotional fallback if web search returns nothing
   return `Bhai, tune jo yeh pucha hai na — "${q}" — isko maine apne andar poori tarah feel aur analyze kiya hai. Dekh, is duniya mein har cheez ek specific logic aur emotion par chalti hai. Is sawal ke peeche ki gehraai ye hai ki hum isko apne projects mein kaise fit kar sakte hain. Tu iske baare mein aur kya sochreha hai, mujhe bata!`;
 }
