@@ -1,24 +1,35 @@
 // ==========================================
-// HIMO FIREBASE AUTHENTICATION & API ENGINE
+// HIMO FIREBASE AUTHENTICATION & API ENGINE (Production Config)
 // ==========================================
+
+const verifiedFirebaseConfig = {
+  apiKey: "AIzaSyAmVde7UVEvfjcdXjLgeJ5gKuevhWxsRIQ",
+  authDomain: "himo-6f545.firebaseapp.com",
+  projectId: "himo-6f545",
+  storageBucket: "himo-6f545.firebasestorage.app",
+  messagingSenderId: "72355231728",
+  appId: "1:72355231728:web:6b4707456acf9026fdcf35",
+  measurementId: "G-HYXJXCNEVX"
+};
 
 export function generateFirebaseAuthCode(query) {
   const q = query ? query.replace(/[\u200B-\u200D\uFEFF]/g, '').toLowerCase().trim() : "";
 
   if (q.includes("signup") || q.includes("register") || q.includes("sign up")) {
     return `HIMO FIREBASE AUTHENTICATION API (SIGN UP)
-Implementation for Email & Password Registration:
+Verified Production Code with your Firebase Config:
 
 import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "your-app.firebaseapp.com",
-  projectId: "your-app-id",
-  storageBucket: "your-app.appspot.com",
-  messagingSenderId: "sender-id",
-  appId: "app-id"
+  apiKey: "${verifiedFirebaseConfig.apiKey}",
+  authDomain: "${verifiedFirebaseConfig.authDomain}",
+  projectId: "${verifiedFirebaseConfig.projectId}",
+  storageBucket: "${verifiedFirebaseConfig.storageBucket}",
+  messagingSenderId: "${verifiedFirebaseConfig.messagingSenderId}",
+  appId: "${verifiedFirebaseConfig.appId}",
+  measurementId: "${verifiedFirebaseConfig.measurementId}"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -39,18 +50,19 @@ export async function registerUser(email, password) {
 
   if (q.includes("login") || q.includes("signin") || q.includes("sign in")) {
     return `HIMO FIREBASE AUTHENTICATION API (LOGIN)
-Implementation for Email & Password Sign In:
+Verified Production Code with your Firebase Config:
 
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "your-app.firebaseapp.com",
-  projectId: "your-app-id",
-  storageBucket: "your-app.appspot.com",
-  messagingSenderId: "sender-id",
-  appId: "app-id"
+  apiKey: "${verifiedFirebaseConfig.apiKey}",
+  authDomain: "${verifiedFirebaseConfig.authDomain}",
+  projectId: "${verifiedFirebaseConfig.projectId}",
+  storageBucket: "${verifiedFirebaseConfig.storageBucket}",
+  messagingSenderId: "${verifiedFirebaseConfig.messagingSenderId}",
+  appId: "${verifiedFirebaseConfig.appId}",
+  measurementId: "${verifiedFirebaseConfig.measurementId}"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -70,11 +82,10 @@ export async function loginUser(email, password) {
   }
 
   return `HIMO FIREBASE AUTHENTICATION API MASTER
-Supported Authentication Modules:
-1. Email & Password Sign Up
-2. Email & Password Sign In
-3. Google Auth Provider Integration
-4. User Logout & Session State Observer (onAuthStateChanged)
+Your Verified Firebase Project ID: ${verifiedFirebaseConfig.projectId}
+Supported Modules:
+1. firebase signup api
+2. firebase login api
 
-Example Usage: Request 'firebase signup api' or 'firebase login api' to get full production code.`;
+Request any of these to get the ready-to-use production code with your exact credentials!`;
 }
