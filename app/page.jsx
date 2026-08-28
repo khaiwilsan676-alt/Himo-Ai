@@ -56,9 +56,14 @@ function cleanFormatting(text) {
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
-// Global Crash-Proof Safe Audio Engine
+let activeAudioInstance = null
+
 function stopVoicePlayback() {
   try {
+    if (activeAudioInstance) {
+      activeAudioInstance.pause()
+      activeAudioInstance.currentTime = 0
+    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel()
     }
@@ -69,21 +74,20 @@ function speakVoice(text) {
   if (!text || typeof window === "undefined") return
   try {
     stopVoicePlayback()
+    const cleanText = text.replace(/```[\s\S]*?```/g, "Code ready.")
+      .replace(/[#*•_`]/g, "")
+      .trim()
+    if (!cleanText) return
+
     if ("speechSynthesis" in window) {
       window.speechSynthesis.resume()
-      const cleanText = text.replace(/```[\s\S]*?```/g, "Code output ready.")
-        .replace(/[#*•_`]/g, "")
-        .trim()
-      
-      if (!cleanText) return
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.rate = 1.0
-      utterance.pitch = 1.0
       utterance.lang = "hi-IN"
       window.speechSynthesis.speak(utterance)
     }
   } catch (err) {
-    console.error("Speech Synthesis Safe Catch:", err)
+    console.warn("Audio speech safe catch:", err)
   }
 }
 
@@ -119,17 +123,17 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Global Exception Shield for Android WebView
+  // Android Safety Shield
   useEffect(() => {
-    const handleGlobalError = (e) => {
-      console.warn("Caught unhandled webview error safely:", e)
+    const shieldHandler = (e) => {
+      console.warn("Safely handled webview runtime event:", e)
       setIsListening(false)
     }
-    window.addEventListener("error", handleGlobalError)
-    window.addEventListener("unhandledrejection", handleGlobalError)
+    window.addEventListener("error", shieldHandler)
+    window.addEventListener("unhandledrejection", shieldHandler)
     return () => {
-      window.removeEventListener("error", handleGlobalError)
-      window.removeEventListener("unhandledrejection", handleGlobalError)
+      window.removeEventListener("error", shieldHandler)
+      window.removeEventListener("unhandledrejection", shieldHandler)
     }
   }, [])
 
@@ -186,7 +190,7 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
-  // Safe Camera Handlers
+  // Camera Handlers
   const openLiveCamera = async () => {
     setShowCameraModal(true)
     setCapturedPhoto(null)
@@ -201,7 +205,7 @@ export default function Home() {
           videoCameraRef.current.srcObject = stream
         }
       } else {
-        alert("Camera is not accessible on this device.")
+        alert("Camera permission required.")
         setShowCameraModal(false)
       }
     } catch (err) {
@@ -372,22 +376,36 @@ export default function Home() {
     }
   }
 
-  // Crash-Proof Android Mic Listener
-  const toggleVoiceRecording = () => {
+  // Permission Request + Safe Recognition (Prevents Android from crashing)
+  const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return
 
+    // 1. If listening, turn off cleanly
+    if (isListening) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop() } catch (e) {}
+      }
+      setIsListening(false)
+      return
+    }
+
+    // 2. Explicitly request hardware microphone permission first
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        testStream.getTracks().forEach(t => t.stop())
+      }
+    } catch (permErr) {
+      alert("Microphone permission denied! Please allow microphone in Android Settings for Himo app.")
+      setIsListening(false)
+      return
+    }
+
+    // 3. Start WebSpeech safely inside try-catch
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (!SpeechRecognition) {
-        alert("Speech Recognition permission is disabled in this WebView.")
-        return
-      }
-
-      if (isListening) {
-        if (recognitionRef.current) {
-          try { recognitionRef.current.stop() } catch (e) {}
-        }
-        setIsListening(false)
+        alert("Speech Recognition engine not supported on this Android ROM.")
         return
       }
 
@@ -409,14 +427,14 @@ export default function Home() {
 
       recognition.onend = () => setIsListening(false)
       recognition.onerror = (err) => {
-        console.warn("Speech error caught:", err)
+        console.warn("Speech recognition caught safely:", err)
         setIsListening(false)
       }
 
       recognitionRef.current = recognition
       recognition.start()
     } catch (err) {
-      console.warn("Speech recognition initialization prevented crash:", err)
+      console.warn("Speech init caught:", err)
       setIsListening(false)
     }
   }
@@ -450,7 +468,6 @@ export default function Home() {
       return "Yo! Himo Omni Engine ready hai. Kya solve, play, ya capture karna hai?"
     }
 
-    // 1. Music Player
     if (
       qLower.startsWith("play ") || 
       qLower.includes("gana chalao") || 
@@ -461,31 +478,26 @@ export default function Home() {
       return handleInAppMusicPlay(q)
     }
 
-    // 2. Hardware Actions
     try {
       const deviceAction = await handleDeviceAction(q, openLiveCamera, captureScreenshot)
       if (deviceAction) return deviceAction
     } catch (e) {}
 
-    // 3. Human Newton Trained Memory
     try {
       const memoryAns = await getTrainedKnowledge(q)
       if (memoryAns) return cleanFormatting(memoryAns)
     } catch (e) {}
 
-    // 4. Math Master
     try {
       const mathResult = MathMasterEngine.evaluate(q)
       if (mathResult) return cleanFormatting(mathResult)
     } catch (e) {}
 
-    // 5. Code Engine
     try {
       const codeResult = generateCodeFromPrompt(q)
       if (codeResult) return codeResult
     } catch (e) {}
 
-    // 6. Web Search Engine
     try {
       const searchData = await fetchLiveWebData(q)
       if (searchData) return cleanFormatting(searchData)
@@ -597,7 +609,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Floating In-App Media Player */}
+      {/* In-App Floating Player */}
       {currentTrack && (
         <div className="in-app-media-player">
           <div className="player-top-header">
@@ -737,7 +749,7 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <div className="left-nav">
-            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="6" x2="21" y2="6"></line></svg></button>
             <span className="brand-name">Himo Omni</span>
 
             {isTrainingModeActive && (
@@ -817,7 +829,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Floating Input Dock */}
+        {/* Floating Input Composer */}
         <div className="dock-container">
           <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
             <textarea 
@@ -825,7 +837,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Play song, take photo, or ask anything...")} 
+              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Ask Himo, play music, or tap mic...")} 
               rows={1} 
             />
             
