@@ -5,6 +5,7 @@ import LoginPage from "../components/LoginPage"
 import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
+import WorldEngine from "../src/lib/WorldEngine"
 
 async function think(prompt) {
   const q = prompt.trim()
@@ -12,6 +13,11 @@ async function think(prompt) {
 
   if (['hi', 'hii', 'hello', 'hii himo', 'hi himo'].includes(qLower)) {
     return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
+  }
+
+  // World Map Check
+  if (qLower.includes('world') || qLower.includes('3d world') || qLower.includes('world map') || qLower.includes('map') || qLower.includes('3d map') || qLower.includes('earth') || qLower.includes('terrain')) {
+    return "WORLD_3D_ENGINE"
   }
 
   // 1. Math Calculation Check
@@ -71,8 +77,11 @@ export default function Home() {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showWorld, setShowWorld] = useState(false)
+  const [worldEngineInstance, setWorldEngineInstance] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const worldContainerRef = useRef(null)
 
   // Real-time Firebase Authentication Listener
   useEffect(() => {
@@ -101,6 +110,22 @@ export default function Home() {
     }
   }, [message])
 
+  // Initialize World Engine when needed
+  useEffect(() => {
+    if (showWorld && worldContainerRef.current && !worldEngineInstance) {
+      // Create new world engine instance
+      const engine = new WorldEngine(worldContainerRef.current)
+      setWorldEngineInstance(engine)
+    }
+
+    return () => {
+      if (worldEngineInstance) {
+        worldEngineInstance.dispose()
+        setWorldEngineInstance(null)
+      }
+    }
+  }, [showWorld])
+
   async function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
@@ -113,7 +138,18 @@ export default function Home() {
 
     try {
       const answer = await think(prompt)
-      setMessages((current) => [...current, { role: "assistant", content: answer }])
+      
+      // Check if world engine should be shown
+      if (answer === "WORLD_3D_ENGINE") {
+        setShowWorld(true)
+        setMessages((current) => [...current, { 
+          role: "assistant", 
+          content: "🌍 3D World Engine activated! Use mouse to rotate and scroll to zoom.",
+          isWorld: true 
+        }])
+      } else {
+        setMessages((current) => [...current, { role: "assistant", content: answer }])
+      }
     } catch (error) {
       setMessages((current) => [...current, { role: "assistant", content: "Error processing request." }])
     } finally {
@@ -125,6 +161,12 @@ export default function Home() {
     try {
       await signOut(auth)
       setCurrentUser(null)
+      // Clean up world engine
+      if (worldEngineInstance) {
+        worldEngineInstance.dispose()
+        setWorldEngineInstance(null)
+      }
+      setShowWorld(false)
     } catch (error) {
       console.error("Logout error:", error)
     }
@@ -191,7 +233,15 @@ export default function Home() {
           </button>
         </div>
 
-        <button className="new-chat-btn" onClick={() => { setMessages([]); setSidebarOpen(false); }}>
+        <button className="new-chat-btn" onClick={() => { 
+          setMessages([]); 
+          setShowWorld(false);
+          if (worldEngineInstance) {
+            worldEngineInstance.dispose();
+            setWorldEngineInstance(null);
+          }
+          setSidebarOpen(false); 
+        }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -263,6 +313,10 @@ export default function Home() {
                   <p>Help me write clean code</p>
                   <span>Tips for modern React and Next.js</span>
                 </div>
+                <div className="suggestion-card" onClick={() => handleSend("World map")}>
+                  <p>World map</p>
+                  <span>3D Interactive World Engine</span>
+                </div>
                 <div className="suggestion-card" onClick={() => handleSend("7 + 728")}>
                   <p>7 + 728</p>
                   <span>Fast Math Engine Calculation</span>
@@ -278,7 +332,7 @@ export default function Home() {
                 <div className="message-icon">
                   {msg.role === "assistant" ? (
                     <div className="gemini-sparkle">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                      <svg width="50" height="50" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
                       </svg>
                     </div>
@@ -292,6 +346,12 @@ export default function Home() {
                       <p key={i}>{line || "\u00A0"}</p>
                     ))}
                   </div>
+                  {msg.isWorld && (
+                    <div 
+                      ref={worldContainerRef}
+                      className="world-container"
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -300,7 +360,7 @@ export default function Home() {
               <div className="message-row assistant">
                 <div className="message-icon">
                   <div className="gemini-sparkle pulse">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <svg width="50" height="50" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
                     </svg>
                   </div>
@@ -419,8 +479,8 @@ export default function Home() {
         }
 
         .brand-logo {
-          width: 28px;
-          height: 28px;
+          width: 50px !important;
+          height: 50px !important;
           object-fit: contain;
           border-radius: 6px;
         }
@@ -686,6 +746,8 @@ export default function Home() {
         }
 
         .gemini-sparkle {
+          width: 50px !important;
+          height: 50px !important;
           background: linear-gradient(135deg, #2563eb, #9333ea, #db2777);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -694,15 +756,20 @@ export default function Home() {
           justify-content: center;
         }
 
+        .gemini-sparkle svg {
+          width: 50px !important;
+          height: 50px !important;
+        }
+
         .user-icon {
-          width: 32px;
-          height: 32px;
+          width: 50px !important;
+          height: 50px !important;
           background: #e5e7eb;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.85rem;
+          font-size: 1.2rem;
           font-weight: 600;
           color: #374151;
         }
@@ -731,6 +798,22 @@ export default function Home() {
 
         .message-text p:last-child {
           margin-bottom: 0;
+        }
+
+        .world-container {
+          width: 100%;
+          height: 400px;
+          margin-top: 16px;
+          border-radius: 16px;
+          overflow: hidden;
+          position: relative;
+          background: #87CEEB;
+        }
+
+        .world-container canvas {
+          width: 100% !important;
+          height: 100% !important;
+          display: block;
         }
 
         .gemini-shimmer-loader {
@@ -846,8 +929,21 @@ export default function Home() {
           .gradient-text { font-size: 2.2rem; }
           .hero-greeting h1 { font-size: 1.8rem; }
           .canvas { padding-bottom: 120px; }
+          .world-container { height: 300px !important; }
+          .gemini-sparkle {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          .gemini-sparkle svg {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          .user-icon {
+            width: 40px !important;
+            height: 40px !important;
+          }
         }
       `}</style>
     </main>
   )
-}
+    }
