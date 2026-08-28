@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import LoginPage from "../components/LoginPage"
 import MathMasterEngine from "../src/lib/mathMasterEngine"
+import { generateCodeFromPrompt } from "../src/lib/codeMasterEngine"
+import { fetchLiveWebData } from "../src/lib/webSearchEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { saveChatToDB, getAllChatsFromDB, deleteChatFromDB } from "../src/lib/indexedDbStorage"
@@ -40,58 +42,36 @@ function HimoBrainIcon({ size = 26, className = "" }) {
   )
 }
 
+// Master Unified Thinking Function
 async function think(prompt) {
   const q = prompt.trim()
   const qLower = q.toLowerCase()
 
-  if (['hi', 'hii', 'hello', 'hii himo', 'hi himo'].includes(qLower)) {
-    return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
+  if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
+    return "Yo! Himo Omni active hai. Math calculations, code generation ya knowledge search jo bhi chahiye poochiye."
   }
 
-  const mathPattern = /^[0-9+\-*/÷×().\s*%^$€]+$/
-  const hasOperatorOrDigits = /[0-9]/.test(q) && /[+\-*/÷×%^$€]/.test(q)
-
-  if (mathPattern.test(q) && hasOperatorOrDigits) {
-    try {
-      const calcResult = MathMasterEngine.evaluate(q)
-      if (typeof calcResult === "number" && !isNaN(calcResult)) {
-        return `According to Himo:\n\n${q} = ${calcResult}`
-      }
-    } catch (e) {}
-  }
-
+  // 1. Math Master Engine (Percentage, Arithmetic, Powers, Trig)
   try {
-    const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=&format=json&origin=*`)
-    if (res.ok) {
-      const data = await res.json()
-      const searchResults = data?.query?.search || []
-      if (searchResults.length > 0) {
-        const queryKeywords = qLower.split(" ").filter(w => w.length > 2)
-        const matchedSnippets = searchResults
-          .map(item => {
-            let text = item.snippet.replace(/<[^>]+>/g, '')
-            text = text.replace(/Wikipedia|Merriam-Webster|Britannica|Dictionary/gi, '')
-            return text.replace(/\s{2,}/g, ' ').trim()
-          })
-          .filter(snippet => {
-            if (snippet.length < 20) return false
-            const snipLower = snippet.toLowerCase()
-            return queryKeywords.some(kw => snipLower.includes(kw))
-          })
-          .slice(0, 3)
-
-        if (matchedSnippets.length > 0) {
-          let output = "According to Himo:\n\n"
-          matchedSnippets.forEach(s => { output += `• ${s}\n\n` })
-          return output.trim()
-        }
-      }
+    const calcResult = MathMasterEngine.evaluate(q)
+    if (calcResult !== null && typeof calcResult === "number" && !isNaN(calcResult)) {
+      return `${q} = **${calcResult}**`
     }
-  } catch (err) {
-    console.error("Search fetch error:", err)
-  }
+  } catch (e) {}
 
-  return `According to Himo:\n\n'${q}' par koi exact relevant information nahi mili. Please specific topic likh kar search karo.`
+  // 2. Intelligent Code Master Engine (Instant multi-language code generation)
+  try {
+    const codeResult = generateCodeFromPrompt(q)
+    if (codeResult) return codeResult
+  } catch (e) {}
+
+  // 3. Clean Wikipedia REST Summary & Web Knowledge Engine
+  try {
+    const searchData = await fetchLiveWebData(q)
+    if (searchData) return searchData
+  } catch (e) {}
+
+  return `'${q}' par koi exact result nahi mila. Please specific query poochhein.`
 }
 
 export default function Home() {
@@ -99,7 +79,7 @@ export default function Home() {
   const [authChecking, setAuthChecking] = useState(true)
   const [message, setMessage] = useState("")
   
-  // IndexedDB Chat Session State
+  // IndexedDB Persistent Sessions
   const [currentChatId, setCurrentChatId] = useState(null)
   const [savedSessions, setSavedSessions] = useState([])
   const [messages, setMessages] = useState([])
@@ -112,7 +92,6 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // 1. Initial Load: IndexedDB Sessions + User Cache Check
   useEffect(() => {
     try {
       const cachedUser = localStorage.getItem("himo_cached_user")
@@ -139,10 +118,9 @@ export default function Home() {
       setAuthChecking(false)
     })
 
-    // Fetch all persistent chats from IndexedDB
+    // Fetch IndexedDB chats
     getAllChatsFromDB().then((chats) => {
       if (chats && chats.length > 0) {
-        // Sort: Pinned first, then latest updated
         const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
         setSavedSessions(sorted)
       }
@@ -171,7 +149,6 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
-  // Auto-persist messages to IndexedDB whenever chat changes
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
     if (!updatedMessages || updatedMessages.length === 0) return
     const id = chatId || `chat_${Date.now()}`
@@ -208,7 +185,6 @@ export default function Home() {
     setMessages(newMsgs)
     setLoading(true)
 
-    // Save user message immediately to IndexedDB
     await persistChatSession(newMsgs)
 
     try {
@@ -237,7 +213,6 @@ export default function Home() {
     setSidebarOpen(false)
   }
 
-  // 3-Dot Actions (Delete, Rename, Pin via IndexedDB)
   const handleDeleteCurrentChat = async () => {
     if (currentChatId) {
       await deleteChatFromDB(currentChatId)
@@ -358,7 +333,6 @@ export default function Home() {
           New chat
         </button>
 
-        {/* IndexedDB Persistent Chats List */}
         <div className="sidebar-section">
           <p className="sidebar-label">Recent</p>
           <div className="recent-list">
@@ -433,7 +407,7 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Main Workspace Area */}
+      {/* Main Workspace */}
       <section className="workspace">
         {/* Top Navbar */}
         <header className="topbar">
@@ -518,9 +492,15 @@ export default function Home() {
                 </div>
                 <div className="message-bubble">
                   <div className="message-text">
-                    {msg.content.split("\n").map((line, i) => (
-                      <p key={i}>{line || "\u00A0"}</p>
-                    ))}
+                    {msg.content.includes("```") ? (
+                      <pre className="code-block-render">
+                        <code>{msg.content.replace(/```[a-z]*\n?/gi, "")}</code>
+                      </pre>
+                    ) : (
+                      msg.content.split("\n").map((line, i) => (
+                        <p key={i}>{line || "\u00A0"}</p>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -614,6 +594,7 @@ export default function Home() {
           background: transparent;
         }
 
+        /* Navbar */
         .topbar {
           height: 64px;
           padding: 0 18px;
@@ -829,6 +810,7 @@ export default function Home() {
           text-overflow: ellipsis;
         }
 
+        /* Sidebar Footer */
         .sidebar-footer {
           border-top: 1px solid #e5e7eb;
           padding-top: 14px;
@@ -1014,7 +996,7 @@ export default function Home() {
         }
 
         .message-bubble {
-          max-width: 82%;
+          max-width: 86%;
         }
 
         .message-row.user .message-bubble {
@@ -1037,6 +1019,21 @@ export default function Home() {
 
         .message-text p:last-child {
           margin-bottom: 0;
+        }
+
+        /* Code Block Styling */
+        .code-block-render {
+          background: #0f172a;
+          color: #e2e8f0;
+          padding: 16px 20px;
+          border-radius: 14px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          overflow-x: auto;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+          border: 1px solid #1e293b;
+          margin: 8px 0;
         }
 
         .gemini-shimmer-loader {
