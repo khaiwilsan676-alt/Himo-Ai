@@ -9,6 +9,7 @@ import { handleDeviceAction } from "../src/lib/deviceControlEngine"
 import { getHumanReply } from "../src/lib/humanTalkEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
+import { TextToSpeech } from "@capacitor-community/text-to-speech"
 import { 
   saveChatToDB, 
   getAllChatsFromDB, 
@@ -57,56 +58,54 @@ function cleanFormatting(text) {
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
-// Global Streaming Audio Object (Bypasses WebView restrictions)
-let nativeVoicePlayer = null
-
-function stopVoicePlayback() {
+async function stopVoicePlayback() {
   try {
-    if (nativeVoicePlayer) {
-      nativeVoicePlayer.pause()
-      nativeVoicePlayer.currentTime = 0
-    }
+    await TextToSpeech.stop()
+  } catch (e) {}
+  try {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel()
     }
   } catch (e) {}
 }
 
-// 100% Guaranteed Audio Speaker for APK & Web
-function speakVoice(text) {
+// 100% Native Android Hardware TTS Speaker
+async function speakVoice(text) {
   if (!text || typeof window === "undefined") return
   try {
-    stopVoicePlayback()
+    await stopVoicePlayback()
 
-    const cleanText = text.replace(/```[\s\S]*?```/g, "Code output ready hai bhai.")
+    const cleanText = text.replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
       .replace(/[#*•_`]/g, "")
       .trim()
 
     if (!cleanText) return
 
-    // 1. Direct High-Quality Audio Stream
-    const encoded = encodeURIComponent(cleanText.slice(0, 200))
-    const streamUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=hi&client=tw-ob&q=${encoded}`
-
-    if (!nativeVoicePlayer) {
-      nativeVoicePlayer = new Audio()
+    // 1. Trigger Native Android TTS Engine
+    try {
+      await TextToSpeech.speak({
+        text: cleanText,
+        lang: "hi-IN",
+        rate: 1.0,
+        pitch: 1.0,
+        volume: 1.0,
+        category: "ambient"
+      })
+      return
+    } catch (nativeErr) {
+      console.warn("Native TTS fallback to WebSpeech:", nativeErr)
     }
-    nativeVoicePlayer.src = streamUrl
-    nativeVoicePlayer.play().catch(() => {
-      // 2. Fallback to Browser SpeechSynthesis
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.resume()
-        const utterance = new SpeechSynthesisUtterance(cleanText)
-        utterance.rate = 1.0
-        utterance.lang = "hi-IN"
-        window.speechSynthesis.speak(utterance)
-      }
-    })
-  } catch (err) {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance(text.slice(0, 100))
+
+    // 2. Web Fallback if Native unavailable
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.resume()
+      const utterance = new SpeechSynthesisUtterance(cleanText)
+      utterance.rate = 1.0
+      utterance.lang = "hi-IN"
       window.speechSynthesis.speak(utterance)
     }
+  } catch (err) {
+    console.warn("Voice playback caught:", err)
   }
 }
 
@@ -243,7 +242,7 @@ export default function Home() {
       setPinDigits(["", "", "", ""])
       setPinError("")
       setIsTrainingModeActive(true)
-      speakVoice("Training mode chaloo ho gaya hai bhai. Kuch bhi sikha ya delete kar.")
+      speakVoice("Training mode start ho gaya hai bhai!")
     } else {
       setPinError("Galat Password! (5656 enter karein)")
     }
@@ -256,7 +255,7 @@ export default function Home() {
 
       if (lower.includes("clear all memory") || lower.includes("reset memory") || lower.includes("delete all memory")) {
         await clearAllTrainedKnowledge()
-        const reply = "Saari memory permanently clear ho chuki hai bhai!"
+        const reply = "Saari memory permanently clear ho gayi bhai!"
         speakVoice(reply)
         return reply
       }
@@ -303,7 +302,7 @@ export default function Home() {
       const parts = text.split("=")
       if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
         await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
-        const reply = `Got it bhai! "${parts[0].trim()}" hamesha ke liye yaad kar liya.`
+        const reply = `Got it bhai! "${parts[0].trim()}" yaad kar liya.`
         speakVoice(reply)
         return reply
       }
@@ -316,7 +315,7 @@ export default function Home() {
     }
   }
 
-  // Guaranteed Speech Recognition Engine for APK & Web
+  // Dual Voice Recognition Trigger
   const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return
 
@@ -332,22 +331,19 @@ export default function Home() {
     }
 
     try {
-      // 1. Hardware Mic Permission & Stream
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         mediaStreamRef.current = stream
       }
 
-      // 2. Setup Speech Recognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
         recognition.continuous = false
         recognition.interimResults = false
-        recognition.lang = "hi-IN" // Native Hindi & English dual recognition
+        recognition.lang = "hi-IN"
 
         recognition.onstart = () => setIsListening(true)
-        
         recognition.onresult = (event) => {
           try {
             const transcript = event.results[0][0].transcript
@@ -364,14 +360,12 @@ export default function Home() {
           setIsListening(false)
         }
 
-        recognition.onerror = () => {
-          setIsListening(false)
-        }
+        recognition.onerror = () => setIsListening(false)
 
         recognitionRef.current = recognition
         recognition.start()
       } else {
-        alert("Microphone recognition engine unavailable in this APK view.")
+        alert("Speech Recognition engine not supported on this device.")
         setIsListening(false)
       }
     } catch (err) {
@@ -396,7 +390,7 @@ export default function Home() {
       url: embedUrl
     })
 
-    return `Mast gana "${cleanTrack}" screen par play kar diya bhai!`
+    return `Gana "${cleanTrack}" screen par play ho raha hai bhai!`
   }
 
   async function think(prompt) {
@@ -499,7 +493,7 @@ export default function Home() {
         answer = await think(prompt)
       }
 
-      // Har reply par aawaaz se bol kar jawaab dega
+      // Native TTS execution
       speakVoice(answer)
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
@@ -651,11 +645,11 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Main Workspace */}
+      {/* Main Fullscreen Workspace */}
       <section className="workspace">
         <header className="topbar">
           <div className="left-nav">
-            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="6" x2="21" y2="6"></line></svg></button>
+            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
             <span className="brand-name">Himo Omni</span>
 
             {isTrainingModeActive && (
