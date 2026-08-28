@@ -14,7 +14,7 @@ async function think(prompt) {
     return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
   }
 
-  // Math check
+  // 1. Math Calculation Check
   const mathPattern = /^[0-9+\-*/÷×().\s*%^$€]+$/
   const hasOperatorOrDigits = /[0-9]/.test(q) && /[+\-*/÷×%^$€]/.test(q)
 
@@ -25,21 +25,18 @@ async function think(prompt) {
         return `According to Himo:\n\n${q} = ${calcResult}`
       }
     } catch (e) {
-      // Fallback to search
+      // Evaluation fallback to search
     }
   }
 
-  // Wikipedia search logic
+  // 2. Wikipedia Live Search Logic
   try {
     const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=&format=json&origin=*`)
-    
     if (res.ok) {
       const data = await res.json()
       const searchResults = data?.query?.search || []
-
       if (searchResults.length > 0) {
         const queryKeywords = qLower.split(" ").filter(w => w.length > 2)
-
         const matchedSnippets = searchResults
           .map(item => {
             let text = item.snippet.replace(/<[^>]+>/g, '')
@@ -55,9 +52,7 @@ async function think(prompt) {
 
         if (matchedSnippets.length > 0) {
           let output = "According to Himo:\n\n"
-          matchedSnippets.forEach(s => {
-            output += `• ${s}\n\n`
-          })
+          matchedSnippets.forEach(s => { output += `• ${s}\n\n` })
           return output.trim()
         }
       }
@@ -79,6 +74,7 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
+  // Real-time Firebase Authentication Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -92,10 +88,12 @@ export default function Home() {
     return () => unsubscribe()
   }, [])
 
+  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
+  // Textarea dynamic auto-grow
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
@@ -115,18 +113,9 @@ export default function Home() {
 
     try {
       const answer = await think(prompt)
-
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: answer }
-      ])
+      setMessages((current) => [...current, { role: "assistant", content: answer }])
     } catch (error) {
-      console.error("Himo brain error:", error)
-
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: "..." }
-      ])
+      setMessages((current) => [...current, { role: "assistant", content: "Error processing request." }])
     } finally {
       setLoading(false)
     }
@@ -141,6 +130,7 @@ export default function Home() {
     }
   }
 
+  // 1. Initial Authentication Check Loader
   if (authChecking) {
     return (
       <div className="auth-loading-screen">
@@ -171,20 +161,26 @@ export default function Home() {
     )
   }
 
+  // 2. Not Authenticated -> Render LoginPage
   if (!currentUser) {
     return <LoginPage />
   }
 
+  // User Profile Initial / Letter
   const userInitial = currentUser.displayName 
     ? currentUser.displayName.charAt(0).toUpperCase() 
     : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
 
+  // 3. Authenticated -> Render Full Chat Workspace
   return (
     <main className="app-shell">
+      {/* Top 30vh Multi-color Mesh Glow */}
       <div className="top-glow-mesh" />
 
+      {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
+      {/* Slide-out Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <button className="icon-btn" onClick={() => setSidebarOpen(false)} title="Close menu">
@@ -228,7 +224,9 @@ export default function Home() {
         </div>
       </aside>
 
+      {/* Main Workspace Area */}
       <section className="workspace">
+        {/* Top Navbar */}
         <header className="topbar">
           <div className="left-nav">
             <button className="icon-btn" onClick={() => setSidebarOpen(true)}>
@@ -244,12 +242,11 @@ export default function Home() {
             </span>
           </div>
           <div className="user-profile-badge">
-            <div className="avatar-chip" title={currentUser.email || ""}>
-              {userInitial}
-            </div>
+            <div className="avatar-chip" title={currentUser.email || ""}>{userInitial}</div>
           </div>
         </header>
 
+        {/* Content Canvas */}
         <div className="canvas">
           {messages.length === 0 && (
             <div className="hero-screen">
@@ -257,7 +254,6 @@ export default function Home() {
                 <span className="gradient-text">Himo Omni</span>
                 <h1>How can I help you today?</h1>
               </div>
-
               <div className="suggestion-grid">
                 <div className="suggestion-card" onClick={() => handleSend("What can you do?")}>
                   <p>What can you do?</p>
@@ -275,6 +271,7 @@ export default function Home() {
             </div>
           )}
 
+          {/* Messages Feed */}
           <div className="messages-list">
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
@@ -320,6 +317,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Input Floating Composer */}
         <div className="dock-container">
           <div className="composer-shell">
             <textarea
@@ -363,7 +361,7 @@ export default function Home() {
           height: 100vh;
           background: #ffffff;
           color: #1f2937;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           overflow: hidden;
           position: relative;
         }
@@ -830,7 +828,7 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: opacity 0.2s, transform 0.1s, background 0.2s;
+          transition: transform 0.1s, background 0.2s;
         }
 
         .send-button-gemini:disabled {
@@ -853,4 +851,3 @@ export default function Home() {
     </main>
   )
 }
-
