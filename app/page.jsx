@@ -78,16 +78,16 @@ async function speakVoice(text) {
     await stopVoicePlayback()
 
     const cleanText = text.replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
+      .replace(/!\[.*?\]\(.*?\)/g, "Photo generate ho gayi hai bhai.")
       .replace(/[#*•_`]/g, "")
       .trim()
 
     if (!cleanText) return
 
-    // 1. Capacitor Native TTS Engine
     try {
       const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
       await TextToSpeech.speak({
-        text: cleanText,
+        text: cleanText.slice(0, 250),
         lang: "hi-IN",
         rate: 1.0,
         pitch: 1.0,
@@ -95,21 +95,16 @@ async function speakVoice(text) {
         category: "ambient"
       })
       return
-    } catch (nativeErr) {
-      console.warn("Native TTS fallback:", nativeErr)
-    }
+    } catch (nativeErr) {}
 
-    // 2. Web Speech API Fallback
     if ("speechSynthesis" in window) {
       window.speechSynthesis.resume()
-      const utterance = new SpeechSynthesisUtterance(cleanText)
+      const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 250))
       utterance.rate = 1.0
       utterance.lang = "hi-IN"
       window.speechSynthesis.speak(utterance)
     }
-  } catch (err) {
-    console.warn("Voice playback error:", err)
-  }
+  } catch (err) {}
 }
 
 export default function Home() {
@@ -124,6 +119,11 @@ export default function Home() {
   const [topMenuOpen, setTopMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
+  // Image & Attachment States
+  const [attachedImage, setAttachedImage] = useState(null)
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false)
+
+  // Training Mode States
   const [isTrainingModeActive, setIsTrainingModeActive] = useState(false)
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinDigits, setPinDigits] = useState(["", "", "", ""])
@@ -131,6 +131,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false)
   const [currentTrack, setCurrentTrack] = useState(null)
 
+  const fileInputRef = useRef(null)
   const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
   const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
@@ -185,6 +186,7 @@ export default function Home() {
     const handleOutsideClick = () => {
       setTopMenuOpen(false)
       setSettingsMenuOpen(false)
+      setPlusMenuOpen(false)
     }
     window.addEventListener("click", handleOutsideClick)
     return () => window.removeEventListener("click", handleOutsideClick)
@@ -215,6 +217,19 @@ export default function Home() {
         return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
       })
     } catch (e) {}
+  }
+
+  // Handle Photo / File Pick from device
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (uploadEvent) => {
+        setAttachedImage(uploadEvent.target.result)
+      }
+      reader.readAsDataURL(file)
+    }
+    setPlusMenuOpen(false)
   }
 
   const handlePinChange = (val, idx) => {
@@ -392,15 +407,55 @@ export default function Home() {
     return `Gana "${cleanTrack}" screen par play ho raha hai bhai!`
   }
 
-  async function think(prompt) {
+  // AI Image Generator Engine
+  const generateAIImage = (promptText) => {
+    let imageDesc = promptText
+      .replace(/^(generate\s+image\s+of|generate\s+image|create\s+image\s+of|create\s+image|make\s+image\s+of|make\s+image|draw\s+image\s+of|draw|photo\s+banao|image\s+banao|tasveer\s+banao|picture\s+banao|generate\s+pic|create\s+pic|ai\s+image)\s*/i, "")
+      .replace(/^(of|a|an)\s+/i, "")
+      .trim()
+
+    if (!imageDesc) imageDesc = "Futuristic Cyberpunk City with neon lights 8k"
+
+    const seed = Math.floor(Math.random() * 999999)
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageDesc)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`
+
+    return {
+      type: "image_card",
+      prompt: imageDesc,
+      imageUrl: imageUrl,
+      caption: `Yeh le bhai, "${imageDesc}" ki AI image ready hai!`
+    }
+  }
+
+  async function think(prompt, hasAttachedPhoto = false) {
     const q = prompt.trim()
+    const qLower = q.toLowerCase()
+
+    // 1. Check if user wants to create/generate an Image
+    const isImageGenRequest = 
+      qLower.startsWith("create image") || 
+      qLower.startsWith("generate image") || 
+      qLower.startsWith("make image") || 
+      qLower.startsWith("draw ") || 
+      qLower.includes("photo banao") || 
+      qLower.includes("image banao") || 
+      qLower.includes("tasveer banao") || 
+      qLower.includes("picture banao") || 
+      qLower.startsWith("ai image")
+
+    if (isImageGenRequest) {
+      return generateAIImage(q)
+    }
+
+    if (hasAttachedPhoto) {
+      return `Bhai photo maine dekh li hai! Bahut badiya lag rahi hai. Bol iske baare mein kya janna hai?`
+    }
 
     const humanTalk = getHumanReply(q)
     if (humanTalk) {
       return humanTalk
     }
 
-    const qLower = q.toLowerCase()
     if (
       qLower.startsWith("play ") || 
       qLower.includes("gana chalao") || 
@@ -441,19 +496,23 @@ export default function Home() {
 
   async function handleSend(textToSend, isVoice = false) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
-    if (!prompt || loading) return
+    const currentPhoto = attachedImage
 
-    const lowerPrompt = prompt.toLowerCase()
+    if ((!prompt && !currentPhoto) || loading) return
+
+    const lowerPrompt = (prompt || "").toLowerCase()
 
     if (['stop', 'chup', 'ruko', 'pause', 'stop speaking', 'shant', 'stop music'].includes(lowerPrompt)) {
       stopVoicePlayback()
       setCurrentTrack(null)
       setMessage("")
+      setAttachedImage(null)
       return
     }
 
     if (lowerPrompt.includes("himo on the training mode")) {
       setMessage("")
+      setAttachedImage(null)
       if (textareaRef.current) textareaRef.current.style.height = "auto"
       setShowPinModal(true)
       setTimeout(() => pinInputRefs[0].current?.focus(), 150)
@@ -468,9 +527,16 @@ export default function Home() {
       lowerPrompt.includes("clear all memory")
 
     setMessage("")
+    setAttachedImage(null)
     if (textareaRef.current) textareaRef.current.style.height = "auto"
 
-    const newMsgs = [...messages, { role: "user", content: prompt }]
+    const userMsgObj = { 
+      role: "user", 
+      content: prompt || (currentPhoto ? "Photo shared 📷" : ""),
+      attachedPhoto: currentPhoto || null
+    }
+
+    const newMsgs = [...messages, userMsgObj]
     setMessages(newMsgs)
     setLoading(true)
 
@@ -482,10 +548,14 @@ export default function Home() {
       if (isTrainingModeActive || isDirectDeleteCommand) {
         answer = await processTrainingOrDeletion(prompt)
       } else {
-        answer = await think(prompt)
+        answer = await think(prompt || "Explain this photo", !!currentPhoto)
       }
 
-      speakVoice(answer)
+      if (typeof answer === "object" && answer?.type === "image_card") {
+        speakVoice(answer.caption)
+      } else {
+        speakVoice(answer)
+      }
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
       setMessages(finalMsgs)
@@ -525,13 +595,21 @@ export default function Home() {
   }
 
   const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
-  const isTyping = message.trim().length > 0
+  const isTyping = message.trim().length > 0 || !!attachedImage
   const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned
 
   return (
     <main className="app-shell">
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        accept="image/*" 
+        style={{ display: "none" }} 
+        onChange={handleImageSelect} 
+      />
 
       {currentTrack && (
         <div className="in-app-media-player">
@@ -673,13 +751,11 @@ export default function Home() {
               <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
                 <h1 className="hero-main-title">
-                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "Bol bhai! Kya scene hai aaj?"}
+                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "Bol bhai! Kya create ya solve karna hai?"}
                 </h1>
-                {isTrainingModeActive && (
-                  <p className="training-guide-text">
-                    Add: <em>"When I say [X] you say [Y]"</em> | Delete: <em>"Delete [X]"</em>
-                  </p>
-                )}
+                <p className="sub-helper-tip">
+                  💡 <em>Tip: Tap '+' to share photos or type 'Create image of...' to generate AI art</em>
+                </p>
               </div>
             </div>
           )}
@@ -688,11 +764,31 @@ export default function Home() {
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
                 <div className="message-bubble">
+                  {/* User Uploaded Photo Rendering */}
+                  {msg.attachedPhoto && (
+                    <div className="chat-attached-image-wrapper">
+                      <img src={msg.attachedPhoto} alt="Shared Upload" className="user-chat-img" />
+                    </div>
+                  )}
+
                   <div className="message-text">
-                    {msg.content.includes("```") ? (
+                    {typeof msg.content === "object" && msg.content?.type === "image_card" ? (
+                      <div className="ai-generated-image-card">
+                        <div className="gen-img-container">
+                          <img src={msg.content.imageUrl} alt={msg.content.prompt} className="ai-gen-img" />
+                        </div>
+                        <div className="gen-img-footer">
+                          <p className="gen-caption-text">{msg.content.caption}</p>
+                          <a href={msg.content.imageUrl} target="_blank" rel="noreferrer" download="himo_ai_art.jpg" className="download-img-action-btn">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download HD
+                          </a>
+                        </div>
+                      </div>
+                    ) : typeof msg.content === "string" && msg.content.includes("```") ? (
                       <CodeBlock codeText="{msg.content}"/>
                     ) : (
-                      cleanFormatting(msg.content).split("\n").map((line, i) => (
+                      cleanFormatting(typeof msg.content === "string" ? msg.content : "").split("\n").map((line, i) => (
                         <p key={i}>{line || "\u00A0"}</p>
                       ))
                     )}
@@ -715,14 +811,54 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Composer Dock */}
         <div className="dock-container">
+          {/* Image Attachment Preview */}
+          {attachedImage && (
+            <div className="attached-photo-preview-bar">
+              <div className="preview-thumb-box">
+                <img src={attachedImage} alt="Attachment" className="thumb-img" />
+                <button type="button" onClick={() => setAttachedImage(null)} className="remove-thumb-btn">✕</button>
+              </div>
+              <span className="preview-caption-hint">Photo ready to send</span>
+            </div>
+          )}
+
           <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
+            {/* Left + Action Button */}
+            <div className="plus-btn-wrapper">
+              <button
+                type="button"
+                className="plus-action-btn"
+                onClick={(e) => { e.stopPropagation(); setPlusMenuOpen(!plusMenuOpen); }}
+                title="Add photo or AI action"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+
+              {plusMenuOpen && (
+                <div className="popup-card plus-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="popup-menu-item plus-item" onClick={() => fileInputRef.current?.click()}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span>Upload / Share Image</span>
+                  </button>
+                  <button type="button" className="popup-menu-item plus-item" onClick={() => { setMessage("Create image of a futuristic superhero cat in 8k"); setPlusMenuOpen(false); textareaRef.current?.focus(); }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    <span>Generate AI Image</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <textarea 
               ref={textareaRef} 
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Sun raha hoon bhai bol..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Bol bhai, kuch bhi pooch ya gana sun...")} 
+              placeholder={isListening ? "Sun raha hoon bhai bol..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Ask Himo, share photo, or 'Create image of...'")} 
               rows={1} 
             />
             
@@ -742,7 +878,7 @@ export default function Home() {
               <button 
                 type="button" 
                 className={`send-button-gemini ${isTyping ? "active-glow-btn" : ""}`} 
-                disabled={!message.trim() || loading} 
+                disabled={(!message.trim() && !attachedImage) || loading} 
                 onClick={() => handleSend()}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
@@ -788,8 +924,9 @@ export default function Home() {
         .popup-card { position: absolute; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); padding: 6px; min-width: 160px; z-index: 100; display: flex; flex-direction: column; gap: 2px; }
         .top-dropdown { top: 48px; right: 0; }
         .settings-popup { bottom: 50px; right: 0; min-width: 140px; }
-        .popup-menu-item { background: transparent; border: none; padding: 10px 14px; font-size: 0.9rem; color: #374151; border-radius: 10px; cursor: pointer; text-align: left; width: 100%; }
+        .popup-menu-item { background: transparent; border: none; padding: 10px 14px; font-size: 0.9rem; color: #374151; border-radius: 10px; cursor: pointer; text-align: left; width: 100%; display: flex; align-items: center; gap: 10px; }
         .logout-item { color: #dc2626; }
+        
         .sidebar { position: fixed; top: 0; left: -320px; width: 280px; height: 100dvh; background: #ffffff; border-right: 1px solid #e5e7eb; transition: left 0.25s ease; z-index: 100; padding: 16px; display: flex; flex-direction: column; }
         .sidebar.open { left: 0; }
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(2px); z-index: 99; }
@@ -812,13 +949,13 @@ export default function Home() {
         .user-email-text { font-size: 0.82rem; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .settings-icon-btn { background: transparent; border: none; color: #6b7280; cursor: pointer; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
         
-        .canvas { flex: 1; overflow-y: auto; padding: 0 16px 120px 16px; max-width: 800px; width: 100%; margin: 0 auto; -webkit-overflow-scrolling: touch; }
+        .canvas { flex: 1; overflow-y: auto; padding: 0 16px 130px 16px; max-width: 800px; width: 100%; margin: 0 auto; -webkit-overflow-scrolling: touch; }
         .hero-screen-top-left { margin-top: 24px; }
         .gradient-text { font-size: 3rem; font-weight: 800; display: inline-block; margin-bottom: 4px; }
         .animated-shimmer { background: linear-gradient(90deg, #2563eb 0%, #7c3aed 20%, #ec4899 40%, #06b6d4 60%, #10b981 80%, #2563eb 100%); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: fluidShimmer 4s linear infinite; }
         @keyframes fluidShimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .hero-main-title { font-size: 2.2rem; font-weight: 700; color: #111827; line-height: 1.15; }
-        .training-guide-text { font-size: 0.88rem; color: #6b7280; margin-top: 6px; }
+        .sub-helper-tip { font-size: 0.88rem; color: #6b7280; margin-top: 8px; }
 
         .messages-list { display: flex; flex-direction: column; gap: 14px; padding-top: 16px; }
         .message-row { display: flex; width: 100%; }
@@ -829,9 +966,30 @@ export default function Home() {
         .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; }
         .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; }
         .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; }
+
+        /* Shared & AI Generated Images in Chat */
+        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 280px; border-radius: 14px; overflow: hidden; }
+        .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
+
+        .ai-generated-image-card {
+          background: #0f172a; border-radius: 18px; overflow: hidden;
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); max-width: 380px; width: 100%;
+          margin: 6px 0; border: 1px solid #1e293b;
+        }
+        .gen-img-container { width: 100%; height: 320px; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .ai-gen-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .ai-gen-img:hover { transform: scale(1.02); }
+        .gen-img-footer { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: #1e293b; }
+        .gen-caption-text { color: #f1f5f9; font-size: 0.85rem; font-weight: 500; }
+        .download-img-action-btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          background: #2563eb; color: #fff; text-decoration: none; padding: 8px 14px;
+          border-radius: 10px; font-size: 0.82rem; font-weight: 600; width: fit-content;
+        }
         
+        /* Floating In-App Media Player */
         .in-app-media-player {
-          position: fixed; bottom: 76px; right: 14px; width: 280px; height: 180px;
+          position: fixed; bottom: 84px; right: 14px; width: 280px; height: 180px;
           background: #0f172a; border-radius: 14px; overflow: hidden;
           box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid #1e293b;
           z-index: 150; display: flex; flex-direction: column;
@@ -853,13 +1011,38 @@ export default function Home() {
         .copied-text { color: #34d399; font-weight: 600; }
         .code-pre-block { padding: 12px 14px; margin: 0; color: #e2e8f0; font-family: monospace; font-size: 0.85rem; line-height: 1.5; overflow-x: auto; white-space: pre; }
         
-        .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 14px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 40%); display: flex; flex-direction: column; align-items: center; z-index: 10; }
-        .composer-shell { width: 100%; max-width: 800px; background: #ffffff; border-radius: 26px; padding: 8px 14px; display: flex; align-items: flex-end; gap: 8px; border: 1.5px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 14px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 40%); display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        
+        /* Photo thumbnail in composer */
+        .attached-photo-preview-bar {
+          display: flex; align-items: center; gap: 10px; width: 100%; max-width: 800px;
+          margin-bottom: 6px; padding: 0 4px;
+        }
+        .preview-thumb-box { position: relative; width: 44px; height: 44px; border-radius: 10px; overflow: hidden; border: 1.5px solid #3b82f6; }
+        .thumb-img { width: 100%; height: 100%; object-fit: cover; }
+        .remove-thumb-btn {
+          position: absolute; top: 1px; right: 1px; background: rgba(0,0,0,0.7);
+          color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px;
+          font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .preview-caption-hint { font-size: 0.78rem; color: #4b5563; font-weight: 500; }
+
+        .composer-shell { width: 100%; max-width: 800px; background: #ffffff; border-radius: 26px; padding: 6px 12px; display: flex; align-items: flex-end; gap: 8px; border: 1.5px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .composer-shell.typing-active { border-color: transparent; background: linear-gradient(#ffffff, #ffffff) padding-box, linear-gradient(90deg, #2563eb, #9333ea, #ec4899, #06b6d4, #2563eb) border-box; background-size: 100% 100%, 300% 100%; animation: borderGlowFlow 3s linear infinite; }
         @keyframes borderGlowFlow { 0% { background-position: 0% 0%, 0% 50%; } 50% { background-position: 0% 0%, 100% 50%; } 100% { background-position: 0% 0%, 0% 50%; } }
-        .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #111827; font-size: 0.95rem; font-family: inherit; resize: none; max-height: 140px; line-height: 1.35; padding: 4px 0; }
         
-        .composer-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 1px; }
+        .plus-btn-wrapper { position: relative; display: flex; align-items: center; }
+        .plus-action-btn {
+          width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563;
+          border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
+          transition: background 0.2s, transform 0.15s;
+        }
+        .plus-action-btn:hover { background: #e5e7eb; color: #111827; }
+        .plus-dropdown-menu { bottom: 46px; left: 0; min-width: 210px; }
+        .plus-item { font-size: 0.85rem; font-weight: 500; }
+
+        .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #111827; font-size: 0.95rem; font-family: inherit; resize: none; max-height: 140px; line-height: 1.35; padding: 6px 0; }
+        .composer-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
         
         .chat-mic-button {
           width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563;
