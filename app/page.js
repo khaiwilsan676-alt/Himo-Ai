@@ -6,7 +6,6 @@ import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 
-// Precision Live Search & Calculation Engine
 async function think(prompt) {
   const q = prompt.trim()
   const qLower = q.toLowerCase()
@@ -15,7 +14,7 @@ async function think(prompt) {
     return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
   }
 
-  // 1. Math Engine Check (Supports +, -, ×, ÷, *, /, $, €, %, ^, (), numbers)
+  // Math check
   const mathPattern = /^[0-9+\-*/÷×().\s*%^$€]+$/
   const hasOperatorOrDigits = /[0-9]/.test(q) && /[+\-*/÷×%^$€]/.test(q)
 
@@ -26,11 +25,11 @@ async function think(prompt) {
         return `According to Himo:\n\n${q} = ${calcResult}`
       }
     } catch (e) {
-      // Agar math evaluation fail ho toh search par jayega
+      // Fallback to search
     }
   }
 
-  // 2. Wikipedia Live Search Logic
+  // Wikipedia search logic
   try {
     const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=&format=json&origin=*`)
     
@@ -41,7 +40,6 @@ async function think(prompt) {
       if (searchResults.length > 0) {
         const queryKeywords = qLower.split(" ").filter(w => w.length > 2)
 
-        // Strict relevant filter
         const matchedSnippets = searchResults
           .map(item => {
             let text = item.snippet.replace(/<[^>]+>/g, '')
@@ -81,7 +79,6 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Real-time Firebase Auth Listener (No Dummy Bypass)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -138,15 +135,12 @@ export default function Home() {
   async function handleLogout() {
     try {
       await signOut(auth)
-      localStorage.clear()
-      sessionStorage.clear()
       setCurrentUser(null)
     } catch (error) {
       console.error("Logout error:", error)
     }
   }
 
-  // 1. Loading screen jab tak Firebase Auth real-time status check ho raha ho (Koi faltu screen flash nahi hogi)
   if (authChecking) {
     return (
       <div className="auth-loading-screen">
@@ -177,23 +171,20 @@ export default function Home() {
     )
   }
 
-  // 2. Real-time Firebase Authentication Check (Jab tak user Firebase se login na ho, direct LoginPage dikhega)
   if (!currentUser) {
-    return <LoginPage onLoginSuccess={() => {}} onLogin={() => {}} />
+    return <LoginPage />
   }
 
-  // User ka initial ya photo letter nikalne ke liye
-  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
+  const userInitial = currentUser.displayName 
+    ? currentUser.displayName.charAt(0).toUpperCase() 
+    : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
 
   return (
     <main className="app-shell">
-      {/* Top 30vh Multi-color Glow Mesh Overlay */}
       <div className="top-glow-mesh" />
 
-      {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <button className="icon-btn" onClick={() => setSidebarOpen(false)} title="Close menu">
@@ -238,7 +229,6 @@ export default function Home() {
       </aside>
 
       <section className="workspace">
-        {/* Top Navbar */}
         <header className="topbar">
           <div className="left-nav">
             <button className="icon-btn" onClick={() => setSidebarOpen(true)}>
@@ -260,7 +250,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Messages Canvas */}
         <div className="canvas">
           {messages.length === 0 && (
             <div className="hero-screen">
@@ -331,7 +320,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Input Floating Composer */}
         <div className="dock-container">
           <div className="composer-shell">
             <textarea
@@ -380,7 +368,6 @@ export default function Home() {
           position: relative;
         }
 
-        /* Top 30vh Blue, Pink, Green, Purple Glow Mesh into White */
         .top-glow-mesh {
           position: absolute;
           top: 0;
@@ -408,7 +395,6 @@ export default function Home() {
           background: transparent;
         }
 
-        /* Top Header */
         .topbar {
           height: 64px;
           padding: 0 20px;
@@ -480,7 +466,6 @@ export default function Home() {
           box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
         }
 
-        /* Sidebar */
         .sidebar {
           position: fixed;
           top: 0;
@@ -608,7 +593,6 @@ export default function Home() {
           color: #b91c1c;
         }
 
-        /* Canvas & Hero */
         .canvas {
           flex: 1;
           overflow-y: auto;
@@ -681,7 +665,6 @@ export default function Home() {
           color: #6b7280;
         }
 
-        /* Message Rows */
         .messages-list {
           display: flex;
           flex-direction: column;
@@ -752,7 +735,6 @@ export default function Home() {
           margin-bottom: 0;
         }
 
-        /* Loading Shimmer */
         .gemini-shimmer-loader {
           display: flex;
           flex-direction: column;
@@ -782,7 +764,6 @@ export default function Home() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Bottom Composer Dock */
         .dock-container {
           position: absolute;
           bottom: 0;
@@ -872,3 +853,4 @@ export default function Home() {
     </main>
   )
 }
+
