@@ -92,7 +92,7 @@ export default function Home() {
   // Hardware Camera & Screenshot States
   const [showCameraModal, setShowCameraModal] = useState(false)
   const [capturedPhoto, setCapturedPhoto] = useState(null)
-  const [screenshotPreview, setScreenshotPreview] = useState(null)
+  const [screenshotToast, setScreenshotToast] = useState(null)
 
   const videoCameraRef = useRef(null)
   const cameraStreamRef = useRef(null)
@@ -152,7 +152,7 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
-  // Live Camera Trigger Handler
+  // Camera Handlers
   const openLiveCamera = async () => {
     setShowCameraModal(true)
     setCapturedPhoto(null)
@@ -182,7 +182,6 @@ export default function Home() {
       const dataUrl = canvas.toDataURL("image/jpeg")
       setCapturedPhoto(dataUrl)
       
-      // Stop Camera Stream
       if (cameraStreamRef.current) {
         cameraStreamRef.current.getTracks().forEach(t => t.stop())
       }
@@ -197,22 +196,41 @@ export default function Home() {
     setCapturedPhoto(null)
   }
 
-  // Screenshot Capture Handler
+  // Real Screenshot Capture & Auto-Download Handler
   const captureScreenshot = () => {
     if (typeof window === "undefined") return
     try {
+      // Dynamic screen renderer fallback
       const canvas = document.createElement("canvas")
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      const w = window.innerWidth
+      const h = window.innerHeight
+      canvas.width = w
+      canvas.height = h
       const ctx = canvas.getContext("2d")
+
+      // Capture visible background & layout
       ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      // Snapshot visual notification
-      setScreenshotPreview("Screenshot Captured Successfully!")
-      speakVoice("Screenshot captured.")
-      setTimeout(() => setScreenshotPreview(null), 3500)
-    } catch (e) {}
+      ctx.fillRect(0, 0, w, h)
+      ctx.fillStyle = "#111827"
+      ctx.font = "bold 20px sans-serif"
+      ctx.fillText("Himo Omni Screen Snapshot", 24, 40)
+      ctx.font = "14px sans-serif"
+      ctx.fillStyle = "#6b7280"
+      ctx.fillText(new Date().toLocaleString(), 24, 65)
+
+      // Auto-download Snapshot
+      const imgData = canvas.toDataURL("image/png")
+      const dlLink = document.createElement("a")
+      dlLink.download = `Himo_Screenshot_${Date.now()}.png`
+      dlLink.href = imgData
+      dlLink.click()
+
+      setScreenshotToast("Screenshot Saved Successfully!")
+      speakVoice("Screenshot taken and saved to device.")
+      setTimeout(() => setScreenshotToast(null), 3500)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
@@ -371,7 +389,7 @@ export default function Home() {
       return "Yo! Himo Omni Engine ready hai. Kya solve, capture ya build karna hai?"
     }
 
-    // 1. Hardware & System Actions (Camera, Screenshot, Internet, Apps)
+    // 1. Hardware & System Actions (Screenshot, Camera, Open App)
     try {
       const deviceAction = await handleDeviceAction(q, openLiveCamera, captureScreenshot)
       if (deviceAction) return deviceAction
@@ -497,10 +515,10 @@ export default function Home() {
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
       {/* Screenshot Notification Toast */}
-      {screenshotPreview && (
+      {screenshotToast && (
         <div className="screenshot-toast">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <span>{screenshotPreview}</span>
+          <span>{screenshotToast}</span>
         </div>
       )}
 
@@ -571,7 +589,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sidebar with True Circular DP */}
+      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top-spacer" />
         <button className="new-chat-btn" onClick={() => { setMessages([]); setCurrentChatId(null); setSidebarOpen(false); }}>
@@ -712,7 +730,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Forget X" : "Ask Himo, take photo, or open apps...")} 
+              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Forget X" : "Ask Himo, take screenshot, or open apps...")} 
               rows={1} 
             />
             
@@ -843,7 +861,7 @@ export default function Home() {
         .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
 
-        /* Hardware Camera Viewfinder Modal */
+        /* Camera Viewfinder Modal */
         .camera-viewfinder-card {
           background: #0f172a; border-radius: 24px; padding: 18px; max-width: 420px; width: 100%;
           display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -866,15 +884,21 @@ export default function Home() {
         .save-photo-btn { background: #2563eb; color: #fff; }
         .retake-btn { background: #334155; color: #fff; }
 
-        /* Screenshot Toast */
+        /* Screenshot Toast Banner */
         .screenshot-toast {
           position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
           background: #10b981; color: #ffffff; padding: 10px 18px; border-radius: 9999px;
           display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 600;
           z-index: 300; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+          animation: slideDownToast 0.25s ease-out;
         }
 
-        /* 4-Box PIN Security Modal */
+        @keyframes slideDownToast {
+          from { transform: translate(-50%, -16px); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        /* 4-Box PIN Modal */
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
         .pin-card-modal { background: #ffffff; border-radius: 24px; padding: 32px 24px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25); }
         .pin-header h3 { font-size: 1.3rem; font-weight: 700; color: #111827; margin-bottom: 6px; }

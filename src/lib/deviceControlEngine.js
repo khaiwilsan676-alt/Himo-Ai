@@ -1,4 +1,4 @@
-// Advanced Mobile & Web App Launcher Engine
+// Advanced Mobile & Web App Launcher Engine with Strict Triggering
 
 const APP_LAUNCH_MAP = {
   whatsapp: {
@@ -70,15 +70,9 @@ const APP_LAUNCH_MAP = {
     intent: "intent:#Intent;action=android.settings.WIFI_SETTINGS;end",
     scheme: null,
     web: null
-  },
-  camera: {
-    intent: "intent:#Intent;action=android.media.action.IMAGE_CAPTURE;end",
-    scheme: "camera:",
-    web: null
   }
 };
 
-// Safe Navigation Dispatcher that bypasses mobile browser pop-up blocks
 function dispatchLaunchUrl(url) {
   if (typeof window === "undefined" || !url) return;
   try {
@@ -97,16 +91,25 @@ function dispatchLaunchUrl(url) {
 
 export async function handleDeviceAction(query, cameraTriggerCallback, screenshotCallback) {
   if (!query || typeof query !== "string") return null;
+  const q = query.toLowerCase().trim();
 
-  // Clean and normalize query
-  let q = query.toLowerCase().trim();
+  // 1. Screenshot Triggers ("take a screenshot", "take a screen shot", "screenshot lo")
+  if (
+    q.includes("screenshot") || 
+    q.includes("screen shot") || 
+    q.includes("capture screen")
+  ) {
+    if (screenshotCallback) {
+      screenshotCallback();
+      return "Taking Screenshot of current screen...";
+    }
+  }
 
-  // 1. Camera / Picture Triggers
+  // 2. Camera / Picture Triggers ("take a picture", "open camera")
   if (
     q.includes("picture") || 
     q.includes("photo") || 
-    q.includes("camera") || 
-    q.includes("selfie")
+    q.includes("camera")
   ) {
     if (q.includes("take") || q.includes("click") || q.includes("open") || q.includes("kholo") || q.includes("khicho")) {
       if (cameraTriggerCallback) {
@@ -116,48 +119,33 @@ export async function handleDeviceAction(query, cameraTriggerCallback, screensho
     }
   }
 
-  // 2. Screenshot Triggers
-  if (q.includes("screenshot")) {
-    if (screenshotCallback) {
-      screenshotCallback();
-      return "Taking Screenshot of current screen...";
-    }
+  // 3. Strict App Opening Rule: ONLY when command starts with 'open', 'launch', 'kholo', 'start'
+  const isExplicitOpenCommand = /^(?:open|launch|start|kholo|chalu\s+karo)\b/i.test(q);
+  if (!isExplicitOpenCommand) {
+    return null; // Don't trigger if it's just a general question about an app
   }
 
-  // 3. Internet / Wi-Fi Control Triggers
-  if (
-    q.includes("internet") || 
-    q.includes("wifi") || 
-    q.includes("data off") || 
-    q.includes("network")
-  ) {
-    if (q.includes("close") || q.includes("off") || q.includes("band") || q.includes("open") || q.includes("settings")) {
-      dispatchLaunchUrl(APP_LAUNCH_MAP.wifi.intent);
-      return "Opening Wi-Fi & Internet Settings...";
-    }
-  }
-
-  // 4. App Launch Triggers (Open WhatsApp, YouTube, Instagram, etc.)
-  // Remove filler words: "open", "launch", "kholo", "my", "the", "mera", "meri", "app", "please"
+  // Remove command & filler words: "open", "launch", "kholo", "my", "the", "mera", "meri", "app", "please"
   const cleanedTarget = q
-    .replace(/\b(open|launch|start|chalu karo|kholo|chalao|run|my|the|mera|meri|apna|apni|app|application|please)\b/gi, "")
+    .replace(/^(open|launch|start|kholo|chalu\s+karo)\s+/i, "")
+    .replace(/\b(my|the|mera|meri|apna|apni|app|application|please)\b/gi, "")
     .replace(/[?!.,]/g, "")
     .trim();
 
   if (!cleanedTarget) return null;
 
-  // Match target app with launch map
+  // Match target app
   const matchedKey = Object.keys(APP_LAUNCH_MAP).find(
     key => cleanedTarget.includes(key) || key.includes(cleanedTarget)
   );
 
   if (matchedKey) {
     const appConfig = APP_LAUNCH_MAP[matchedKey];
-    
-    // Launch via Android Intent -> URI Scheme -> Web Fallback
     dispatchLaunchUrl(appConfig.intent || appConfig.scheme || appConfig.web);
     return `Opening ${matchedKey.toUpperCase()}...`;
   }
 
-  return null;
+  // Generic direct package launcher fallback
+  dispatchLaunchUrl(`intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${cleanedTarget};end`);
+  return `Trying to open ${cleanedTarget}...`;
 }
