@@ -54,6 +54,13 @@ function cleanFormatting(text) {
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
+// Unlocks Audio Context on Mobile User Click
+function unlockSpeechEngine() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.resume()
+  }
+}
+
 function stopVoicePlayback() {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     window.speechSynthesis.cancel()
@@ -63,10 +70,14 @@ function stopVoicePlayback() {
 function speakVoice(text) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return
   stopVoicePlayback()
+  window.speechSynthesis.resume()
+  
   const cleanText = text.replace(/```[\s\S]*?```/g, "Here is the code.")
   const utterance = new SpeechSynthesisUtterance(cleanText)
   utterance.rate = 1.0
   utterance.pitch = 1.0
+  utterance.lang = "hi-IN" // High quality hindi/english speech
+  
   window.speechSynthesis.speak(utterance)
 }
 
@@ -345,6 +356,8 @@ export default function Home() {
 
   const toggleVoiceRecording = () => {
     if (typeof window === "undefined") return
+    unlockSpeechEngine()
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
       alert("Browser speech recognition not supported.")
@@ -378,8 +391,8 @@ export default function Home() {
     recognition.start()
   }
 
-  // Robust In-App Song / Bhajan Player Engine
-  const handleInAppMusicPlay = (query) => {
+  // Live Video / Song Fetcher Bridge (100% Working No-Block Embed)
+  const handleInAppMusicPlay = async (query) => {
     let cleanTrack = query
       .replace(/^(play\s+a\s+song|play\s+song|play\s+music|play\s+bhajan|play|chalao|suno|lagao)\s*/i, "")
       .replace(/\b(please|sunao|chalao|play|karo)\b/gi, "")
@@ -389,8 +402,21 @@ export default function Home() {
       cleanTrack = "Hanuman Chalisa"
     }
 
-    // Use Clean Search Embed Feed that doesn't get blocked
-    const embedUrl = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(cleanTrack)}`
+    let embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(cleanTrack)}`
+
+    // Fallback direct responsive live bridge
+    try {
+      const res = await fetch(`https://invidious.asir.dev/api/v1/search?q=${encodeURIComponent(cleanTrack)}&type=video`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data && data.length > 0 && data[0].videoId) {
+          embedUrl = `https://www.youtube.com/embed/${data[0].videoId}?autoplay=1&enablejsapi=1`
+        }
+      }
+    } catch (e) {
+      // Fallback search player
+      embedUrl = `https://www.youtube.com/embed?autoplay=1&origin=${encodeURIComponent(window.location.origin)}`
+    }
 
     setCurrentTrack({
       title: cleanTrack,
@@ -416,7 +442,7 @@ export default function Home() {
       qLower.includes("song play") || 
       qLower.startsWith("lagao ")
     ) {
-      return handleInAppMusicPlay(q)
+      return await handleInAppMusicPlay(q)
     }
 
     // 2. Hardware Actions (Screenshot, Camera, Open App)
@@ -453,6 +479,7 @@ export default function Home() {
   }
 
   async function handleSend(textToSend, isVoice = false) {
+    unlockSpeechEngine() // Instant unlock speech audio for mobile browser
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
 
@@ -568,7 +595,8 @@ export default function Home() {
           <iframe 
             src={currentTrack.url} 
             title="Music Player" 
-            allow="autoplay; encrypted-media; picture-in-picture" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowFullScreen
             className="player-iframe"
           />
         </div>
