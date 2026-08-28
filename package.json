@@ -19,10 +19,6 @@
   "name": "himo-ai",
   "version": "1.0.0",
   "description": "",
-  "main": "himo.js",
-  "directories": {
-    "lib": "lib"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/khaiwilsan676-alt/Himo-Ai.git"
