@@ -52,7 +52,7 @@ function CodeBlock({ codeText }) {
   )
 }
 
-// Strict Shape / Apple Local Canvas Generator ($260x260 px)
+// STRICT 100px x 100px COMPACT IMAGE CARD
 function ProceduralImageCard({ promptText, onImageClick }) {
   const canvasRef = useRef(null)
   const [dataUrl, setDataUrl] = useState("")
@@ -61,83 +61,74 @@ function ProceduralImageCard({ promptText, onImageClick }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
-    const size = 512
+    const size = 300
     canvas.width = size
     canvas.height = size
 
     const q = (promptText || "").toLowerCase()
+    const isSun = q.includes("sun") || q.includes("sooraj")
     const isApple = q.includes("apple") || q.includes("seb")
 
-    // Background
-    const bgGrad = ctx.createLinearGradient(0, 0, size, size)
-    if (isApple) {
-      bgGrad.addColorStop(0, "#1e293b")
-      bgGrad.addColorStop(1, "#0f172a")
-    } else {
-      bgGrad.addColorStop(0, "#3b82f6")
-      bgGrad.addColorStop(1, "#1e3a8a")
-    }
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, size)
+    bgGrad.addColorStop(0, isSun ? "#38bdf8" : "#0f172a")
+    bgGrad.addColorStop(1, isSun ? "#bae6fd" : "#1e293b")
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, size, size)
 
-    if (isApple) {
-      // Draw a proper stylized Apple shape locally on canvas
+    if (isSun) {
       ctx.save()
-      ctx.translate(size / 2, size / 2 + 20)
-
-      // Apple body (Red gradient with gloss)
-      const appleGrad = ctx.createRadialGradient(-30, -30, 10, 0, 0, 180)
-      appleGrad.addColorStop(0, "#ef4444")
+      ctx.translate(size / 2, size / 2)
+      ctx.strokeStyle = "#facc15"
+      ctx.lineWidth = 6
+      for (let i = 0; i < 12; i++) {
+        ctx.rotate(Math.PI / 6)
+        ctx.beginPath()
+        ctx.moveTo(0, 75)
+        ctx.lineTo(0, 105)
+        ctx.stroke()
+      }
+      const sunGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 60)
+      sunGrad.addColorStop(0, "#fef08a")
+      sunGrad.addColorStop(1, "#eab308")
+      ctx.fillStyle = sunGrad
+      ctx.beginPath()
+      ctx.arc(0, 0, 60, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    } else if (isApple) {
+      ctx.save()
+      ctx.translate(size / 2, size / 2 + 10)
+      const appleGrad = ctx.createRadialGradient(-30, -30, 10, 0, 0, 130)
+      appleGrad.addColorStop(0, "#f87171")
       appleGrad.addColorStop(0.7, "#dc2626")
-      appleGrad.addColorStop(1, "#991b1b")
-      
+      appleGrad.addColorStop(1, "#7f1d1d")
       ctx.fillStyle = appleGrad
       ctx.beginPath()
-      // Bezier curve approximation of an apple
-      ctx.moveTo(0, -120)
-      ctx.bezierCurveTo(110, -160, 170, -40, 130, 60)
-      ctx.bezierCurveTo(100, 130, 50, 150, 0, 130)
-      ctx.bezierCurveTo(-50, 150, -100, 130, -130, 60)
-      ctx.bezierCurveTo(-170, -40, -110, -160, 0, -120)
+      ctx.moveTo(0, -90)
+      ctx.bezierCurveTo(90, -120, 140, -30, 100, 50)
+      ctx.bezierCurveTo(80, 110, 40, 120, 0, 100)
+      ctx.bezierCurveTo(-40, 120, -80, 110, -100, 50)
+      ctx.bezierCurveTo(-140, -30, -90, -120, 0, -90)
       ctx.closePath()
       ctx.fill()
-
-      // Leaf (Green)
-      ctx.fillStyle = "#22c55e"
-      ctx.beginPath()
-      ctx.moveTo(10, -130)
-      ctx.bezierCurveTo(60 - 20, -180, 120 - 20, -160, 90, -110)
-      ctx.bezierCurveTo(60, -90, 30, -100, 10, -130)
-      ctx.closePath()
-      ctx.fill()
-
-      // Stem (Brown)
-      ctx.strokeStyle = "#78350f"
-      ctx.lineWidth = 10
-      ctx.lineCap = "round"
-      ctx.beginPath()
-      ctx.moveTo(0, -125)
-      ctx.quadraticCurveTo(15, -160, 30, -165)
-      ctx.stroke()
-
       ctx.restore()
     } else {
-      // Generic geometric art for other prompts
-      ctx.fillStyle = "#ffffff"
-      ctx.font = "bold 32px monospace"
-      ctx.fillText(promptText || "HIMO ART", 40, size / 2)
+      ctx.fillStyle = "#ec4899"
+      ctx.beginPath()
+      ctx.arc(size / 2, size / 2, 80, 0, Math.PI * 2)
+      ctx.fill()
     }
 
     setDataUrl(canvas.toDataURL("image/png"))
   }, [promptText])
 
   return (
-    <div className="compact-ai-image-card" onClick={() => dataUrl && onImageClick(dataUrl)}>
+    <div className="strict-100px-img-wrapper" onClick={() => dataUrl && onImageClick(dataUrl)}>
       <canvas ref={canvasRef} style={{ display: "none" }} />
       {dataUrl ? (
-        <img src={dataUrl} alt={promptText} className="compact-img-elem" />
+        <img src={dataUrl} alt={promptText} className="strict-100px-img-elem" />
       ) : (
-        <div className="compact-skeleton-loader"><span>Generating...</span></div>
+        <div className="strict-loader"><span>...</span></div>
       )}
     </div>
   )
@@ -150,7 +141,7 @@ function cleanFormatting(text) {
 
 function renderMessageContent(content, onImageClick) {
   if (typeof content === "object" && content?.type === "procedural_image") {
-    return <ProceduralImageCard seedNumber={content.seed} promptText={content.prompt} onImageClick={onImageClick} />
+    return <ProceduralImageCard promptText={content.prompt} onImageClick={onImageClick} />
   }
 
   const text = typeof content === "string" ? content : ""
@@ -360,10 +351,7 @@ export default function Home() {
   }
 
   const generateProceduralArt = (promptText) => {
-    const text = promptText.trim()
-    const match = text.match(/\b([0-9])\b/)
-    const seedNum = match ? parseInt(match[1]) : Math.floor(Math.random() * 10)
-    return { type: "procedural_image", seed: seedNum, prompt: text }
+    return { type: "procedural_image", prompt: promptText }
   }
 
   async function think(prompt, hasAttachedPhoto = false) {
@@ -403,6 +391,8 @@ export default function Home() {
       qLower.includes("tasveer") || 
       qLower.includes("picture") || 
       qLower.includes("apple") ||
+      qLower.includes("sun") ||
+      qLower.includes("sooraj") ||
       qLower.includes("seb") ||
       qLower.includes("banao") || 
       qLower.includes("bana") ||
@@ -523,7 +513,7 @@ export default function Home() {
           </div>
           <div className="settings-container">
             <button type="button" className="settings-icon-btn" onClick={(e) => { e.stopPropagation(); setSettingsMenuOpen(!settingsMenuOpen); }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </button>
             {settingsMenuOpen && (
               <div className="popup-card settings-popup">
@@ -706,45 +696,45 @@ export default function Home() {
         .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 220px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        /* Strictly Locked Compact AI Image Card ($260x260 px) */
-        .compact-ai-image-card {
-          width: 260px;
-          height: 260px;
-          min-width: 260px;
-          min-height: 260px;
-          max-width: 260px;
-          max-height: 260px;
-          border-radius: 18px;
+        /* STRICTLY LOCKED 100px x 100px COMPACT IMAGE CARD */
+        .strict-100px-img-wrapper {
+          width: 100px !important;
+          height: 100px !important;
+          min-width: 100px !important;
+          min-height: 100px !important;
+          max-width: 100px !important;
+          max-height: 100px !important;
+          border-radius: 12px;
           overflow: hidden;
           margin: 6px 0;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
           cursor: pointer;
           border: 1px solid #e2e8f0;
           background: #f8fafc;
           flex-shrink: 0;
           display: inline-block;
         }
-        .compact-img-elem {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-          border-radius: 18px;
+        .strict-100px-img-elem {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          display: block !important;
+          border-radius: 12px !important;
         }
-        .compact-skeleton-loader {
+        .strict-loader {
           width: 100%;
           height: 100%;
           background: #e2e8f0;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.85rem;
+          font-size: 0.75rem;
           color: #64748b;
         }
 
-        /* Strict Black File Code Box */
+        /* STRICT BLACK CODE FILE BOX WITH BACKGROUND */
         .dark-code-card {
-          background: #0f172a;
+          background: #0f172a !important;
           border: 1px solid #1e293b;
           border-radius: 14px;
           overflow: hidden;
@@ -757,7 +747,7 @@ export default function Home() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: #1e293b;
+          background: #1e293b !important;
           padding: 8px 14px;
           border-bottom: 1px solid #334155;
         }
@@ -784,7 +774,7 @@ export default function Home() {
         .dark-code-scroll {
           padding: 14px;
           overflow-x: auto;
-          background: #0f172a;
+          background: #0f172a !important;
           max-width: 100%;
           -webkit-overflow-scrolling: touch;
         }
