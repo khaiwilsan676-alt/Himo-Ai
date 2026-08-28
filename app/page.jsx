@@ -5,8 +5,8 @@ import LoginPage from "../components/LoginPage"
 import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
+import { saveChatToDB, getAllChatsFromDB, deleteChatFromDB } from "../src/lib/indexedDbStorage"
 
-// Custom Himo Brain Circuit SVG Icon (matching provided logo)
 function HimoBrainIcon({ size = 26, className = "" }) {
   return (
     <svg 
@@ -98,17 +98,21 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState(null)
   const [authChecking, setAuthChecking] = useState(true)
   const [message, setMessage] = useState("")
+  
+  // IndexedDB Chat Session State
+  const [currentChatId, setCurrentChatId] = useState(null)
+  const [savedSessions, setSavedSessions] = useState([])
   const [messages, setMessages] = useState([])
+  
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  // Dropdown States
   const [topMenuOpen, setTopMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
+  // 1. Initial Load: IndexedDB Sessions + User Cache Check
   useEffect(() => {
     try {
       const cachedUser = localStorage.getItem("himo_cached_user")
@@ -135,6 +139,15 @@ export default function Home() {
       setAuthChecking(false)
     })
 
+    // Fetch all persistent chats from IndexedDB
+    getAllChatsFromDB().then((chats) => {
+      if (chats && chats.length > 0) {
+        // Sort: Pinned first, then latest updated
+        const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+        setSavedSessions(sorted)
+      }
+    })
+
     return () => unsubscribe()
   }, [])
 
@@ -158,6 +171,32 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
+  // Auto-persist messages to IndexedDB whenever chat changes
+  const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
+    if (!updatedMessages || updatedMessages.length === 0) return
+    const id = chatId || `chat_${Date.now()}`
+    if (!currentChatId) setCurrentChatId(id)
+
+    const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation"
+    const currentSession = savedSessions.find(s => s.id === id)
+    
+    const sessionObj = {
+      id: id,
+      title: currentSession?.title || (firstUserMsg.length > 28 ? firstUserMsg.slice(0, 28) + "..." : firstUserMsg),
+      pinned: currentSession?.pinned || false,
+      messages: updatedMessages,
+      updatedAt: Date.now()
+    }
+
+    await saveChatToDB(sessionObj)
+
+    setSavedSessions(prev => {
+      const filtered = prev.filter(s => s.id !== id)
+      const newList = [sessionObj, ...filtered]
+      return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+    })
+  }
+
   async function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
@@ -165,17 +204,76 @@ export default function Home() {
     setMessage("")
     if (textareaRef.current) textareaRef.current.style.height = "auto"
 
-    setMessages((current) => [...current, { role: "user", content: prompt }])
+    const newMsgs = [...messages, { role: "user", content: prompt }]
+    setMessages(newMsgs)
     setLoading(true)
+
+    // Save user message immediately to IndexedDB
+    await persistChatSession(newMsgs)
 
     try {
       const answer = await think(prompt)
-      setMessages((current) => [...current, { role: "assistant", content: answer }])
+      const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
+      setMessages(finalMsgs)
+      await persistChatSession(finalMsgs)
     } catch (error) {
-      setMessages((current) => [...current, { role: "assistant", content: "Error processing request." }])
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error processing request." }]
+      setMessages(errorMsgs)
+      await persistChatSession(errorMsgs)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleStartNewChat = () => {
+    setMessages([])
+    setCurrentChatId(null)
+    setSidebarOpen(false)
+  }
+
+  const handleSelectSession = (session) => {
+    setCurrentChatId(session.id)
+    setMessages(session.messages || [])
+    setSidebarOpen(false)
+  }
+
+  // 3-Dot Actions (Delete, Rename, Pin via IndexedDB)
+  const handleDeleteCurrentChat = async () => {
+    if (currentChatId) {
+      await deleteChatFromDB(currentChatId)
+      setSavedSessions(prev => prev.filter(s => s.id !== currentChatId))
+    }
+    setMessages([])
+    setCurrentChatId(null)
+    setTopMenuOpen(false)
+  }
+
+  const handleRenameChat = async () => {
+    if (!currentChatId) return
+    const newTitle = prompt("Enter new title for this chat:")
+    if (newTitle && newTitle.trim()) {
+      const session = savedSessions.find(s => s.id === currentChatId)
+      if (session) {
+        const updated = { ...session, title: newTitle.trim(), updatedAt: Date.now() }
+        await saveChatToDB(updated)
+        setSavedSessions(prev => prev.map(s => s.id === currentChatId ? updated : s))
+      }
+    }
+    setTopMenuOpen(false)
+  }
+
+  const handleTogglePin = async () => {
+    if (!currentChatId) return
+    const session = savedSessions.find(s => s.id === currentChatId)
+    if (session) {
+      const updated = { ...session, pinned: !session.pinned, updatedAt: Date.now() }
+      await saveChatToDB(updated)
+      setSavedSessions(prev => {
+        const mapped = prev.map(s => s.id === currentChatId ? updated : s)
+        return mapped.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+      })
+    }
+    setTopMenuOpen(false)
   }
 
   async function handleLogout() {
@@ -240,6 +338,9 @@ export default function Home() {
     ? currentUser.displayName.charAt(0).toUpperCase() 
     : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
 
+  const isTyping = message.trim().length > 0
+  const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned
+
   return (
     <main className="app-shell">
       <div className="top-glow-mesh" />
@@ -250,24 +351,38 @@ export default function Home() {
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top-spacer" />
 
-        <button className="new-chat-btn" onClick={() => { setMessages([]); setSidebarOpen(false); }}>
+        <button className="new-chat-btn" onClick={handleStartNewChat}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
           </svg>
           New chat
         </button>
 
+        {/* IndexedDB Persistent Chats List */}
         <div className="sidebar-section">
           <p className="sidebar-label">Recent</p>
           <div className="recent-list">
-            {messages.filter(m => m.role === 'user').slice(-4).map((m, i) => (
-              <div key={i} className="recent-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span className="truncate">{m.content}</span>
-              </div>
-            ))}
+            {savedSessions.length === 0 ? (
+              <span className="no-chats-hint">No saved chats yet</span>
+            ) : (
+              savedSessions.map((session) => (
+                <div 
+                  key={session.id} 
+                  className={`recent-item ${session.id === currentChatId ? "active-chat-item" : ""}`}
+                  onClick={() => handleSelectSession(session)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span className="truncate flex-1">{session.title}</span>
+                  {session.pinned && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="pin-tag-icon">
+                      <path d="M16 12V4H17V2H7V4H8V12L6 14V16H11V22L12 23L13 22V16H18V14L16 12Z" />
+                    </svg>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -352,25 +467,25 @@ export default function Home() {
 
             {topMenuOpen && (
               <div className="popup-card top-dropdown" onClick={(e) => e.stopPropagation()}>
-                <button type="button" className="popup-menu-item" onClick={() => { setMessages([]); setTopMenuOpen(false); }}>
+                <button type="button" className="popup-menu-item" onClick={handleDeleteCurrentChat}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                   </svg>
                   Delete Chat
                 </button>
-                <button type="button" className="popup-menu-item" onClick={() => setTopMenuOpen(false)}>
+                <button type="button" className="popup-menu-item" onClick={handleRenameChat}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 20h9"></path>
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                   </svg>
                   Rename
                 </button>
-                <button type="button" className="popup-menu-item" onClick={() => setTopMenuOpen(false)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <button type="button" className="popup-menu-item" onClick={handleTogglePin}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={isCurrentChatPinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  Pin
+                  {isCurrentChatPinned ? "Unpin" : "Pin"}
                 </button>
               </div>
             )}
@@ -383,7 +498,7 @@ export default function Home() {
             <div className="hero-screen-top-left">
               <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
-                <h1>How can I help you today?</h1>
+                <h1 className="hero-main-title">How can I help you today?</h1>
               </div>
             </div>
           )}
@@ -430,9 +545,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Input Floating Composer */}
+        {/* Dynamic Glowing Composer */}
         <div className="dock-container">
-          <div className="composer-shell">
+          <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
             <textarea
               ref={textareaRef}
               value={message}
@@ -449,7 +564,7 @@ export default function Home() {
             <div className="composer-actions">
               <button
                 type="button"
-                className="send-button-gemini"
+                className={`send-button-gemini ${isTyping ? "active-glow-btn" : ""}`}
                 disabled={!message.trim() || loading}
                 onClick={() => handleSend()}
               >
@@ -469,7 +584,7 @@ export default function Home() {
           height: 100vh;
           background: #ffffff;
           color: #1f2937;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
           overflow: hidden;
           position: relative;
         }
@@ -477,14 +592,14 @@ export default function Home() {
         .top-glow-mesh {
           position: absolute;
           top: 0; left: 0; right: 0;
-          height: 30vh;
+          height: 32vh;
           pointer-events: none;
           z-index: 1;
           background: 
-            radial-gradient(circle at 15% 30%, rgba(96, 165, 250, 0.45), transparent 60%),
-            radial-gradient(circle at 45% 20%, rgba(244, 114, 182, 0.4), transparent 55%),
-            radial-gradient(circle at 75% 35%, rgba(52, 211, 153, 0.35), transparent 55%),
-            radial-gradient(circle at 90% 15%, rgba(192, 132, 252, 0.4), transparent 60%),
+            radial-gradient(circle at 15% 30%, rgba(96, 165, 250, 0.4), transparent 60%),
+            radial-gradient(circle at 45% 20%, rgba(244, 114, 182, 0.35), transparent 55%),
+            radial-gradient(circle at 75% 35%, rgba(52, 211, 153, 0.3), transparent 55%),
+            radial-gradient(circle at 90% 15%, rgba(192, 132, 252, 0.35), transparent 60%),
             linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 100%);
           filter: blur(24px);
         }
@@ -499,7 +614,6 @@ export default function Home() {
           background: transparent;
         }
 
-        /* Navbar */
         .topbar {
           height: 64px;
           padding: 0 18px;
@@ -518,10 +632,10 @@ export default function Home() {
         }
 
         .brand-name {
-          font-size: 1.2rem;
+          font-size: 1.25rem;
           font-weight: 700;
           color: #111827;
-          letter-spacing: -0.2px;
+          letter-spacing: -0.3px;
         }
 
         .top-right-actions {
@@ -675,20 +789,38 @@ export default function Home() {
           gap: 4px;
         }
 
+        .no-chats-hint {
+          font-size: 0.82rem;
+          color: #9ca3af;
+          padding: 8px 12px;
+        }
+
         .recent-item {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           padding: 10px 14px;
-          border-radius: 16px;
+          border-radius: 14px;
           font-size: 0.88rem;
           color: #4b5563;
           cursor: pointer;
+          transition: background 0.15s, color 0.15s;
         }
 
         .recent-item:hover {
           background: #f3f4f6;
           color: #111827;
+        }
+
+        .active-chat-item {
+          background: #eff6ff;
+          color: #2563eb;
+          font-weight: 600;
+        }
+
+        .pin-tag-icon {
+          color: #3b82f6;
+          flex-shrink: 0;
         }
 
         .truncate {
@@ -697,7 +829,6 @@ export default function Home() {
           text-overflow: ellipsis;
         }
 
-        /* Sidebar Footer */
         .sidebar-footer {
           border-top: 1px solid #e5e7eb;
           padding-top: 14px;
@@ -768,7 +899,7 @@ export default function Home() {
           color: #111827;
         }
 
-        /* Canvas & Top-Left Aligned Hero */
+        /* Canvas & Hero */
         .canvas {
           flex: 1;
           overflow-y: auto;
@@ -779,7 +910,7 @@ export default function Home() {
         }
 
         .hero-screen-top-left {
-          margin-top: 36px;
+          margin-top: 40px;
           display: flex;
           justify-content: flex-start;
           align-items: flex-start;
@@ -790,46 +921,41 @@ export default function Home() {
         }
 
         .gradient-text {
-          font-size: 3.2rem;
+          font-size: 3.6rem;
           font-weight: 800;
-          display: block;
-          margin-bottom: 6px;
-          letter-spacing: -0.5px;
+          display: inline-block;
+          margin-bottom: 8px;
+          letter-spacing: -0.6px;
         }
 
-        /* Dynamic Continuous Color Shimmer Animation */
         .animated-shimmer {
           background: linear-gradient(
             90deg, 
             #2563eb 0%, 
-            #9333ea 25%, 
-            #ec4899 50%, 
-            #10b981 75%, 
+            #7c3aed 20%, 
+            #ec4899 40%, 
+            #06b6d4 60%, 
+            #10b981 80%, 
             #2563eb 100%
           );
           background-size: 300% 100%;
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          animation: fluidShimmer 5s linear infinite;
+          animation: fluidShimmer 4s linear infinite;
         }
 
         @keyframes fluidShimmer {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
 
-        .hero-greeting-left h1 {
-          font-size: 2rem;
-          font-weight: 600;
-          color: #9ca3af;
-          line-height: 1.25;
+        .hero-main-title {
+          font-size: 2.7rem;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.15;
+          letter-spacing: -0.5px;
         }
 
         /* Messages */
@@ -855,10 +981,9 @@ export default function Home() {
           margin-top: 2px;
         }
 
-        /* Custom Brain Badge */
         .himo-brain-badge {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -965,13 +1090,26 @@ export default function Home() {
           display: flex;
           align-items: flex-end;
           gap: 12px;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          border: 1.5px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
         }
 
-        .composer-shell:focus-within {
-          border-color: #93c5fd;
-          box-shadow: 0 4px 24px rgba(59, 130, 246, 0.12);
+        .composer-shell.typing-active {
+          border-color: transparent;
+          background: 
+            linear-gradient(#ffffff, #ffffff) padding-box,
+            linear-gradient(90deg, #2563eb, #9333ea, #ec4899, #06b6d4, #2563eb) border-box;
+          background-size: 100% 100%, 300% 100%;
+          animation: borderGlowFlow 3s linear infinite;
+          box-shadow: 0 6px 28px rgba(37, 99, 235, 0.16);
+        }
+
+        @keyframes borderGlowFlow {
+          0% { background-position: 0% 0%, 0% 50%; }
+          50% { background-position: 0% 0%, 100% 50%; }
+          100% { background-position: 0% 0%, 0% 50%; }
         }
 
         .composer-shell textarea {
@@ -979,7 +1117,7 @@ export default function Home() {
           background: transparent;
           border: none;
           outline: none;
-          color: #1f2937;
+          color: #111827;
           font-size: 1rem;
           font-family: inherit;
           resize: none;
@@ -999,8 +1137,8 @@ export default function Home() {
         }
 
         .send-button-gemini {
-          width: 36px;
-          height: 36px;
+          width: 38px;
+          height: 38px;
           border-radius: 50%;
           background: #111827;
           color: #ffffff;
@@ -1009,23 +1147,28 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: transform 0.1s, background 0.2s;
+          transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s;
         }
 
         .send-button-gemini:disabled {
           background: #e5e7eb;
           color: #9ca3af;
           cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        .active-glow-btn:not(:disabled) {
+          background: linear-gradient(135deg, #2563eb, #7c3aed);
+          box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
         }
 
         .send-button-gemini:not(:disabled):hover {
-          transform: scale(1.05);
-          background: #1f2937;
+          transform: scale(1.06);
         }
 
         @media (max-width: 600px) {
-          .gradient-text { font-size: 2.3rem; }
-          .hero-greeting-left h1 { font-size: 1.5rem; }
+          .gradient-text { font-size: 2.7rem; }
+          .hero-main-title { font-size: 2.1rem; }
           .canvas { padding-bottom: 120px; }
         }
       `}</style>
