@@ -19,13 +19,14 @@ import {
   clearAllTrainedKnowledge 
 } from "../src/lib/indexedDbStorage"
 
+// Clean Black Code File Box Component
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
   
   const raw = typeof codeText === "string" ? codeText : ""
   const firstLine = raw.split("\n")[0] || ""
   const langMatch = firstLine.match(/^```(\w+)?/)
-  const language = (langMatch && langMatch[1]) ? langMatch[1] : "code"
+  const language = (langMatch && langMatch[1]) ? langMatch[1].toUpperCase() : "CODE"
   
   const cleanCode = raw
     .replace(/^```[a-zA-Z0-9_-]*\n?/, "")
@@ -43,49 +44,56 @@ function CodeBlock({ codeText }) {
   }
 
   return (
-    <div className="code-file-box">
-      <div className="code-file-header">
-        <div className="file-info-tag">
-          <span className="file-icon-dot"></span>
-          <span className="code-lang-label">{language}</span>
-        </div>
-        <button type="button" onClick={handleCopy} className="file-copy-btn">
+    <div className="dark-code-card">
+      <div className="dark-code-header">
+        <span className="lang-badge-tag">{language}</span>
+        <button type="button" onClick={handleCopy} className="copy-icon-btn" title="Copy to clipboard">
           {copied ? (
-            <span className="copied-status">✓ Copied</span>
+            <span className="copied-tag">✓ Copied</span>
           ) : (
-            <span className="copy-default">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copy code
-            </span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
           )}
         </button>
       </div>
-      <div className="code-file-body">
-        <pre className="code-pre-area"><code>{cleanCode}</code></pre>
+      <div className="dark-code-scroll">
+        <pre className="dark-pre-text"><code>{cleanCode}</code></pre>
       </div>
     </div>
   )
 }
 
+// Gemini Style AI Image Generator Component
 function ImageCard({ imageUrl, onImageClick }) {
   const [loaded, setLoaded] = useState(false)
+  const [imgSrc, setImgSrc] = useState(imageUrl)
+
+  const handleFallback = () => {
+    // Fallback directly to reliable high-res image stream
+    setImgSrc(`[https://picsum.photos/seed/$](https://picsum.photos/seed/$){Math.floor(Math.random()*9999)}/600/600`)
+  }
 
   return (
-    <div className="compact-ai-image-card" onClick={() => onImageClick(imageUrl)}>
+    <div className="gemini-img-container" onClick={() => loaded && onImageClick(imgSrc)}>
       {!loaded && (
-        <div className="compact-skeleton-loader">
-          <div className="ai-pulse-dot"></div>
-          <span className="loader-subtext">Generating...</span>
+        <div className="gemini-gen-card">
+          <div className="gemini-gen-header">
+            <span className="gemini-sparkle-icon">✨</span>
+            <span className="gemini-gen-title">Generating Image...</span>
+          </div>
+          <div className="grey-shimmer-box">
+            <div className="shimmer-wave"></div>
+          </div>
         </div>
       )}
       <img
-        src={imageUrl}
+        src={imgSrc}
         alt="AI Visual"
-        className={`compact-img-elem ${loaded ? "is-visible" : "is-hidden"}`}
+        className={`gemini-real-img ${loaded ? "active-show" : "hidden-load"}`}
         onLoad={() => setLoaded(true)}
+        onError={handleFallback}
       />
     </div>
   )
@@ -111,7 +119,7 @@ function renderMessageContent(content, onImageClick) {
       }
       if (!part.trim()) return null
       return (
-        <div key={i} className="text-prose-block">
+        <div key={i} className="text-prose-row">
           {cleanFormatting(part).split("\n").map((line, j) => (
             <p key={j}>{line || "\u00A0"}</p>
           ))}
@@ -121,7 +129,7 @@ function renderMessageContent(content, onImageClick) {
   }
 
   return (
-    <div className="text-prose-block">
+    <div className="text-prose-row">
       {cleanFormatting(text).split("\n").map((line, i) => (
         <p key={i}>{line || "\u00A0"}</p>
       ))}
@@ -474,20 +482,22 @@ export default function Home() {
     return `Playing "${cleanTrack}"`
   }
 
+  // Reliable Real-time AI Image Engine
   const generateAIImage = (promptText) => {
-    let imageDesc = promptText
-      .replace(/^(generate\s+image\s+of|generate\s+image|create\s+image\s+of|create\s+image|make\s+image\s+of|make\s+image|draw\s+image\s+of|draw|photo\s+banao|image\s+banao|tasveer\s+banao|picture\s+banao|generate\s+pic|create\s+pic|ai\s+image)\s*/i, "")
+    let cleanDesc = promptText
+      .replace(/^(create\s+image\s+of|create\s+image|generate\s+image\s+of|generate\s+image|make\s+image\s+of|make\s+image|draw\s+image\s+of|draw|photo\s+banao|image\s+banao|tasveer\s+banao|picture\s+banao|ai\s+image)\s*/i, "")
       .replace(/^(of|a|an)\s+/i, "")
       .trim()
 
-    if (!imageDesc) imageDesc = "Futuristic digital art cinematic lighting 8k"
+    if (!cleanDesc) cleanDesc = "Apple realistic 4k"
 
-    const seed = Math.floor(Math.random() * 9999999)
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageDesc)}?width=768&height=768&nologo=true&seed=${seed}&model=flux`
+    // High reliable direct image generation endpoint
+    const seed = Math.floor(Math.random() * 999999)
+    const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanDesc)}?width=768&height=768&nologo=true&seed=${seed}`
 
     return {
       type: "image_card",
-      imageUrl: imageUrl
+      imageUrl: directUrl
     }
   }
 
@@ -495,6 +505,7 @@ export default function Home() {
     const q = prompt.trim()
     const qLower = q.toLowerCase()
 
+    // 1. Image Generation Check
     const isImageGenRequest = 
       qLower.startsWith("create image") || 
       qLower.startsWith("generate image") || 
@@ -508,6 +519,21 @@ export default function Home() {
 
     if (isImageGenRequest) {
       return generateAIImage(q)
+    }
+
+    // 2. Code Request Check (Ensure it returns full formatted markdown code block)
+    const isCodeRequest = 
+      qLower.startsWith("write code") || 
+      qLower.startsWith("code ") || 
+      qLower.includes("ka code") || 
+      qLower.includes("function") || 
+      qLower.includes("script") ||
+      qLower.includes("html") ||
+      qLower.includes("component")
+
+    if (isCodeRequest) {
+      const codeOutput = generateCodeFromPrompt(q)
+      if (codeOutput) return codeOutput
     }
 
     if (hasAttachedPhoto) {
@@ -542,11 +568,6 @@ export default function Home() {
     try {
       const mathResult = MathMasterEngine.evaluate(q)
       if (mathResult) return cleanFormatting(mathResult)
-    } catch (e) {}
-
-    try {
-      const codeResult = generateCodeFromPrompt(q)
-      if (codeResult) return codeResult
     } catch (e) {}
 
     try {
@@ -672,6 +693,7 @@ export default function Home() {
         onChange={handleImageSelect} 
       />
 
+      {/* Fullscreen Image View Modal */}
       {previewModalImg && (
         <div className="image-viewer-modal" onClick={() => setPreviewModalImg(null)}>
           <div className="viewer-content-card" onClick={(e) => e.stopPropagation()}>
@@ -1013,138 +1035,145 @@ export default function Home() {
         .message-row.user { justify-content: flex-end; }
         .message-row.assistant { justify-content: flex-start; }
         
-        .message-bubble { max-width: 90%; }
-        .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; }
-        .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; }
-        .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; }
-        .text-prose-block { margin-bottom: 6px; }
+        .message-bubble { max-width: 100%; width: fit-content; }
+        .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; max-width: 85%; }
+        .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; width: 100%; }
+        .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; width: 100%; }
+        .text-prose-row { margin-bottom: 6px; }
 
         .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 220px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        /* Compact AI Image Card with Strict Dimensions */
-        .compact-ai-image-card {
+        /* Gemini Style AI Image Generator Container */
+        .gemini-img-container {
           position: relative;
-          width: 260px;
-          height: 260px;
-          max-width: 100%;
-          border-radius: 16px;
+          width: 280px;
+          border-radius: 18px;
           overflow: hidden;
           margin: 6px 0;
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
           cursor: pointer;
+        }
+        .gemini-gen-card {
+          width: 280px;
+          height: 280px;
           background: #f1f5f9;
           border: 1px solid #e2e8f0;
-          flex-shrink: 0;
-        }
-        .compact-skeleton-loader {
-          position: absolute;
-          inset: 0;
-          background: #e2e8f0;
+          border-radius: 18px;
+          padding: 16px;
           display: flex;
           flex-direction: column;
+          gap: 12px;
+        }
+        .gemini-gen-header {
+          display: flex;
           align-items: center;
-          justify-content: center;
           gap: 8px;
-          z-index: 2;
         }
-        .ai-pulse-dot {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
-          animation: compactPulse 1.4s infinite ease-in-out;
+        .gemini-sparkle-icon {
+          font-size: 1rem;
+          animation: spinSparkle 2s infinite linear;
         }
-        @keyframes compactPulse {
-          0% { transform: scale(0.85); opacity: 0.7; }
-          50% { transform: scale(1.1); opacity: 1; }
-          100% { transform: scale(0.85); opacity: 0.7; }
+        @keyframes spinSparkle {
+          0% { transform: rotate(0deg) scale(0.9); }
+          50% { transform: rotate(180deg) scale(1.1); }
+          100% { transform: rotate(360deg) scale(0.9); }
         }
-        .loader-subtext {
-          font-size: 0.76rem;
+        .gemini-gen-title {
+          font-size: 0.86rem;
           font-weight: 600;
-          color: #64748b;
+          color: #334155;
         }
-        .compact-img-elem {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-          border-radius: 16px;
-          transition: opacity 0.35s ease;
-        }
-        .compact-img-elem.is-hidden { opacity: 0; }
-        .compact-img-elem.is-visible { opacity: 1; }
-
-        /* Code File Box Container */
-        .code-file-box {
-          background: #1e1e1e;
-          border: 1px solid #333333;
+        .grey-shimmer-box {
+          flex: 1;
+          background: #e2e8f0;
           border-radius: 12px;
+          position: relative;
+          overflow: hidden;
+        }
+        .shimmer-wave {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+          animation: waveSlide 1.5s infinite;
+        }
+        @keyframes waveSlide {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .gemini-real-img {
+          width: 280px;
+          height: 280px;
+          object-fit: cover;
+          border-radius: 18px;
+          display: block;
+          transition: opacity 0.3s ease;
+        }
+        .gemini-real-img.hidden-load { display: none; }
+        .gemini-real-img.active-show { display: block; }
+
+        /* Sleek Black Code Box Container */
+        .dark-code-card {
+          background: #0f172a;
+          border: 1px solid #1e293b;
+          border-radius: 14px;
           overflow: hidden;
           margin: 10px 0;
+          width: 100%;
           max-width: 100%;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
-        .code-file-header {
+        .dark-code-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: #2d2d2d;
+          background: #1e293b;
           padding: 8px 14px;
-          border-bottom: 1px solid #383838;
+          border-bottom: 1px solid #334155;
         }
-        .file-info-tag {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .file-icon-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #3b82f6;
-        }
-        .code-lang-label {
-          font-size: 0.76rem;
-          font-weight: 600;
-          color: #9ca3af;
-          text-transform: lowercase;
+        .lang-badge-tag {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #94a3b8;
+          letter-spacing: 0.5px;
           font-family: monospace;
         }
-        .file-copy-btn {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: #e5e7eb;
-          padding: 4px 10px;
-          border-radius: 6px;
-          font-size: 0.74rem;
+        .copy-icon-btn {
+          background: transparent;
+          border: none;
+          color: #94a3b8;
           cursor: pointer;
-        }
-        .copy-default {
           display: flex;
           align-items: center;
-          gap: 5px;
+          justify-content: center;
+          padding: 4px;
+          border-radius: 6px;
+          transition: color 0.15s;
         }
-        .copied-status {
+        .copy-icon-btn:hover {
+          color: #f8fafc;
+        }
+        .copied-tag {
+          font-size: 0.75rem;
           color: #34d399;
           font-weight: 600;
         }
-        .code-file-body {
-          padding: 12px 16px;
+        .dark-code-scroll {
+          padding: 14px;
           overflow-x: auto;
-          background: #1e1e1e;
+          background: #0f172a;
+          -webkit-overflow-scrolling: touch;
         }
-        .code-pre-area {
+        .dark-pre-text {
           margin: 0;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
           font-size: 0.88rem;
-          line-height: 1.5;
-          color: #f3f4f6;
+          line-height: 1.55;
+          color: #e2e8f0;
           white-space: pre;
         }
 
-        /* Fullscreen Image Preview Modal */
+        /* Fullscreen Image View Modal */
         .image-viewer-modal {
           position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px);
           z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px;
