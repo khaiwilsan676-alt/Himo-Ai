@@ -7,7 +7,14 @@ import { generateCodeFromPrompt } from "../src/lib/codeMasterEngine"
 import { fetchLiveWebData } from "../src/lib/webSearchEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
-import { saveChatToDB, getAllChatsFromDB, deleteChatFromDB } from "../src/lib/indexedDbStorage"
+import { 
+  saveChatToDB, 
+  getAllChatsFromDB, 
+  deleteChatFromDB,
+  saveTrainedKnowledge,
+  getTrainedKnowledge,
+  getAllTrainedKnowledgeList 
+} from "../src/lib/indexedDbStorage"
 
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
@@ -61,19 +68,25 @@ async function think(prompt) {
     return "Yo! Himo Omni Engine ready hai. Kya solve ya build karna hai?"
   }
 
-  // 1. Math Master (Calculations & Tables)
+  // 1. Human Newton Trained Memory (First Priority)
+  try {
+    const memoryAns = await getTrainedKnowledge(q)
+    if (memoryAns) return cleanFormatting(memoryAns)
+  } catch (e) {}
+
+  // 2. Math Master (Calculations & Tables)
   try {
     const mathResult = MathMasterEngine.evaluate(q)
     if (mathResult) return cleanFormatting(mathResult)
   } catch (e) {}
 
-  // 2. Code Engine
+  // 3. Code Engine
   try {
     const codeResult = generateCodeFromPrompt(q)
     if (codeResult) return codeResult
   } catch (e) {}
 
-  // 3. Web Knowledge Search
+  // 4. Web Knowledge Search
   try {
     const searchData = await fetchLiveWebData(q)
     if (searchData) return cleanFormatting(searchData)
@@ -94,6 +107,17 @@ export default function Home() {
   const [topMenuOpen, setTopMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
+  // Human Newton Training Mode States
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""])
+  const [pinError, setPinError] = useState("")
+  const [showTrainingStudio, setShowTrainingStudio] = useState(false)
+  const [trainTopic, setTrainTopic] = useState("")
+  const [trainAnswer, setTrainAnswer] = useState("")
+  const [trainingList, setTrainingList] = useState([])
+  const [trainSuccessMsg, setTrainSuccessMsg] = useState("")
+
+  const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -173,9 +197,67 @@ export default function Home() {
     })
   }
 
+  // Handle PIN Input Change with Auto-Focus
+  const handlePinChange = (val, idx) => {
+    if (val.length > 1) val = val.slice(-1)
+    const updated = [...pinDigits]
+    updated[idx] = val
+    setPinDigits(updated)
+    setPinError("")
+
+    if (val && idx < 3) {
+      pinInputRefs[idx + 1].current?.focus()
+    }
+  }
+
+  const handlePinKeyDown = (e, idx) => {
+    if (e.key === "Backspace" && !pinDigits[idx] && idx > 0) {
+      pinInputRefs[idx - 1].current?.focus()
+    }
+  }
+
+  const handleVerifyPinAndOpenMode = async () => {
+    const entered = pinDigits.join("")
+    if (entered === "5656") {
+      setShowPinModal(false)
+      setPinDigits(["", "", "", ""])
+      setPinError("")
+      
+      const list = await getAllTrainedKnowledgeList()
+      setTrainingList(list)
+      setShowTrainingStudio(true)
+    } else {
+      setPinError("Galat Password! (5656 enter karein)")
+    }
+  }
+
+  const handleSaveTraining = async (e) => {
+    e.preventDefault()
+    if (!trainTopic.trim() || !trainAnswer.trim()) return
+
+    await saveTrainedKnowledge(trainTopic, trainAnswer)
+    setTrainSuccessMsg(`'${trainTopic.trim()}' successfully Newton Brain memory mein sikh gaya!`)
+    setTrainTopic("")
+    setTrainAnswer("")
+
+    const list = await getAllTrainedKnowledgeList()
+    setTrainingList(list)
+
+    setTimeout(() => setTrainSuccessMsg(""), 3500)
+  }
+
   async function handleSend(textToSend) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
+
+    // Trigger Training Mode Modal if keyword matches
+    if (prompt.toLowerCase().includes("himo on the training mode")) {
+      setMessage("")
+      if (textareaRef.current) textareaRef.current.style.height = "auto"
+      setShowPinModal(true)
+      setTimeout(() => pinInputRefs[0].current?.focus(), 150)
+      return
+    }
 
     setMessage("")
     if (textareaRef.current) textareaRef.current.style.height = "auto"
@@ -234,6 +316,100 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
+      {/* 4-Box PIN Modal for Training Mode */}
+      {showPinModal && (
+        <div className="modal-backdrop" onClick={() => setShowPinModal(false)}>
+          <div className="pin-card-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pin-header">
+              <h3>Human Newton Engine</h3>
+              <p>Training Mode chalu karne ke liye PIN enter karein</p>
+            </div>
+
+            <div className="pin-boxes-row">
+              {pinDigits.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={pinInputRefs[idx]}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handlePinChange(e.target.value, idx)}
+                  onKeyDown={(e) => handlePinKeyDown(e, idx)}
+                  className="pin-digit-box"
+                />
+              ))}
+            </div>
+
+            {pinError && <p className="pin-error-text">{pinError}</p>}
+
+            <button type="button" className="mode-on-btn" onClick={handleVerifyPinAndOpenMode}>
+              Mode on
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Newton Brain Training Studio Modal */}
+      {showTrainingStudio && (
+        <div className="modal-backdrop" onClick={() => setShowTrainingStudio(false)}>
+          <div className="training-studio-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="studio-top">
+              <div>
+                <h2>Human Newton Training Studio</h2>
+                <p>Himo ko naya gyan sikhayein (Permanent Dimag Memory)</p>
+              </div>
+              <button type="button" className="close-studio-btn" onClick={() => setShowTrainingStudio(false)}>✕</button>
+            </div>
+
+            {trainSuccessMsg && <div className="train-success-banner">{trainSuccessMsg}</div>}
+
+            <form onSubmit={handleSaveTraining} className="train-form">
+              <label>Sawal / Topic (User kya poochega?)</label>
+              <input
+                type="text"
+                placeholder="Jaise: Himo ka founder kaun hai?"
+                value={trainTopic}
+                onChange={(e) => setTrainTopic(e.target.value)}
+                required
+                className="studio-input"
+              />
+
+              <label>Jawab / Information (Himo ko kya sikhana hai?)</label>
+              <textarea
+                placeholder="Jo exact answer Himo ko yaad rakhna chahiye..."
+                value={trainAnswer}
+                onChange={(e) => setTrainAnswer(e.target.value)}
+                required
+                rows={3}
+                className="studio-textarea"
+              />
+
+              <button type="submit" className="save-knowledge-btn">
+                Dimag Mein Save Karein
+              </button>
+            </form>
+
+            <div className="trained-list-section">
+              <h4>Permanent Sikhi Huyi Knowledge ({trainingList.length})</h4>
+              <div className="trained-scroll-view">
+                {trainingList.length === 0 ? (
+                  <p className="no-data">Abhi tak koi custom topic nahi sikhaya gaya.</p>
+                ) : (
+                  trainingList.map((item, idx) => (
+                    <div key={idx} className="trained-item-card">
+                      <strong>Q: {item.rawTopic}</strong>
+                      <p>A: {item.answer}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top-spacer" />
         <button className="new-chat-btn" onClick={() => { setMessages([]); setCurrentChatId(null); setSidebarOpen(false); }}>
@@ -276,6 +452,7 @@ export default function Home() {
         </div>
       </aside>
 
+      {/* Main Workspace */}
       <section className="workspace">
         <header className="topbar">
           <div className="left-nav">
@@ -391,64 +568,15 @@ export default function Home() {
         .message-row.assistant .message-bubble { background: transparent; padding: 4px 0; }
         .message-text { font-size: 1rem; line-height: 1.6; color: #1f2937; }
         
-        /* Modern Clean Code Block Card */
-        .code-container-card {
-          background: #0f172a;
-          border-radius: 14px;
-          overflow: hidden;
-          border: 1px solid #1e293b;
-          margin: 10px 0;
-          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-          width: 100%;
-        }
-        .code-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: #1e293b;
-          padding: 8px 16px;
-          border-bottom: 1px solid #334155;
-        }
-        .code-lang-label {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: #94a3b8;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .copy-action-btn {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          color: #f1f5f9;
-          padding: 5px 12px;
-          border-radius: 8px;
-          font-size: 0.78rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .copy-action-btn:hover {
-          background: rgba(255, 255, 255, 0.18);
-        }
-        .copy-inner {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .copied-text {
-          color: #34d399;
-          font-weight: 600;
-        }
-        .code-pre-block {
-          padding: 16px 18px;
-          margin: 0;
-          color: #e2e8f0;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 0.9rem;
-          line-height: 1.55;
-          overflow-x: auto;
-          white-space: pre;
-        }
+        /* Code Block Card */
+        .code-container-card { background: #0f172a; border-radius: 14px; overflow: hidden; border: 1px solid #1e293b; margin: 10px 0; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); width: 100%; }
+        .code-card-header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 8px 16px; border-bottom: 1px solid #334155; }
+        .code-lang-label { font-size: 0.8rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .copy-action-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #f1f5f9; padding: 5px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+        .copy-action-btn:hover { background: rgba(255, 255, 255, 0.18); }
+        .copy-inner { display: flex; align-items: center; gap: 6px; }
+        .copied-text { color: #34d399; font-weight: 600; }
+        .code-pre-block { padding: 16px 18px; margin: 0; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9rem; line-height: 1.55; overflow-x: auto; white-space: pre; }
         
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 24px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 45%); display: flex; flex-direction: column; align-items: center; }
         .composer-shell { width: 100%; max-width: 800px; background: #ffffff; border-radius: 28px; padding: 12px 18px; display: flex; align-items: flex-end; gap: 12px; border: 1.5px solid #e5e7eb; }
@@ -457,6 +585,72 @@ export default function Home() {
         .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #111827; font-size: 1rem; font-family: inherit; resize: none; max-height: 160px; }
         .send-button-gemini { width: 38px; height: 38px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
+
+        /* Modal Overlay */
+        .modal-backdrop {
+          position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65);
+          backdrop-filter: blur(4px); z-index: 200;
+          display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+
+        /* 4-Box PIN Security Card */
+        .pin-card-modal {
+          background: #ffffff; border-radius: 24px; padding: 32px 24px;
+          max-width: 360px; width: 100%; text-align: center;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); animation: popIn 0.2s ease-out;
+        }
+        .pin-header h3 { font-size: 1.3rem; font-weight: 700; color: #111827; margin-bottom: 6px; }
+        .pin-header p { font-size: 0.85rem; color: #6b7280; margin-bottom: 24px; }
+        .pin-boxes-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+        .pin-digit-box {
+          width: 52px; height: 58px; text-align: center; font-size: 1.6rem; font-weight: 700;
+          border: 2px solid #e5e7eb; border-radius: 14px; outline: none; transition: border-color 0.2s;
+        }
+        .pin-digit-box:focus { border-color: #2563eb; background: #eff6ff; }
+        .pin-error-text { font-size: 0.82rem; color: #dc2626; font-weight: 600; margin-bottom: 12px; }
+        .mode-on-btn {
+          width: 100%; padding: 14px; background: #2563eb; color: #ffffff; font-size: 1rem;
+          font-weight: 700; border-radius: 14px; border: none; cursor: pointer; transition: background 0.2s;
+        }
+        .mode-on-btn:hover { background: #1d4ed8; }
+
+        /* Training Studio Full Modal */
+        .training-studio-modal {
+          background: #ffffff; border-radius: 24px; padding: 24px;
+          max-width: 540px; width: 100%; max-height: 85vh; overflow-y: auto;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column; gap: 16px;
+          animation: popIn 0.2s ease-out;
+        }
+        .studio-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .studio-top h2 { font-size: 1.25rem; font-weight: 800; color: #111827; }
+        .studio-top p { font-size: 0.82rem; color: #6b7280; }
+        .close-studio-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: #9ca3af; }
+        .train-success-banner { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; }
+        .train-form { display: flex; flex-direction: column; gap: 8px; }
+        .train-form label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-top: 4px; }
+        .studio-input, .studio-textarea {
+          width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #d1d5db;
+          font-size: 0.92rem; outline: none; font-family: inherit;
+        }
+        .studio-input:focus, .studio-textarea:focus { border-color: #2563eb; }
+        .save-knowledge-btn {
+          margin-top: 10px; padding: 13px; background: #111827; color: #ffffff;
+          font-weight: 700; border-radius: 12px; border: none; cursor: pointer;
+        }
+        .save-knowledge-btn:hover { background: #1f2937; }
+        .trained-list-section { border-top: 1px solid #e5e7eb; padding-top: 14px; }
+        .trained-list-section h4 { font-size: 0.9rem; font-weight: 700; color: #4b5563; margin-bottom: 8px; }
+        .trained-scroll-view { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
+        .trained-item-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; }
+        .trained-item-card strong { color: #1e40af; display: block; margin-bottom: 2px; }
+        .trained-item-card p { color: #374151; margin: 0; }
+        .no-data { font-size: 0.8rem; color: #9ca3af; }
+
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
         .auth-loading-screen { height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #fff; }
         .loader-spinner { width: 38px; height: 38px; border: 3px solid #f3f4f6; border-top: 3px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
