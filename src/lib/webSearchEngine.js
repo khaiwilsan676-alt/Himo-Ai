@@ -1,41 +1,71 @@
 // ==========================================
-// HIMO REAL-TIME WEB SEARCH & DATA SYNTHESIZER
+// HIMO CLEAN KNOWLEDGE & WEB SEARCH ENGINE
 // ==========================================
 
 export async function fetchLiveWebData(query) {
-  const q = query ? query.replace(/[\u200B-\u200D\uFEFF]/g, '').trim() : "";
-  if (!q) return null;
+  if (!query) return null;
+
+  // Clean query: remove filler words like 'kya hai', 'what is', 'tell me about'
+  let cleanQuery = query
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+
+  const entityQuery = cleanQuery
+    .replace(/\b(kya hai|kya hota hai|batao|kisko bolte hai|what is|define|who is|tell me about|explain)\b/gi, '')
+    .replace(/[?!.,]/g, '')
+    .trim();
+
+  const searchQuery = entityQuery.length > 1 ? entityQuery : cleanQuery;
 
   try {
-    const encodedQuery = encodeURIComponent(q);
-    const response = await fetch(`https://html.duckduckgo.com/html/?q=${encodedQuery}`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
-    });
+    // 1. Direct Wikipedia REST Summary API (Super fast & ultra clean definition)
+    const summaryRes = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchQuery)}`
+    );
 
-    if (!response.ok) return null;
-    const htmlText = await response.text();
-
-    // Simple robust regex parsing to extract result snippets from DuckDuckGo HTML layout
-    const snippetRegex = /<a class="result__snippet[^>]*>(.*?)<\/a>/g;
-    let match;
-    let snippets = [];
-
-    while ((match = snippetRegex.exec(htmlText)) !== null && snippets.length < 3) {
-      const cleanSnippet = match[1].replace(/<\/?[^>]+(>|$)/g, "").trim();
-      if (cleanSnippet) {
-        snippets.push(cleanSnippet);
+    if (summaryRes.ok) {
+      const data = await summaryRes.json();
+      if (data.extract && data.type !== "disambiguation") {
+        return `**${data.title}**\n\n${data.extract}`;
       }
     }
 
-    if (snippets.length > 0) {
-      return `Live Web Search Analysis for "${q}":\n\n` + snippets.map((s, idx) => `${idx + 1}. ${s}`).join("\n\n") + `\n\nAnalysis: Ye raha real-time web data jo maine live fetch kiya hai bhai! Iske mutabiq ye query puri tarah clear ho jati hai.`;
+    // 2. Fallback Search API if direct page not found
+    const searchRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&utf8=&format=json&origin=*`
+    );
+
+    if (searchRes.ok) {
+      const sData = await searchRes.json();
+      const results = sData?.query?.search || [];
+
+      if (results.length > 0) {
+        const topResult = results[0];
+        // Fetch direct summary of top matched page
+        const topPageRes = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topResult.title)}`
+        );
+
+        if (topPageRes.ok) {
+          const topData = await topPageRes.json();
+          if (topData.extract) {
+            return `**${topData.title}**\n\n${topData.extract}`;
+          }
+        }
+
+        // Clean raw snippet fallback
+        let cleanSnippet = topResult.snippet
+          .replace(/<[^>]+>/g, '')
+          .replace(/Wikipedia|Britannica|Dictionary/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+
+        return `**${topResult.title}**\n\n${cleanSnippet}.`;
+      }
     }
   } catch (err) {
-    // Fallback if offline or network error
-    return null;
+    console.error("Web Search Error:", err);
   }
 
-  return null;
+  return `Himo:\n\n'${cleanQuery}' ke baare mein koi seedhi jaankari nahi mili. Please topic ka specific naam likhein.`;
 }
