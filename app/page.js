@@ -7,17 +7,80 @@ import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import WorldEngine from "../src/lib/WorldEngine"
 
+// Advanced AI Response Engine
 async function think(prompt) {
   const q = prompt.trim()
   const qLower = q.toLowerCase()
 
-  if (['hi', 'hii', 'hello', 'hii himo', 'hi himo'].includes(qLower)) {
-    return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
+  // Greetings
+  if (['hi', 'hii', 'hello', 'hey', 'hii himo', 'hi himo', 'namaste', 'hola'].includes(qLower)) {
+    return "👋 Hello! Main Himo Omni hoon - aapka advanced AI assistant.\n\nMain yeh kar sakta hoon:\n• 💬 General baatein aur sawaal\n• 🧮 Math calculations\n• 🌍 3D World explore\n• 📚 Wikipedia search\n• 💡 Knowledge share\n\nAap kya jaanna chahenge?"
+  }
+
+  // How are you
+  if (qLower.includes('how are you') || qLower.includes('kaise ho') || qLower.includes('kya haal')) {
+    return "Main bilkul badhiya hoon! 🤖✨\n\nHamesha ready hoon aapki help karne ke liye. Aap batao, aaj kya karna hai?\n\n• Koi sawaal poochna hai?\n• Kuch calculate karna hai?\n• Ya bas baatein karni hain?"
+  }
+
+  // Who are you
+  if (qLower.includes('who are you') || qLower.includes('tum kaun') || qLower.includes('what are you') || qLower.includes('tum kya')) {
+    return "🤖 Main Himo Omni V17.1 hoon!\n\nMain ek advanced AI assistant hoon jo:\n\n✨ Features:\n• Real-time Wikipedia search\n• Advanced math calculations\n• 3D World Engine\n• Multiple language support (Hindi + English)\n• Smart conversation\n\n💪 Strengths:\n• Fast responses\n• Accurate information\n• User-friendly interface\n\nAap mujhse kuch bhi pooch sakte ho!"
+  }
+
+  // Thank you
+  if (qLower.includes('thank') || qLower.includes('thanks') || qLower.includes('dhanyavad') || qLower.includes('shukriya')) {
+    return "🙏 Aapka swagat hai!\n\nAgar aur koi sawaal ho toh bina jhijhak poochiye. Main hamesha yahan hoon aapki madad ke liye! 😊"
+  }
+
+  // What can you do
+  if (qLower.includes('what can you do') || qLower.includes('kya kar sakte') || qLower.includes('features') || qLower.includes('help')) {
+    return "🚀 Himo Omni ke Features:\n\n1. 📚 Live Wikipedia Search\n   - Kisi bhi topic par latest info\n   - Hindi + English dono mein\n\n2. 🧮 Math Engine\n   - Complex calculations\n   - Instant results\n\n3. 🌍 3D World Engine\n   - \"world map\" type karo\n   - Interactive 3D terrain\n\n4. 💬 Smart Conversation\n   - Natural language samajhta hai\n   - Context-aware responses\n\n5. 🔥 Fast & Accurate\n   - Millisecond response time\n   - Reliable information\n\nTry karo: \"World map\" ya \"15 * 25\"!"
   }
 
   // World Map Check
   if (qLower.includes('world') || qLower.includes('3d world') || qLower.includes('world map') || qLower.includes('map') || qLower.includes('3d map') || qLower.includes('earth') || qLower.includes('terrain')) {
     return "WORLD_3D_ENGINE"
+  }
+
+  // Time check
+  if (qLower.includes('time') || qLower.includes('samay') || qLower.includes('baje')) {
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    return `🕐 Current Time: ${timeStr}\n📅 Aaj ki date: ${dateStr}\n\nKya main aur kuch help kar sakta hoon?`
+  }
+
+  // Date check
+  if (qLower.includes('date') || qLower.includes('aaj ki date') || qLower.includes('tarikh') || qLower.includes('din')) {
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    return `📅 Aaj ki date: ${dateStr}\n\nAur kuch jaanna hai?`
+  }
+
+  // Jokes
+  if (qLower.includes('joke') || qLower.includes('chutkula') || qLower.includes('hasi') || qLower.includes('funny')) {
+    const jokes = [
+      "😄 Teacher: \"Baccho, Mumbai kahan hai?\"\nStudent: \"Sir, mere paas hai!\"\nTeacher: \"Kya?!\"\nStudent: \"Mumbai meri jaan!\"",
+      "🤣 Santa: \"Doctor sahab, mujhe roz subah 6 baje bathroom jana hota hai.\"\nDoctor: \"Toh problem kya hai?\"\nSanta: \"Meri neend 7 baje khulti hai!\"",
+      "😆 Pappu: \"Mummy, aaj school mein sab bachon ne mujhe patthar mara.\"\nMummy: \"Toh tune wapas nahi mara?\"\nPappu: \"Wapas kya marta, wahan patthar hi khatam ho gaye!\""
+    ]
+    const randomJoke = jokes[Math.floor(Math.random() * jokes.length)]
+    return randomJoke + "\n\nAur sunna hai? 😄"
+  }
+
+  // Motivation
+  if (qLower.includes('motivat') || qLower.includes('prerna') || qLower.includes('himmat') || qLower.includes('motivation')) {
+    return "💪 Motivation for you:\n\n\"Success ka koi shortcut nahi hota. Har successful insaan ke peeche mehnat, lagan aur consistency hoti hai.\"\n\nRemember:\n• 🌟 Believe in yourself\n• 🎯 Stay focused on your goals\n• 🚀 Never give up\n• 💪 Hard work always pays off\n\nAaj kuch naya seekho aur khud ko improve karo! ✨"
+  }
+
+  // Weather generic response
+  if (qLower.includes('weather') || qLower.includes('mausam') || qLower.includes('temperature')) {
+    return "🌤️ Weather information ke liye mujhe live API access nahi hai, lekin main suggest kar sakta hoon:\n\n• Google par \"weather [your city]\" search karo\n• Weather app check karo\n• News channel dekho\n\nLekin agar aap chahe toh main kisi aur topic par help kar sakta hoon! 😊"
+  }
+
+  // Coding help
+  if (qLower.includes('code') || qLower.includes('coding') || qLower.includes('programming') || qLower.includes('react') || qLower.includes('javascript') || qLower.includes('python') || qLower.includes('java')) {
+    return `💻 Coding Tips:\n\n1. 📝 Clean Code likho\n   - Meaningful variable names\n   - Proper indentation\n   - Comments add karo\n\n2. 🔍 Debug smartly\n   - Console.log use karo\n   - Error messages padho\n   - Break the problem\n\n3. 📚 Continuous Learning\n   - Documentation padho\n   - Open source contribute karo\n   - Projects banao\n\n4. ⚡ Best Practices:\n   - DRY (Don't Repeat Yourself)\n   - SOLID principles\n   - Version control (Git)\n\nAap kis language mein kaam kar rahe ho? Main specific help kar sakta hoon!`
   }
 
   // 1. Math Calculation Check
@@ -28,7 +91,7 @@ async function think(prompt) {
     try {
       const calcResult = MathMasterEngine.evaluate(q)
       if (typeof calcResult === "number" && !isNaN(calcResult)) {
-        return `According to Himo:\n\n${q} = ${calcResult}`
+        return `🧮 Calculation Result:\n\n${q} = ${calcResult}\n\nAur koi calculation karni hai?`
       }
     } catch (e) {
       // Evaluation fallback to search
@@ -57,8 +120,9 @@ async function think(prompt) {
           .slice(0, 3)
 
         if (matchedSnippets.length > 0) {
-          let output = "According to Himo:\n\n"
+          let output = "📚 According to Himo:\n\n"
           matchedSnippets.forEach(s => { output += `• ${s}\n\n` })
+          output += "\n💡 Kya aap iske baare mein aur detail jaanna chahenge?"
           return output.trim()
         }
       }
@@ -67,7 +131,7 @@ async function think(prompt) {
     console.error("Search fetch error:", err)
   }
 
-  return `According to Himo:\n\n'${q}' par koi exact relevant information nahi mili. Please specific topic likh kar search karo.`
+  return `🤔 According to Himo:\n\n'${q}' par koi exact information nahi mili.\n\nLekin main aapki help kar sakta hoon:\n• Specific topic likho\n• Math calculation try karo\n• "World map" type karke 3D world dekho\n• Ya koi aur sawaal poocho!`
 }
 
 export default function Home() {
@@ -113,7 +177,6 @@ export default function Home() {
   // Initialize World Engine when needed
   useEffect(() => {
     if (showWorld && worldContainerRef.current && !worldEngineInstance) {
-      // Create new world engine instance
       const engine = new WorldEngine(worldContainerRef.current)
       setWorldEngineInstance(engine)
     }
@@ -139,7 +202,6 @@ export default function Home() {
     try {
       const answer = await think(prompt)
       
-      // Check if world engine should be shown
       if (answer === "WORLD_3D_ENGINE") {
         setShowWorld(true)
         setMessages((current) => [...current, { 
@@ -161,7 +223,6 @@ export default function Home() {
     try {
       await signOut(auth)
       setCurrentUser(null)
-      // Clean up world engine
       if (worldEngineInstance) {
         worldEngineInstance.dispose()
         setWorldEngineInstance(null)
@@ -213,16 +274,15 @@ export default function Home() {
     ? currentUser.displayName.charAt(0).toUpperCase() 
     : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
 
+  const userEmail = currentUser.email || ""
+
   // 3. Authenticated -> Render Full Chat Workspace
   return (
     <main className="app-shell">
-      {/* Top 30vh Multi-color Mesh Glow */}
       <div className="top-glow-mesh" />
 
-      {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Slide-out Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <button className="icon-btn" onClick={() => setSidebarOpen(false)} title="Close menu">
@@ -231,6 +291,15 @@ export default function Home() {
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
+        </div>
+
+        {/* User Profile Section */}
+        <div className="user-profile-section">
+          <div className="user-avatar-large">{userInitial}</div>
+          <div className="user-info">
+            <p className="user-name">{currentUser.displayName || "User"}</p>
+            <p className="user-email">{userEmail}</p>
+          </div>
         </div>
 
         <button className="new-chat-btn" onClick={() => { 
@@ -274,9 +343,7 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Main Workspace Area */}
       <section className="workspace">
-        {/* Top Navbar */}
         <header className="topbar">
           <div className="left-nav">
             <button className="icon-btn" onClick={() => setSidebarOpen(true)}>
@@ -287,7 +354,6 @@ export default function Home() {
               </svg>
             </button>
             <span className="brand-name">
-              <img src="/logo.png" alt="Himo Logo" className="brand-logo" />
               Himo <span className="brand-plain-text">Omni V17.1</span>
             </span>
           </div>
@@ -296,7 +362,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Content Canvas */}
         <div className="canvas">
           {messages.length === 0 && (
             <div className="hero-screen">
@@ -309,9 +374,9 @@ export default function Home() {
                   <p>What can you do?</p>
                   <span>Explore features & answers</span>
                 </div>
-                <div className="suggestion-card" onClick={() => handleSend("Help me write clean code")}>
-                  <p>Help me write clean code</p>
-                  <span>Tips for modern React and Next.js</span>
+                <div className="suggestion-card" onClick={() => handleSend("Tell me a joke")}>
+                  <p>Tell me a joke</p>
+                  <span>Fun time with Himo</span>
                 </div>
                 <div className="suggestion-card" onClick={() => handleSend("World map")}>
                   <p>World map</p>
@@ -325,21 +390,9 @@ export default function Home() {
             </div>
           )}
 
-          {/* Messages Feed */}
           <div className="messages-list">
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
-                <div className="message-icon">
-                  {msg.role === "assistant" ? (
-                    <div className="gemini-sparkle">
-                      <svg width="50" height="50" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div className="user-icon">{userInitial}</div>
-                  )}
-                </div>
                 <div className="message-bubble">
                   <div className="message-text">
                     {msg.content.split("\n").map((line, i) => (
@@ -358,13 +411,6 @@ export default function Home() {
 
             {loading && (
               <div className="message-row assistant">
-                <div className="message-icon">
-                  <div className="gemini-sparkle pulse">
-                    <svg width="50" height="50" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
-                    </svg>
-                  </div>
-                </div>
                 <div className="message-bubble">
                   <div className="gemini-shimmer-loader">
                     <div className="shimmer-line line-1"></div>
@@ -377,7 +423,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Input Floating Composer */}
         <div className="dock-container">
           <div className="composer-shell">
             <textarea
@@ -390,13 +435,13 @@ export default function Home() {
                   handleSend()
                 }
               }}
-              placeholder="Ask Himo..."
+              placeholder="Ask Himo anything..."
               rows={1}
             />
             <div className="composer-actions">
               <button
                 type="button"
-                className="send-button-gemini"
+                className="send-button"
                 disabled={!message.trim() || loading}
                 onClick={() => handleSend()}
               >
@@ -478,13 +523,6 @@ export default function Home() {
           gap: 8px;
         }
 
-        .brand-logo {
-          width: 50px !important;
-          height: 50px !important;
-          object-fit: contain;
-          border-radius: 6px;
-        }
-
         .brand-plain-text {
           font-size: 0.85rem;
           font-weight: 500;
@@ -556,6 +594,50 @@ export default function Home() {
           display: flex;
           justify-content: flex-start;
           margin-bottom: 16px;
+        }
+
+        .user-profile-section {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          background: #f9fafb;
+          border-radius: 16px;
+          margin-bottom: 16px;
+        }
+
+        .user-avatar-large {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: #3b82f6;
+          color: #ffffff;
+          font-size: 1.2rem;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .user-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .user-name {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #111827;
+          margin-bottom: 2px;
+        }
+
+        .user-email {
+          font-size: 0.8rem;
+          color: #6b7280;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .new-chat-btn {
@@ -732,50 +814,11 @@ export default function Home() {
 
         .message-row {
           display: flex;
-          gap: 18px;
           max-width: 100%;
         }
 
         .message-row.user {
-          flex-direction: row-reverse;
-        }
-
-        .message-icon {
-          flex-shrink: 0;
-          margin-top: 2px;
-        }
-
-        .gemini-sparkle {
-          width: 50px !important;
-          height: 50px !important;
-          background: linear-gradient(135deg, #2563eb, #9333ea, #db2777);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .gemini-sparkle svg {
-          width: 50px !important;
-          height: 50px !important;
-        }
-
-        .user-icon {
-          width: 50px !important;
-          height: 50px !important;
-          background: #e5e7eb;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-          font-weight: 600;
-          color: #374151;
-        }
-
-        .message-bubble {
-          max-width: 82%;
+          justify-content: flex-end;
         }
 
         .message-row.user .message-bubble {
@@ -783,6 +826,10 @@ export default function Home() {
           padding: 12px 18px;
           border-radius: 20px;
           border-top-right-radius: 4px;
+        }
+
+        .message-bubble {
+          max-width: 82%;
         }
 
         .message-text {
@@ -900,7 +947,7 @@ export default function Home() {
           margin-bottom: 2px;
         }
 
-        .send-button-gemini {
+        .send-button {
           width: 36px;
           height: 36px;
           border-radius: 50%;
@@ -914,13 +961,13 @@ export default function Home() {
           transition: transform 0.1s, background 0.2s;
         }
 
-        .send-button-gemini:disabled {
+        .send-button:disabled {
           background: #e5e7eb;
           color: #9ca3af;
           cursor: not-allowed;
         }
 
-        .send-button-gemini:not(:disabled):hover {
+        .send-button:not(:disabled):hover {
           transform: scale(1.05);
           background: #1f2937;
         }
@@ -930,20 +977,8 @@ export default function Home() {
           .hero-greeting h1 { font-size: 1.8rem; }
           .canvas { padding-bottom: 120px; }
           .world-container { height: 300px !important; }
-          .gemini-sparkle {
-            width: 40px !important;
-            height: 40px !important;
-          }
-          .gemini-sparkle svg {
-            width: 40px !important;
-            height: 40px !important;
-          }
-          .user-icon {
-            width: 40px !important;
-            height: 40px !important;
-          }
         }
       `}</style>
     </main>
   )
-    }
+}
