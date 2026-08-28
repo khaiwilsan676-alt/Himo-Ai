@@ -21,7 +21,16 @@ import {
 
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
-  const cleanCode = (codeText || "").replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim()
+  
+  const raw = typeof codeText === "string" ? codeText : ""
+  const firstLine = raw.split("\n")[0] || ""
+  const langMatch = firstLine.match(/^```(\w+)?/)
+  const language = (langMatch && langMatch[1]) ? langMatch[1] : "code"
+  
+  const cleanCode = raw
+    .replace(/^```[a-zA-Z0-9_-]*\n?/, "")
+    .replace(/```$/, "")
+    .trim()
 
   const handleCopy = () => {
     try {
@@ -34,22 +43,29 @@ function CodeBlock({ codeText }) {
   }
 
   return (
-    <div className="code-container-card">
-      <div className="code-card-header">
-        <span className="code-lang-label">Code</span>
-        <button type="button" onClick={handleCopy} className="copy-action-btn" title="Copy code">
-          {copied ? <span className="copied-text">Copied ✓</span> : (
-            <span className="copy-inner">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="code-file-box">
+      <div className="code-file-header">
+        <div className="file-info-tag">
+          <span className="file-icon-dot"></span>
+          <span className="code-lang-label">{language}</span>
+        </div>
+        <button type="button" onClick={handleCopy} className="file-copy-btn">
+          {copied ? (
+            <span className="copied-status">✓ Copied</span>
+          ) : (
+            <span className="copy-default">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
-              Copy Code
+              Copy code
             </span>
           )}
         </button>
       </div>
-      <pre className="code-pre-block"><code>{cleanCode}</code></pre>
+      <div className="code-file-body">
+        <pre className="code-pre-area"><code>{cleanCode}</code></pre>
+      </div>
     </div>
   )
 }
@@ -58,17 +74,17 @@ function ImageCard({ imageUrl, onImageClick }) {
   const [loaded, setLoaded] = useState(false)
 
   return (
-    <div className="ai-image-wrapper" onClick={() => onImageClick(imageUrl)}>
+    <div className="compact-ai-image-card" onClick={() => onImageClick(imageUrl)}>
       {!loaded && (
-        <div className="image-generating-skeleton">
-          <div className="ai-shimmer-sparkle"></div>
-          <span className="generating-text">Generating visual...</span>
+        <div className="compact-skeleton-loader">
+          <div className="ai-pulse-dot"></div>
+          <span className="loader-subtext">Generating...</span>
         </div>
       )}
       <img
         src={imageUrl}
-        alt="AI Generation"
-        className={`ai-rendered-img ${loaded ? "loaded" : "hidden"}`}
+        alt="AI Visual"
+        className={`compact-img-elem ${loaded ? "is-visible" : "is-hidden"}`}
         onLoad={() => setLoaded(true)}
       />
     </div>
@@ -78,6 +94,39 @@ function ImageCard({ imageUrl, onImageClick }) {
 function cleanFormatting(text) {
   if (!text) return ""
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
+}
+
+function renderMessageContent(content, onImageClick) {
+  if (typeof content === "object" && content?.type === "image_card") {
+    return <ImageCard imageUrl="{content.imageUrl}" onImageClick="{onImageClick}"/>
+  }
+
+  const text = typeof content === "string" ? content : ""
+
+  if (text.includes("```")) {
+    const parts = text.split(/(```[\s\S]*?```)/g)
+    return parts.map((part, i) => {
+      if (part.startsWith("```") && part.endsWith("```")) {
+        return <CodeBlock key={i} codeText={part} />
+      }
+      if (!part.trim()) return null
+      return (
+        <div key={i} className="text-prose-block">
+          {cleanFormatting(part).split("\n").map((line, j) => (
+            <p key={j}>{line || "\u00A0"}</p>
+          ))}
+        </div>
+      )
+    })
+  }
+
+  return (
+    <div className="text-prose-block">
+      {cleanFormatting(text).split("\n").map((line, i) => (
+        <p key={i}>{line || "\u00A0"}</p>
+      ))}
+    </div>
+  )
 }
 
 async function stopVoicePlayback() {
@@ -98,7 +147,7 @@ async function speakVoice(text) {
   try {
     await stopVoicePlayback()
 
-    const cleanText = text.replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
+    const cleanText = text.replace(/```[\s\S]*?```/g, "Code ready hai.")
       .replace(/[#*•_`]/g, "")
       .trim()
 
@@ -275,7 +324,7 @@ export default function Home() {
       setPinDigits(["", "", "", ""])
       setPinError("")
       setIsTrainingModeActive(true)
-      speakVoice("Training mode start ho gaya hai bhai!")
+      speakVoice("Training mode start ho gaya.")
     } else {
       setPinError("Galat Password! (5656 enter karein)")
     }
@@ -327,7 +376,7 @@ export default function Home() {
         const answer = match[2].trim()
 
         await saveTrainedKnowledge(topic, answer)
-        const reply = `Got it bhai! Jab bolega "${topic}", main bolunga "${answer}".`
+        const reply = `Got it! Jab bolega "${topic}", main bolunga "${answer}".`
         speakVoice(reply)
         return reply
       }
@@ -335,16 +384,16 @@ export default function Home() {
       const parts = text.split("=")
       if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
         await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
-        const reply = `Got it bhai! "${parts[0].trim()}" yaad kar liya.`
+        const reply = `Got it! "${parts[0].trim()}" yaad kar liya.`
         speakVoice(reply)
         return reply
       }
 
-      const helpMsg = "Bolkar sikha bhai: 'When I say [Question] you say [Answer]'"
+      const helpMsg = "Bolkar sikha: 'When I say [Question] you say [Answer]'"
       speakVoice(helpMsg)
       return helpMsg
     } catch (e) {
-      return "Processed bhai."
+      return "Processed."
     }
   }
 
@@ -397,7 +446,7 @@ export default function Home() {
         recognitionRef.current = recognition
         recognition.start()
       } else {
-        alert("Speech Recognition engine not supported on this device.")
+        alert("Speech Recognition not supported on this device.")
         setIsListening(false)
       }
     } catch (err) {
@@ -422,7 +471,7 @@ export default function Home() {
       url: embedUrl
     })
 
-    return `Gana "${cleanTrack}" screen par play ho raha hai bhai!`
+    return `Playing "${cleanTrack}"`
   }
 
   const generateAIImage = (promptText) => {
@@ -434,7 +483,7 @@ export default function Home() {
     if (!imageDesc) imageDesc = "Futuristic digital art cinematic lighting 8k"
 
     const seed = Math.floor(Math.random() * 9999999)
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageDesc)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageDesc)}?width=768&height=768&nologo=true&seed=${seed}&model=flux`
 
     return {
       type: "image_card",
@@ -505,7 +554,7 @@ export default function Home() {
       if (searchData) return cleanFormatting(searchData)
     } catch (e) {}
 
-    return `Bhai '${q}' par exact information nahi mili. Ek baar specific sawaal poochh na!`
+    return `Bhai '${q}' par exact information nahi mili.`
   }
 
   async function handleSend(textToSend, isVoice = false) {
@@ -573,7 +622,7 @@ export default function Home() {
       setMessages(finalMsgs)
       await persistChatSession(finalMsgs)
     } catch (error) {
-      const errorMsgs = [...newMsgs, { role: "assistant", content: "Kuch issue ho gaya bhai, dubara bolo." }]
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error occurred." }]
       setMessages(errorMsgs)
       await persistChatSession(errorMsgs)
     } finally {
@@ -623,7 +672,6 @@ export default function Home() {
         onChange={handleImageSelect} 
       />
 
-      {/* Fullscreen Image Preview & Save Modal */}
       {previewModalImg && (
         <div className="image-viewer-modal" onClick={() => setPreviewModalImg(null)}>
           <div className="viewer-content-card" onClick={(e) => e.stopPropagation()}>
@@ -665,7 +713,7 @@ export default function Home() {
           <div className="pin-card-modal" onClick={(e) => e.stopPropagation()}>
             <div className="pin-header">
               <h3>Human Newton Engine</h3>
-              <p>Training Mode chalu karne ke liye PIN enter karein</p>
+              <p>Training Mode PIN</p>
             </div>
 
             <div className="pin-boxes-row">
@@ -754,7 +802,7 @@ export default function Home() {
                 <button 
                   type="button" 
                   className="exit-train-btn" 
-                  onClick={() => { setIsTrainingModeActive(false); speakVoice("Training mode band kar diya bhai."); }}
+                  onClick={() => { setIsTrainingModeActive(false); speakVoice("Training mode off."); }}
                   title="Exit Training Mode"
                 >
                   ✕
@@ -781,7 +829,7 @@ export default function Home() {
               <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
                 <h1 className="hero-main-title">
-                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "How can I help you today?"}
+                  {isTrainingModeActive ? "Training Mode Active" : "How can I help you today?"}
                 </h1>
               </div>
             </div>
@@ -798,18 +846,7 @@ export default function Home() {
                   )}
 
                   <div className="message-text">
-                    {typeof msg.content === "object" && msg.content?.type === "image_card" ? (
-                      <ImageCard 
-                        imageUrl={msg.content.imageUrl} 
-                        onImageClick={(url) => setPreviewModalImg(url)} 
-                      />
-                    ) : typeof msg.content === "string" && msg.content.includes("```") ? (
-                      <CodeBlock codeText="{msg.content}"/>
-                    ) : (
-                      cleanFormatting(typeof msg.content === "string" ? msg.content : "").split("\n").map((line, i) => (
-                        <p key={i}>{line || "\u00A0"}</p>
-                      ))
-                    )}
+                    {renderMessageContent(msg.content, (url) => setPreviewModalImg(url))}
                   </div>
                 </div>
               </div>
@@ -829,7 +866,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Composer Dock */}
         <div className="dock-container">
           {attachedImage && (
             <div className="attached-photo-preview-bar">
@@ -981,37 +1017,132 @@ export default function Home() {
         .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; }
         .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; }
         .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; }
+        .text-prose-block { margin-bottom: 6px; }
 
-        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 260px; border-radius: 14px; overflow: hidden; cursor: pointer; }
+        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 220px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        /* Clean AI Image Card & Animation */
-        .ai-image-wrapper {
-          position: relative; max-width: 340px; width: 100%; min-height: 280px;
-          border-radius: 18px; overflow: hidden; margin: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.12); cursor: pointer;
+        /* Compact AI Image Card with Strict Dimensions */
+        .compact-ai-image-card {
+          position: relative;
+          width: 260px;
+          height: 260px;
+          max-width: 100%;
+          border-radius: 16px;
+          overflow: hidden;
+          margin: 6px 0;
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+          cursor: pointer;
           background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          flex-shrink: 0;
         }
-        .image-generating-skeleton {
-          position: absolute; inset: 0; background: #e2e8f0;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 12px; z-index: 2;
+        .compact-skeleton-loader {
+          position: absolute;
+          inset: 0;
+          background: #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          z-index: 2;
         }
-        .ai-shimmer-sparkle {
-          width: 42px; height: 42px; border-radius: 50%;
+        .ai-pulse-dot {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
           background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
-          animation: pulseRotate 1.5s infinite ease-in-out;
+          animation: compactPulse 1.4s infinite ease-in-out;
         }
-        @keyframes pulseRotate {
-          0% { transform: scale(0.9) rotate(0deg); opacity: 0.8; }
-          50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
-          100% { transform: scale(0.9) rotate(360deg); opacity: 0.8; }
+        @keyframes compactPulse {
+          0% { transform: scale(0.85); opacity: 0.7; }
+          50% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(0.85); opacity: 0.7; }
         }
-        .generating-text { font-size: 0.85rem; font-weight: 600; color: #64748b; letter-spacing: 0.3px; }
+        .loader-subtext {
+          font-size: 0.76rem;
+          font-weight: 600;
+          color: #64748b;
+        }
+        .compact-img-elem {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          border-radius: 16px;
+          transition: opacity 0.35s ease;
+        }
+        .compact-img-elem.is-hidden { opacity: 0; }
+        .compact-img-elem.is-visible { opacity: 1; }
 
-        .ai-rendered-img { width: 100%; height: auto; display: block; border-radius: 18px; transition: opacity 0.4s ease; }
-        .ai-rendered-img.hidden { opacity: 0; }
-        .ai-rendered-img.loaded { opacity: 1; }
+        /* Code File Box Container */
+        .code-file-box {
+          background: #1e1e1e;
+          border: 1px solid #333333;
+          border-radius: 12px;
+          overflow: hidden;
+          margin: 10px 0;
+          max-width: 100%;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+        .code-file-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #2d2d2d;
+          padding: 8px 14px;
+          border-bottom: 1px solid #383838;
+        }
+        .file-info-tag {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .file-icon-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #3b82f6;
+        }
+        .code-lang-label {
+          font-size: 0.76rem;
+          font-weight: 600;
+          color: #9ca3af;
+          text-transform: lowercase;
+          font-family: monospace;
+        }
+        .file-copy-btn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #e5e7eb;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 0.74rem;
+          cursor: pointer;
+        }
+        .copy-default {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .copied-status {
+          color: #34d399;
+          font-weight: 600;
+        }
+        .code-file-body {
+          padding: 12px 16px;
+          overflow-x: auto;
+          background: #1e1e1e;
+        }
+        .code-pre-area {
+          margin: 0;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.88rem;
+          line-height: 1.5;
+          color: #f3f4f6;
+          white-space: pre;
+        }
 
         /* Fullscreen Image Preview Modal */
         .image-viewer-modal {
@@ -1052,14 +1183,6 @@ export default function Home() {
         .equalizer-bar { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
         .close-player-btn { background: transparent; border: none; color: #94a3b8; font-size: 1rem; cursor: pointer; }
         .player-iframe { width: 100%; flex: 1; border: none; }
-
-        .code-container-card { background: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; margin: 8px 0; width: 100%; }
-        .code-card-header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 6px 14px; border-bottom: 1px solid #334155; }
-        .code-lang-label { font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; }
-        .copy-action-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; cursor: pointer; }
-        .copy-inner { display: flex; align-items: center; gap: 4px; }
-        .copied-text { color: #34d399; font-weight: 600; }
-        .code-pre-block { padding: 12px 14px; margin: 0; color: #e2e8f0; font-family: monospace; font-size: 0.85rem; line-height: 1.5; overflow-x: auto; white-space: pre; }
         
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 14px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 40%); display: flex; flex-direction: column; align-items: center; z-index: 10; }
         
