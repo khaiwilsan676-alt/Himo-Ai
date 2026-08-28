@@ -19,6 +19,7 @@ import {
   clearAllTrainedKnowledge 
 } from "../src/lib/indexedDbStorage"
 
+// Proper Black File Code Container
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
   const raw = typeof codeText === "string" ? codeText : ""
@@ -40,7 +41,12 @@ function CodeBlock({ codeText }) {
   return (
     <div className="dark-code-card">
       <div className="dark-code-header">
-        <span className="lang-badge-tag">{language}</span>
+        <div className="file-indicator">
+          <span className="dot-circle red"></span>
+          <span className="dot-circle yellow"></span>
+          <span className="dot-circle green"></span>
+          <span className="lang-badge-tag">{language}</span>
+        </div>
         <button type="button" onClick={handleCopy} className="copy-icon-btn" title="Copy code">
           {copied ? <span className="copied-tag">✓ Copied</span> : <span>Copy code</span>}
         </button>
@@ -52,84 +58,26 @@ function CodeBlock({ codeText }) {
   )
 }
 
-// STRICT 100px x 100px COMPACT IMAGE CARD
-function ProceduralImageCard({ promptText, onImageClick }) {
-  const canvasRef = useRef(null)
-  const [dataUrl, setDataUrl] = useState("")
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    const size = 300
-    canvas.width = size
-    canvas.height = size
-
-    const q = (promptText || "").toLowerCase()
-    const isSun = q.includes("sun") || q.includes("sooraj")
-    const isApple = q.includes("apple") || q.includes("seb")
-
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, size)
-    bgGrad.addColorStop(0, isSun ? "#38bdf8" : "#0f172a")
-    bgGrad.addColorStop(1, isSun ? "#bae6fd" : "#1e293b")
-    ctx.fillStyle = bgGrad
-    ctx.fillRect(0, 0, size, size)
-
-    if (isSun) {
-      ctx.save()
-      ctx.translate(size / 2, size / 2)
-      ctx.strokeStyle = "#facc15"
-      ctx.lineWidth = 6
-      for (let i = 0; i < 12; i++) {
-        ctx.rotate(Math.PI / 6)
-        ctx.beginPath()
-        ctx.moveTo(0, 75)
-        ctx.lineTo(0, 105)
-        ctx.stroke()
-      }
-      const sunGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 60)
-      sunGrad.addColorStop(0, "#fef08a")
-      sunGrad.addColorStop(1, "#eab308")
-      ctx.fillStyle = sunGrad
-      ctx.beginPath()
-      ctx.arc(0, 0, 60, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-    } else if (isApple) {
-      ctx.save()
-      ctx.translate(size / 2, size / 2 + 10)
-      const appleGrad = ctx.createRadialGradient(-30, -30, 10, 0, 0, 130)
-      appleGrad.addColorStop(0, "#f87171")
-      appleGrad.addColorStop(0.7, "#dc2626")
-      appleGrad.addColorStop(1, "#7f1d1d")
-      ctx.fillStyle = appleGrad
-      ctx.beginPath()
-      ctx.moveTo(0, -90)
-      ctx.bezierCurveTo(90, -120, 140, -30, 100, 50)
-      ctx.bezierCurveTo(80, 110, 40, 120, 0, 100)
-      ctx.bezierCurveTo(-40, 120, -80, 110, -100, 50)
-      ctx.bezierCurveTo(-140, -30, -90, -120, 0, -90)
-      ctx.closePath()
-      ctx.fill()
-      ctx.restore()
-    } else {
-      ctx.fillStyle = "#ec4899"
-      ctx.beginPath()
-      ctx.arc(size / 2, size / 2, 80, 0, Math.PI * 2)
-      ctx.fill()
-    }
-
-    setDataUrl(canvas.toDataURL("image/png"))
-  }, [promptText])
+// Strict 100px x 100px High-Graphic AI Image Card
+function HighGraphicImageCard({ promptText, onImageClick }) {
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const seed = Math.floor(Math.random() * 999999)
+  const cleanPrompt = encodeURIComponent(promptText.replace(/(create|generate|make|image|photo|of|banao|dikhao)/gi, "").trim() || "modern high detail artwork")
+  const highResUrl = `[https://image.pollinations.ai/prompt/$](https://image.pollinations.ai/prompt/$){cleanPrompt}?seed=${seed}&width=768&height=768&nologo=true`
 
   return (
-    <div className="strict-100px-img-wrapper" onClick={() => dataUrl && onImageClick(dataUrl)}>
-      <canvas ref={canvasRef} style={{ display: "none" }} />
-      {dataUrl ? (
-        <img src={dataUrl} alt={promptText} className="strict-100px-img-elem" />
-      ) : (
-        <div className="strict-loader"><span>...</span></div>
+    <div className="strict-100px-img-wrapper" onClick={() => onImageClick(highResUrl)}>
+      {!imgLoaded && (
+        <div className="strict-loader">
+          <div className="tiny-spinner"></div>
+        </div>
       )}
+      <img 
+        src={highResUrl} 
+        alt={promptText} 
+        className={`strict-100px-img-elem ${imgLoaded ? "img-visible" : "img-hidden"}`} 
+        onLoad={() => setImgLoaded(true)}
+      />
     </div>
   )
 }
@@ -140,8 +88,8 @@ function cleanFormatting(text) {
 }
 
 function renderMessageContent(content, onImageClick) {
-  if (typeof content === "object" && content?.type === "procedural_image") {
-    return <ProceduralImageCard promptText={content.prompt} onImageClick={onImageClick} />
+  if (typeof content === "object" && content?.type === "ai_image") {
+    return <HighGraphicImageCard promptText={content.prompt} onImageClick={onImageClick} />
   }
 
   const text = typeof content === "string" ? content : ""
@@ -220,17 +168,11 @@ export default function Home() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [previewModalImg, setPreviewModalImg] = useState(null)
 
-  const [isTrainingModeActive, setIsTrainingModeActive] = useState(false)
-  const [showPinModal, setShowPinModal] = useState(false)
-  const [pinDigits, setPinDigits] = useState(["", "", "", ""])
-  const [pinError, setPinError] = useState("")
   const [isListening, setIsListening] = useState(false)
-  const [currentTrack, setCurrentTrack] = useState(null)
 
   const fileInputRef = useRef(null)
   const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
-  const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -350,14 +292,11 @@ export default function Home() {
     } catch (err) { setIsListening(false) }
   }
 
-  const generateProceduralArt = (promptText) => {
-    return { type: "procedural_image", prompt: promptText }
-  }
-
   async function think(prompt, hasAttachedPhoto = false) {
     const q = prompt.trim()
     const qLower = q.toLowerCase()
 
+    // 1. Math Calculation Priority
     const isMathQuery = /[\d]+\s*[\+\-\*\/\%\^]\s*[\d]+/.test(q) || !isNaN(Number(q.replace(/\s+/g, "")))
     if (isMathQuery) {
       try {
@@ -366,9 +305,11 @@ export default function Home() {
       } catch (e) {}
     }
 
+    // 2. Strict Code Request Check
     const isCodeRequest = 
       qLower.startsWith("write code") || 
       qLower.startsWith("code ") || 
+      qLower.includes("code in") ||
       qLower.includes("ka code") || 
       qLower.includes("function") || 
       qLower.includes("script") ||
@@ -377,6 +318,7 @@ export default function Home() {
       qLower.includes("react") ||
       qLower.includes("javascript") ||
       qLower.includes("python") ||
+      qLower.includes("java") ||
       qLower.includes("css") ||
       qLower.includes("sql")
 
@@ -385,21 +327,19 @@ export default function Home() {
       if (codeOutput) return codeOutput
     }
 
+    // 3. High-Graphic AI Image Request Check
     const isImageKeyword = 
       qLower.includes("image") || 
       qLower.includes("photo") || 
       qLower.includes("tasveer") || 
       qLower.includes("picture") || 
-      qLower.includes("apple") ||
-      qLower.includes("sun") ||
-      qLower.includes("sooraj") ||
-      qLower.includes("seb") ||
+      qLower.includes("generate") || 
+      qLower.includes("create") ||
       qLower.includes("banao") || 
-      qLower.includes("bana") ||
-      /^(?:[0-9])$/.test(qLower.trim())
+      qLower.includes("draw")
 
     if (isImageKeyword && !isMathQuery) {
-      return generateProceduralArt(q)
+      return { type: "ai_image", prompt: q }
     }
 
     if (hasAttachedPhoto) return "Okk photo dekh li hai, mast lag rahi hai!"
@@ -421,7 +361,7 @@ export default function Home() {
       if (mathResult) return cleanFormatting(mathResult)
     } catch (e) {}
 
-    return `Ooo sun, '${q}' par local processing complete hai!`
+    return `Ooo sun, '${q}' par processing complete hai!`
   }
 
   async function handleSend(textToSend) {
@@ -480,7 +420,7 @@ export default function Home() {
             <button className="viewer-close-btn" onClick={() => setPreviewModalImg(null)}>✕</button>
             <div className="viewer-img-holder"><img src={previewModalImg} alt="Preview" className="viewer-full-img" /></div>
             <div className="viewer-bottom-bar">
-              <a href={previewModalImg} target="_blank" rel="noreferrer" download="himo_art.png" className="viewer-save-btn">Save Image</a>
+              <a href={previewModalImg} target="_blank" rel="noreferrer" download="himo_ai_art.jpg" className="viewer-save-btn">Save HD Image</a>
             </div>
           </div>
         </div>
@@ -513,7 +453,7 @@ export default function Home() {
           </div>
           <div className="settings-container">
             <button type="button" className="settings-icon-btn" onClick={(e) => { e.stopPropagation(); setSettingsMenuOpen(!settingsMenuOpen); }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </button>
             {settingsMenuOpen && (
               <div className="popup-card settings-popup">
@@ -572,7 +512,7 @@ export default function Home() {
                 </div>
               </div>
             ))}
-            {loading && <div className="message-row assistant"><div className="message-bubble">Processing...</div></div>}
+            {loading && <div className="message-row assistant"><div className="message-bubble">Thinking...</div></div>}
             <div ref={messagesEndRef} />
           </div>
         </div>
@@ -594,7 +534,7 @@ export default function Home() {
                 type="button"
                 className="plus-action-btn"
                 onClick={(e) => { e.stopPropagation(); setPlusMenuOpen(!plusMenuOpen); }}
-                title="Add photo or AI action"
+                title="Upload Photo"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -696,7 +636,7 @@ export default function Home() {
         .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 220px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        /* STRICTLY LOCKED 100px x 100px COMPACT IMAGE CARD */
+        /* STRICT 100px x 100px IMAGE CARD */
         .strict-100px-img-wrapper {
           width: 100px !important;
           height: 100px !important;
@@ -704,15 +644,16 @@ export default function Home() {
           min-height: 100px !important;
           max-width: 100px !important;
           max-height: 100px !important;
-          border-radius: 12px;
+          border-radius: 14px;
           overflow: hidden;
           margin: 6px 0;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
           cursor: pointer;
-          border: 1px solid #e2e8f0;
-          background: #f8fafc;
-          flex-shrink: 0;
+          border: 1.5px solid #e2e8f0;
+          background: #0f172a;
+          position: relative;
           display: inline-block;
+          flex-shrink: 0;
         }
         .strict-100px-img-elem {
           width: 100% !important;
@@ -720,73 +661,95 @@ export default function Home() {
           object-fit: cover !important;
           display: block !important;
           border-radius: 12px !important;
+          transition: opacity 0.2s ease;
         }
+        .img-visible { opacity: 1; }
+        .img-hidden { opacity: 0; }
         .strict-loader {
-          width: 100%;
-          height: 100%;
-          background: #e2e8f0;
+          position: absolute;
+          inset: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.75rem;
-          color: #64748b;
+          background: #1e293b;
         }
+        .tiny-spinner {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-top-color: #38bdf8;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* STRICT BLACK CODE FILE BOX WITH BACKGROUND */
+        /* PROPER SOLID BLACK CODE FILE CONTAINER */
         .dark-code-card {
-          background: #0f172a !important;
-          border: 1px solid #1e293b;
-          border-radius: 14px;
+          background: #0d1117 !important;
+          border: 1px solid #30363d;
+          border-radius: 12px;
           overflow: hidden;
           margin: 10px 0;
           width: 100%;
           max-width: 100%;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
         .dark-code-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: #1e293b !important;
-          padding: 8px 14px;
-          border-bottom: 1px solid #334155;
+          background: #161b22 !important;
+          padding: 8px 12px;
+          border-bottom: 1px solid #30363d;
         }
+        .file-indicator {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .dot-circle {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+        }
+        .dot-circle.red { background: #ff5f56; }
+        .dot-circle.yellow { background: #ffbd2e; }
+        .dot-circle.green { background: #27c93f; }
         .lang-badge-tag {
           font-size: 0.72rem;
           font-weight: 700;
-          color: #94a3b8;
-          letter-spacing: 0.5px;
-          font-family: monospace;
+          color: #8b949e;
+          font-family: ui-monospace, SFMono-Regular, monospace;
+          margin-left: 6px;
         }
         .copy-icon-btn {
           background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: #e5e7eb;
-          padding: 4px 10px;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #c9d1d9;
+          padding: 3px 8px;
           border-radius: 6px;
-          font-size: 0.74rem;
+          font-size: 0.72rem;
           cursor: pointer;
         }
         .copied-tag {
-          color: #34d399;
+          color: #3fb950;
           font-weight: 600;
         }
         .dark-code-scroll {
-          padding: 14px;
+          padding: 12px 14px;
           overflow-x: auto;
-          background: #0f172a !important;
+          background: #0d1117 !important;
           max-width: 100%;
           -webkit-overflow-scrolling: touch;
         }
         .dark-pre-text {
           margin: 0;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 0.85rem;
-          line-height: 1.55;
-          color: #e2e8f0;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          font-size: 0.84rem;
+          line-height: 1.5;
+          color: #e6edf3;
           white-space: pre-wrap;
           word-break: break-word;
-          overflow-wrap: break-word;
         }
 
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 14px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 40%); display: flex; flex-direction: column; align-items: center; z-index: 10; }
