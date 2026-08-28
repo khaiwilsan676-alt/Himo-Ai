@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { 
   signInWithPopup, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from "firebase/auth";
-import { auth, googleProvider } from "./firebaseConfig";
+import { auth, googleProvider } from "../src/lib/firebase";
 
-export default function LoginPage({ onLoginSuccess }) {
+export default function LoginPage() {
   const [showTerms, setShowTerms] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -39,23 +39,10 @@ export default function LoginPage({ onLoginSuccess }) {
     setLoading(true);
     setErrorMsg("");
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      const userData = {
-        name: user.displayName,
-        email: user.email,
-        photo: user.photoURL,
-        uid: user.uid,
-        provider: "Google"
-      };
-
-      if (typeof onLoginSuccess === "function") {
-        onLoginSuccess(userData);
-      }
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Google Auth Error:", error);
-      setErrorMsg(error.message);
+      setErrorMsg(`${error.code}: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -67,28 +54,15 @@ export default function LoginPage({ onLoginSuccess }) {
     setErrorMsg("");
 
     try {
-      let userCredential;
       if (isSignUp) {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
       }
-
-      const user = userCredential.user;
-      const userData = {
-        name: user.displayName || user.email.split('@')[0],
-        email: user.email,
-        uid: user.uid,
-        provider: "Email"
-      };
-
       setShowEmailModal(false);
-      if (typeof onLoginSuccess === "function") {
-        onLoginSuccess(userData);
-      }
     } catch (error) {
       console.error("Email Auth Error:", error);
-      setErrorMsg(error.message);
+      setErrorMsg(`${error.code}: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -310,15 +284,15 @@ export default function LoginPage({ onLoginSuccess }) {
         .error-banner {
           position: relative;
           z-index: 20;
-          background: rgba(239, 68, 68, 0.9);
+          background: rgba(239, 68, 68, 0.95);
           color: #fff;
-          padding: 8px 16px;
+          padding: 10px 16px;
           border-radius: 8px;
           font-size: 0.85rem;
           display: flex;
           align-items: center;
-          gap: 8px;
-          max-width: 320px;
+          gap: 10px;
+          max-width: 90%;
           margin: 0 16px;
         }
 
@@ -476,3 +450,4 @@ export default function LoginPage({ onLoginSuccess }) {
     </div>
   );
 }
+
