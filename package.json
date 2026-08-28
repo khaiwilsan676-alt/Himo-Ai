@@ -12,7 +12,6 @@
     "@capacitor/status-bar": "^8.0.3",
     "firebase": "^12.18.0",
     "next": "latest",
-    "openai": "latest",
     "react": "latest",
     "react-dom": "latest",
     "three": "^0.185.1"
