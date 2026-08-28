@@ -1,111 +1,162 @@
-// Advanced System Hardware & App Control Engine
+// Advanced Mobile & Web App Launcher Engine
 
-const SYSTEM_INTENTS = {
-  wifi: "intent:#Intent;action=android.settings.WIFI_SETTINGS;end",
-  internet: "intent:#Intent;action=android.settings.WIRELESS_SETTINGS;end",
-  network: "intent:#Intent;action=android.settings.DATA_ROAMING_SETTINGS;end",
-  airplane: "intent:#Intent;action=android.settings.AIRPLANE_MODE_SETTINGS;end",
-  bluetooth: "intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end",
-  settings: "intent:#Intent;action=android.settings.SETTINGS;end",
-  camera: "intent:#Intent;action=android.media.action.IMAGE_CAPTURE;end",
-  display: "intent:#Intent;action=android.settings.DISPLAY_SETTINGS;end"
+const APP_LAUNCH_MAP = {
+  whatsapp: {
+    intent: "intent:#Intent;package=com.whatsapp;scheme=whatsapp;end",
+    scheme: "whatsapp://send",
+    web: "https://api.whatsapp.com/send"
+  },
+  youtube: {
+    intent: "intent:#Intent;package=com.google.android.youtube;scheme=vnd.youtube;end",
+    scheme: "vnd.youtube://",
+    web: "https://youtube.com"
+  },
+  instagram: {
+    intent: "intent:#Intent;package=com.instagram.android;scheme=instagram;end",
+    scheme: "instagram://app",
+    web: "https://instagram.com"
+  },
+  facebook: {
+    intent: "intent:#Intent;package=com.facebook.katana;scheme=fb;end",
+    scheme: "fb://",
+    web: "https://facebook.com"
+  },
+  twitter: {
+    intent: "intent:#Intent;package=com.twitter.android;scheme=twitter;end",
+    scheme: "twitter://",
+    web: "https://twitter.com"
+  },
+  x: {
+    intent: "intent:#Intent;package=com.twitter.android;scheme=twitter;end",
+    scheme: "twitter://",
+    web: "https://x.com"
+  },
+  telegram: {
+    intent: "intent:#Intent;package=org.telegram.messenger;scheme=tg;end",
+    scheme: "tg://",
+    web: "https://t.me"
+  },
+  snapchat: {
+    intent: "intent:#Intent;package=com.snapchat.android;scheme=snapchat;end",
+    scheme: "snapchat://",
+    web: "https://snapchat.com"
+  },
+  spotify: {
+    intent: "intent:#Intent;package=com.spotify.music;scheme=spotify;end",
+    scheme: "spotify://",
+    web: "https://open.spotify.com"
+  },
+  gmail: {
+    intent: "intent:#Intent;package=com.google.android.gm;scheme=mailto;end",
+    scheme: "mailto:",
+    web: "https://mail.google.com"
+  },
+  maps: {
+    intent: "intent:#Intent;package=com.google.android.apps.maps;scheme=geo;end",
+    scheme: "geo:0,0?q=",
+    web: "https://maps.google.com"
+  },
+  calculator: {
+    intent: "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALCULATOR;end",
+    scheme: "calculator:",
+    web: null
+  },
+  settings: {
+    intent: "intent:#Intent;action=android.settings.SETTINGS;end",
+    scheme: null,
+    web: null
+  },
+  wifi: {
+    intent: "intent:#Intent;action=android.settings.WIFI_SETTINGS;end",
+    scheme: null,
+    web: null
+  },
+  camera: {
+    intent: "intent:#Intent;action=android.media.action.IMAGE_CAPTURE;end",
+    scheme: "camera:",
+    web: null
+  }
 };
 
-const APP_SCHEMES = {
-  whatsapp: ["whatsapp://", "https://wa.me/"],
-  youtube: ["vnd.youtube://", "youtube://", "https://youtube.com"],
-  instagram: ["instagram://", "https://instagram.com"],
-  facebook: ["fb://", "https://facebook.com"],
-  twitter: ["twitter://", "x://", "https://twitter.com"],
-  x: ["twitter://", "x://", "https://twitter.com"],
-  telegram: ["tg://", "https://t.me/"],
-  snapchat: ["snapchat://", "https://snapchat.com"],
-  spotify: ["spotify://", "https://open.spotify.com"],
-  gmail: ["googlegmail://", "mailto:"],
-  maps: ["geo:0,0?q=", "google.navigation:q=", "https://maps.google.com"],
-  calculator: ["intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALCULATOR;end", "calculator:"],
-  phone: ["tel:"],
-  dialer: ["tel:"]
-};
+// Safe Navigation Dispatcher that bypasses mobile browser pop-up blocks
+function dispatchLaunchUrl(url) {
+  if (typeof window === "undefined" || !url) return;
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 200);
+  } catch (e) {
+    window.location.href = url;
+  }
+}
 
 export async function handleDeviceAction(query, cameraTriggerCallback, screenshotCallback) {
   if (!query || typeof query !== "string") return null;
-  const q = query.toLowerCase().trim();
 
-  // 1. Take a Picture / Camera Capture
+  // Clean and normalize query
+  let q = query.toLowerCase().trim();
+
+  // 1. Camera / Picture Triggers
   if (
-    q.includes("take a picture") || 
-    q.includes("photo khicho") || 
-    q.includes("click photo") || 
-    q.includes("take picture") ||
-    q.includes("capture image") ||
-    q.includes("open camera") ||
-    q.includes("camera kholo")
+    q.includes("picture") || 
+    q.includes("photo") || 
+    q.includes("camera") || 
+    q.includes("selfie")
   ) {
-    if (cameraTriggerCallback) {
-      cameraTriggerCallback();
-      return "Opening Camera to capture picture...";
-    }
-    if (typeof window !== "undefined") {
-      window.location.href = SYSTEM_INTENTS.camera;
-      return "Opening Camera...";
+    if (q.includes("take") || q.includes("click") || q.includes("open") || q.includes("kholo") || q.includes("khicho")) {
+      if (cameraTriggerCallback) {
+        cameraTriggerCallback();
+        return "Opening Camera to take picture...";
+      }
     }
   }
 
-  // 2. Take a Screenshot
-  if (
-    q.includes("take a screenshot") || 
-    q.includes("screenshot lo") || 
-    q.includes("capture screen") || 
-    q.includes("screenshot")
-  ) {
+  // 2. Screenshot Triggers
+  if (q.includes("screenshot")) {
     if (screenshotCallback) {
       screenshotCallback();
       return "Taking Screenshot of current screen...";
     }
   }
 
-  // 3. Close Internet / Wi-Fi / Data Control
+  // 3. Internet / Wi-Fi Control Triggers
   if (
-    q.includes("close internet") || 
-    q.includes("turn off internet") || 
-    q.includes("off internet") || 
-    q.includes("band karo internet") ||
-    q.includes("wifi off") ||
-    q.includes("internet setting") ||
-    q.includes("open wifi") ||
-    q.includes("wifi settings")
+    q.includes("internet") || 
+    q.includes("wifi") || 
+    q.includes("data off") || 
+    q.includes("network")
   ) {
-    if (typeof window !== "undefined") {
-      window.location.href = SYSTEM_INTENTS.wifi;
+    if (q.includes("close") || q.includes("off") || q.includes("band") || q.includes("open") || q.includes("settings")) {
+      dispatchLaunchUrl(APP_LAUNCH_MAP.wifi.intent);
+      return "Opening Wi-Fi & Internet Settings...";
     }
-    return "Opening Wi-Fi & Network Settings to control internet...";
   }
 
-  // 4. App Launchers
-  const openMatch = q.match(/(?:open|launch|start|chalu karo|kholo)\s+([a-z0-9_\s]+)/i);
-  if (openMatch) {
-    const targetApp = openMatch[1].replace(/app|application/gi, "").trim();
-    const matchedKey = Object.keys(APP_SCHEMES).find(key => targetApp.includes(key) || key.includes(targetApp));
+  // 4. App Launch Triggers (Open WhatsApp, YouTube, Instagram, etc.)
+  // Remove filler words: "open", "launch", "kholo", "my", "the", "mera", "meri", "app", "please"
+  const cleanedTarget = q
+    .replace(/\b(open|launch|start|chalu karo|kholo|chalao|run|my|the|mera|meri|apna|apni|app|application|please)\b/gi, "")
+    .replace(/[?!.,]/g, "")
+    .trim();
 
-    if (matchedKey && APP_SCHEMES[matchedKey]) {
-      const urls = APP_SCHEMES[matchedKey];
-      if (typeof window !== "undefined") {
-        try {
-          window.location.href = urls[0];
-        } catch (e) {
-          if (urls[1]) window.open(urls[1], "_blank");
-        }
-      }
-      return `Opening ${targetApp.toUpperCase()}...`;
-    }
+  if (!cleanedTarget) return null;
 
-    if (SYSTEM_INTENTS[targetApp]) {
-      if (typeof window !== "undefined") {
-        window.location.href = SYSTEM_INTENTS[targetApp];
-      }
-      return `Opening ${targetApp}...`;
-    }
+  // Match target app with launch map
+  const matchedKey = Object.keys(APP_LAUNCH_MAP).find(
+    key => cleanedTarget.includes(key) || key.includes(cleanedTarget)
+  );
+
+  if (matchedKey) {
+    const appConfig = APP_LAUNCH_MAP[matchedKey];
+    
+    // Launch via Android Intent -> URI Scheme -> Web Fallback
+    dispatchLaunchUrl(appConfig.intent || appConfig.scheme || appConfig.web);
+    return `Opening ${matchedKey.toUpperCase()}...`;
   }
 
   return null;
