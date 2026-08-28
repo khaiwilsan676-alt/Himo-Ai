@@ -6,6 +6,40 @@ import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 
+// Custom Himo Brain Circuit SVG Icon (matching provided logo)
+function HimoBrainIcon({ size = 26, className = "" }) {
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 100 100" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M 52 35 C 48 35 44 38 43 43 C 41 53 37 60 33 60 C 29 60 27 55 28 48 C 29 41 35 36 41 36 C 45 36 48 34 49 30 C 50 26 48 22 43 23 C 33 25 24 33 22 43 C 20 54 24 64 32 66 C 39 68 45 63 48 55 C 50 49 53 44 57 44 C 61 44 63 48 62 55 C 60 64 53 71 44 71 C 39 71 36 74 37 78 C 38 82 42 84 48 83 C 60 81 70 70 72 57 C 74 44 68 35 58 35 Z"
+        fill="currentColor"
+      />
+      <path
+        d="M 49 15 C 31 16 17 29 15 47 C 14 55 16 63 21 69 C 23 71 26 70 27 67 C 28 64 26 62 23 58 C 20 52 19 46 20 40 C 22 28 32 19 46 18 C 50 18 53 15 52 11 C 51 8 47 7 43 8 C 39 9 35 11 31 14"
+        fill="currentColor"
+      />
+      <path
+        d="M 58 13 C 74 16 86 29 87 46 C 88 59 81 72 71 79 C 68 81 65 80 64 77 C 63 74 65 71 68 69 C 75 63 79 53 78 43 C 77 31 69 22 57 20 C 53 19 51 16 52 12 C 53 8 56 7 58 13 Z"
+        fill="currentColor"
+      />
+      <path
+        d="M 52 86 C 46 90 40 91 35 88 C 32 86 31 83 33 80 C 35 77 38 78 40 79 C 43 81 47 80 51 77 C 54 75 57 77 58 80 C 59 83 56 86 52 86 Z"
+        fill="currentColor"
+      />
+      <circle cx="51" cy="28" r="3.2" fill="currentColor" />
+      <circle cx="34" cy="50" r="3.2" fill="currentColor" />
+      <circle cx="67" cy="57" r="3.2" fill="currentColor" />
+    </svg>
+  )
+}
+
 async function think(prompt) {
   const q = prompt.trim()
   const qLower = q.toLowerCase()
@@ -346,8 +380,8 @@ export default function Home() {
         {/* Content Canvas */}
         <div className="canvas">
           {messages.length === 0 && (
-            <div className="hero-screen">
-              <div className="hero-greeting">
+            <div className="hero-screen-top-left">
+              <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
                 <h1>How can I help you today?</h1>
               </div>
@@ -360,10 +394,8 @@ export default function Home() {
               <div key={index} className={`message-row ${msg.role}`}>
                 <div className="message-icon">
                   {msg.role === "assistant" ? (
-                    <div className="gemini-sparkle">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
-                      </svg>
+                    <div className="himo-brain-badge">
+                      <HimoBrainIcon size={24} />
                     </div>
                   ) : (
                     <div className="user-icon">{userInitial}</div>
@@ -382,10 +414,8 @@ export default function Home() {
             {loading && (
               <div className="message-row assistant">
                 <div className="message-icon">
-                  <div className="gemini-sparkle pulse">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
-                    </svg>
+                  <div className="himo-brain-badge pulse-brain">
+                    <HimoBrainIcon size={24} />
                   </div>
                 </div>
                 <div className="message-bubble">
@@ -667,6 +697,7 @@ export default function Home() {
           text-overflow: ellipsis;
         }
 
+        /* Sidebar Footer */
         .sidebar-footer {
           border-top: 1px solid #e5e7eb;
           padding-top: 14px;
@@ -737,35 +768,36 @@ export default function Home() {
           color: #111827;
         }
 
-        /* Canvas & Hero Shimmer Animation */
+        /* Canvas & Top-Left Aligned Hero */
         .canvas {
           flex: 1;
           overflow-y: auto;
-          padding: 0 16px 140px 16px;
+          padding: 0 20px 140px 20px;
           max-width: 820px;
           width: 100%;
           margin: 0 auto;
         }
 
-        .hero-screen {
-          margin-top: 18vh;
+        .hero-screen-top-left {
+          margin-top: 36px;
           display: flex;
-          justify-content: center;
-          align-items: center;
+          justify-content: flex-start;
+          align-items: flex-start;
         }
 
-        .hero-greeting {
-          text-align: center;
+        .hero-greeting-left {
+          text-align: left;
         }
 
         .gradient-text {
-          font-size: 3.4rem;
+          font-size: 3.2rem;
           font-weight: 800;
           display: block;
           margin-bottom: 6px;
+          letter-spacing: -0.5px;
         }
 
-        /* Dynamic Color Flow Animation */
+        /* Dynamic Continuous Color Shimmer Animation */
         .animated-shimmer {
           background: linear-gradient(
             90deg, 
@@ -793,11 +825,11 @@ export default function Home() {
           }
         }
 
-        .hero-greeting h1 {
-          font-size: 2.2rem;
+        .hero-greeting-left h1 {
+          font-size: 2rem;
           font-weight: 600;
           color: #9ca3af;
-          line-height: 1.2;
+          line-height: 1.25;
         }
 
         /* Messages */
@@ -810,7 +842,7 @@ export default function Home() {
 
         .message-row {
           display: flex;
-          gap: 18px;
+          gap: 16px;
           max-width: 100%;
         }
 
@@ -823,13 +855,24 @@ export default function Home() {
           margin-top: 2px;
         }
 
-        .gemini-sparkle {
-          background: linear-gradient(135deg, #2563eb, #9333ea, #db2777);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+        /* Custom Brain Badge */
+        .himo-brain-badge {
+          width: 32px;
+          height: 32px;
           display: flex;
           align-items: center;
           justify-content: center;
+          color: #111827;
+        }
+
+        .pulse-brain {
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 0.7; }
+          50% { transform: scale(1.08); opacity: 1; color: #2563eb; }
+          100% { transform: scale(0.95); opacity: 0.7; }
         }
 
         .user-icon {
@@ -981,8 +1024,8 @@ export default function Home() {
         }
 
         @media (max-width: 600px) {
-          .gradient-text { font-size: 2.4rem; }
-          .hero-greeting h1 { font-size: 1.6rem; }
+          .gradient-text { font-size: 2.3rem; }
+          .hero-greeting-left h1 { font-size: 1.5rem; }
           .canvas { padding-bottom: 120px; }
         }
       `}</style>
