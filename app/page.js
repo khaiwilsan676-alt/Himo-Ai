@@ -6,6 +6,7 @@ import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import WorldEngine from "../src/lib/WorldEngine"
+import CodeEngine from "../src/lib/CodeEngine"
 
 // Advanced AI Response Engine
 async function think(prompt) {
@@ -14,17 +15,17 @@ async function think(prompt) {
 
   // Greetings
   if (['hi', 'hii', 'hello', 'hey', 'hii himo', 'hi himo', 'namaste', 'hola'].includes(qLower)) {
-    return "👋 Hello! Main Himo Omni hoon - aapka advanced AI assistant.\n\nMain yeh kar sakta hoon:\n• 💬 General baatein aur sawaal\n• 🧮 Math calculations\n• 🌍 3D World explore\n• 📚 Wikipedia search\n• 💡 Knowledge share\n\nAap kya jaanna chahenge?"
+    return "👋 Hello! Main Himo Omni hoon - aapka advanced AI assistant.\n\nMain yeh kar sakta hoon:\n• 💬 General baatein aur sawaal\n• 🧮 Math calculations\n• 🌍 3D World explore\n• 📚 Wikipedia search\n• 💻 Code generate karna\n• 💡 Knowledge share\n\nAap kya jaanna chahenge?"
   }
 
   // How are you
   if (qLower.includes('how are you') || qLower.includes('kaise ho') || qLower.includes('kya haal')) {
-    return "Main bilkul badhiya hoon! 🤖✨\n\nHamesha ready hoon aapki help karne ke liye. Aap batao, aaj kya karna hai?\n\n• Koi sawaal poochna hai?\n• Kuch calculate karna hai?\n• Ya bas baatein karni hain?"
+    return "Main bilkul badhiya hoon! 🤖✨\n\nHamesha ready hoon aapki help karne ke liye. Aap batao, aaj kya karna hai?"
   }
 
   // Who are you
   if (qLower.includes('who are you') || qLower.includes('tum kaun') || qLower.includes('what are you') || qLower.includes('tum kya')) {
-    return "🤖 Main Himo Omni V17.1 hoon!\n\nMain ek advanced AI assistant hoon jo:\n\n✨ Features:\n• Real-time Wikipedia search\n• Advanced math calculations\n• 3D World Engine\n• Multiple language support (Hindi + English)\n• Smart conversation\n\n💪 Strengths:\n• Fast responses\n• Accurate information\n• User-friendly interface\n\nAap mujhse kuch bhi pooch sakte ho!"
+    return "🤖 Main Himo Omni V17.1 hoon!\n\nMain ek advanced AI assistant hoon jo:\n\n✨ Features:\n• Real-time Wikipedia search\n• Advanced math calculations\n• 3D World Engine\n• Code Generation Engine\n• Multiple language support\n• Smart conversation\n\nAap mujhse kuch bhi pooch sakte ho!"
   }
 
   // Thank you
@@ -34,7 +35,15 @@ async function think(prompt) {
 
   // What can you do
   if (qLower.includes('what can you do') || qLower.includes('kya kar sakte') || qLower.includes('features') || qLower.includes('help')) {
-    return "🚀 Himo Omni ke Features:\n\n1. 📚 Live Wikipedia Search\n   - Kisi bhi topic par latest info\n   - Hindi + English dono mein\n\n2. 🧮 Math Engine\n   - Complex calculations\n   - Instant results\n\n3. 🌍 3D World Engine\n   - \"world map\" type karo\n   - Interactive 3D terrain\n\n4. 💬 Smart Conversation\n   - Natural language samajhta hai\n   - Context-aware responses\n\n5. 🔥 Fast & Accurate\n   - Millisecond response time\n   - Reliable information\n\nTry karo: \"World map\" ya \"15 * 25\"!"
+    return "🚀 Himo Omni ke Features:\n\n1. 📚 Live Wikipedia Search\n2. 🧮 Math Engine\n3. 🌍 3D World Engine\n4. 💻 Code Generator\n5. 💬 Smart Conversation\n\nCode generate karne ke liye likho:\n• \"Make a calculator\"\n• \"Python code banao\"\n• \"HTML form create karo\"\n• \"React todo app\""
+  }
+
+  // Code Generation Check
+  const codeKeywords = ['code', 'kode', 'program', 'script', 'function', 'app', 'application', 'calculator', 'game', 'website', 'webpage', 'html', 'css', 'python', 'react', 'javascript', 'java', 'todo', 'form', 'database', 'sql']
+  
+  if (codeKeywords.some(keyword => qLower.includes(keyword)) && 
+      ['banao', 'make', 'create', 'generate', 'likho', 'write', 'code', 'program'].some(word => qLower.includes(word))) {
+    return "CODE_ENGINE";
   }
 
   // World Map Check
@@ -47,14 +56,14 @@ async function think(prompt) {
     const now = new Date()
     const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    return `🕐 Current Time: ${timeStr}\n📅 Aaj ki date: ${dateStr}\n\nKya main aur kuch help kar sakta hoon?`
+    return `🕐 Current Time: ${timeStr}\n📅 Aaj ki date: ${dateStr}`
   }
 
   // Date check
   if (qLower.includes('date') || qLower.includes('aaj ki date') || qLower.includes('tarikh') || qLower.includes('din')) {
     const now = new Date()
     const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    return `📅 Aaj ki date: ${dateStr}\n\nAur kuch jaanna hai?`
+    return `📅 Aaj ki date: ${dateStr}`
   }
 
   // Jokes
@@ -65,22 +74,12 @@ async function think(prompt) {
       "😆 Pappu: \"Mummy, aaj school mein sab bachon ne mujhe patthar mara.\"\nMummy: \"Toh tune wapas nahi mara?\"\nPappu: \"Wapas kya marta, wahan patthar hi khatam ho gaye!\""
     ]
     const randomJoke = jokes[Math.floor(Math.random() * jokes.length)]
-    return randomJoke + "\n\nAur sunna hai? 😄"
+    return randomJoke
   }
 
   // Motivation
   if (qLower.includes('motivat') || qLower.includes('prerna') || qLower.includes('himmat') || qLower.includes('motivation')) {
-    return "💪 Motivation for you:\n\n\"Success ka koi shortcut nahi hota. Har successful insaan ke peeche mehnat, lagan aur consistency hoti hai.\"\n\nRemember:\n• 🌟 Believe in yourself\n• 🎯 Stay focused on your goals\n• 🚀 Never give up\n• 💪 Hard work always pays off\n\nAaj kuch naya seekho aur khud ko improve karo! ✨"
-  }
-
-  // Weather generic response
-  if (qLower.includes('weather') || qLower.includes('mausam') || qLower.includes('temperature')) {
-    return "🌤️ Weather information ke liye mujhe live API access nahi hai, lekin main suggest kar sakta hoon:\n\n• Google par \"weather [your city]\" search karo\n• Weather app check karo\n• News channel dekho\n\nLekin agar aap chahe toh main kisi aur topic par help kar sakta hoon! 😊"
-  }
-
-  // Coding help
-  if (qLower.includes('code') || qLower.includes('coding') || qLower.includes('programming') || qLower.includes('react') || qLower.includes('javascript') || qLower.includes('python') || qLower.includes('java')) {
-    return `💻 Coding Tips:\n\n1. 📝 Clean Code likho\n   - Meaningful variable names\n   - Proper indentation\n   - Comments add karo\n\n2. 🔍 Debug smartly\n   - Console.log use karo\n   - Error messages padho\n   - Break the problem\n\n3. 📚 Continuous Learning\n   - Documentation padho\n   - Open source contribute karo\n   - Projects banao\n\n4. ⚡ Best Practices:\n   - DRY (Don't Repeat Yourself)\n   - SOLID principles\n   - Version control (Git)\n\nAap kis language mein kaam kar rahe ho? Main specific help kar sakta hoon!`
+    return "💪 Motivation for you:\n\n\"Success ka koi shortcut nahi hota. Har successful insaan ke peeche mehnat, lagan aur consistency hoti hai.\"\n\nRemember:\n• 🌟 Believe in yourself\n• 🎯 Stay focused on your goals\n• 🚀 Never give up\n• 💪 Hard work always pays off"
   }
 
   // 1. Math Calculation Check
@@ -91,7 +90,7 @@ async function think(prompt) {
     try {
       const calcResult = MathMasterEngine.evaluate(q)
       if (typeof calcResult === "number" && !isNaN(calcResult)) {
-        return `🧮 Calculation Result:\n\n${q} = ${calcResult}\n\nAur koi calculation karni hai?`
+        return `🧮 Calculation Result:\n\n${q} = ${calcResult}`
       }
     } catch (e) {
       // Evaluation fallback to search
@@ -122,7 +121,6 @@ async function think(prompt) {
         if (matchedSnippets.length > 0) {
           let output = "📚 According to Himo:\n\n"
           matchedSnippets.forEach(s => { output += `• ${s}\n\n` })
-          output += "\n💡 Kya aap iske baare mein aur detail jaanna chahenge?"
           return output.trim()
         }
       }
@@ -131,7 +129,7 @@ async function think(prompt) {
     console.error("Search fetch error:", err)
   }
 
-  return `🤔 According to Himo:\n\n'${q}' par koi exact information nahi mili.\n\nLekin main aapki help kar sakta hoon:\n• Specific topic likho\n• Math calculation try karo\n• "World map" type karke 3D world dekho\n• Ya koi aur sawaal poocho!`
+  return `🤔 According to Himo:\n\n'${q}' par koi exact information nahi mili.\n\nTry karo:\n• "Make a calculator" - Code generate hoga\n• "World map" - 3D world dekho\n• "15 * 25" - Math calculation\n• Ya koi aur sawaal poocho!`
 }
 
 export default function Home() {
@@ -208,6 +206,14 @@ export default function Home() {
           role: "assistant", 
           content: "🌍 3D World Engine activated! Use mouse to rotate and scroll to zoom.",
           isWorld: true 
+        }])
+      } else if (answer === "CODE_ENGINE") {
+        const codeEngine = new CodeEngine()
+        const generatedCode = codeEngine.generateCode(prompt)
+        setMessages((current) => [...current, { 
+          role: "assistant", 
+          content: `💻 Generated Code:\n\n${generatedCode}`,
+          isCode: true 
         }])
       } else {
         setMessages((current) => [...current, { role: "assistant", content: answer }])
@@ -370,13 +376,13 @@ export default function Home() {
                 <h1>How can I help you today?</h1>
               </div>
               <div className="suggestion-grid">
-                <div className="suggestion-card" onClick={() => handleSend("What can you do?")}>
-                  <p>What can you do?</p>
-                  <span>Explore features & answers</span>
+                <div className="suggestion-card" onClick={() => handleSend("Make a calculator")}>
+                  <p>Make a calculator</p>
+                  <span>Generate calculator code</span>
                 </div>
-                <div className="suggestion-card" onClick={() => handleSend("Tell me a joke")}>
-                  <p>Tell me a joke</p>
-                  <span>Fun time with Himo</span>
+                <div className="suggestion-card" onClick={() => handleSend("Python code banao")}>
+                  <p>Python code banao</p>
+                  <span>Generate Python program</span>
                 </div>
                 <div className="suggestion-card" onClick={() => handleSend("World map")}>
                   <p>World map</p>
@@ -438,18 +444,14 @@ export default function Home() {
               placeholder="Ask Himo anything..."
               rows={1}
             />
-            <div className="composer-actions">
-              <button
-                type="button"
-                className="send-button"
-                disabled={!message.trim() || loading}
-                onClick={() => handleSend()}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="send-button"
+              disabled={!message.trim() || loading}
+              onClick={() => handleSend()}
+            >
+              Send
+            </button>
           </div>
         </div>
       </section>
@@ -911,7 +913,7 @@ export default function Home() {
           border-radius: 28px;
           padding: 12px 18px;
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           gap: 12px;
           border: 1px solid #e5e7eb;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -941,24 +943,17 @@ export default function Home() {
           color: #9ca3af;
         }
 
-        .composer-actions {
-          display: flex;
-          align-items: center;
-          margin-bottom: 2px;
-        }
-
         .send-button {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
           background: #111827;
           color: #ffffff;
           border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          padding: 10px 24px;
+          border-radius: 20px;
           cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 600;
           transition: transform 0.1s, background 0.2s;
+          white-space: nowrap;
         }
 
         .send-button:disabled {
@@ -977,8 +972,12 @@ export default function Home() {
           .hero-greeting h1 { font-size: 1.8rem; }
           .canvas { padding-bottom: 120px; }
           .world-container { height: 300px !important; }
+          .send-button {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+          }
         }
       `}</style>
     </main>
   )
-}
+    }
