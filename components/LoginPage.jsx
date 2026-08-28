@@ -135,7 +135,7 @@ export default function LoginPage({ onLoginSuccess }) {
             {/* Center Logo */}
             <div className="brand-image-container">
               <img 
-                src="/IMG_20260826_084111.jpg" 
+                src="/logo.png"
                 alt="Himo Logo" 
                 className="brand-logo-img"
               />
@@ -210,7 +210,7 @@ export default function LoginPage({ onLoginSuccess }) {
           <div className="top-brand-wrapper">
             <div className="brand-image-container">
               <img 
-                src="/IMG_20260826_084111.jpg" 
+                src="/logo.png"
                 alt="Himo Logo" 
                 className="brand-logo-img"
               />

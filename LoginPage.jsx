@@ -102,7 +102,7 @@ export default function LoginPage() {
       <div className="top-brand-wrapper">
         <div className="brand-image-container">
           <img 
-            src="/IMG_20260826_084111.jpg" 
+            src="/logo.png"
             alt="Himo Logo" 
             className="brand-logo-img"
           />
