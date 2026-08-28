@@ -54,6 +54,27 @@ function CodeBlock({ codeText }) {
   )
 }
 
+function ImageCard({ imageUrl, onImageClick }) {
+  const [loaded, setLoaded] = useState(false)
+
+  return (
+    <div className="ai-image-wrapper" onClick={() => onImageClick(imageUrl)}>
+      {!loaded && (
+        <div className="image-generating-skeleton">
+          <div className="ai-shimmer-sparkle"></div>
+          <span className="generating-text">Generating visual...</span>
+        </div>
+      )}
+      <img
+        src={imageUrl}
+        alt="AI Generation"
+        className={`ai-rendered-img ${loaded ? "loaded" : "hidden"}`}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  )
+}
+
 function cleanFormatting(text) {
   if (!text) return ""
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
@@ -78,7 +99,6 @@ async function speakVoice(text) {
     await stopVoicePlayback()
 
     const cleanText = text.replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
-      .replace(/!\[.*?\]\(.*?\)/g, "Photo generate ho gayi hai bhai.")
       .replace(/[#*•_`]/g, "")
       .trim()
 
@@ -119,11 +139,10 @@ export default function Home() {
   const [topMenuOpen, setTopMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
-  // Image & Attachment States
   const [attachedImage, setAttachedImage] = useState(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
+  const [previewModalImg, setPreviewModalImg] = useState(null)
 
-  // Training Mode States
   const [isTrainingModeActive, setIsTrainingModeActive] = useState(false)
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinDigits, setPinDigits] = useState(["", "", "", ""])
@@ -219,7 +238,6 @@ export default function Home() {
     } catch (e) {}
   }
 
-  // Handle Photo / File Pick from device
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -407,23 +425,20 @@ export default function Home() {
     return `Gana "${cleanTrack}" screen par play ho raha hai bhai!`
   }
 
-  // AI Image Generator Engine
   const generateAIImage = (promptText) => {
     let imageDesc = promptText
       .replace(/^(generate\s+image\s+of|generate\s+image|create\s+image\s+of|create\s+image|make\s+image\s+of|make\s+image|draw\s+image\s+of|draw|photo\s+banao|image\s+banao|tasveer\s+banao|picture\s+banao|generate\s+pic|create\s+pic|ai\s+image)\s*/i, "")
       .replace(/^(of|a|an)\s+/i, "")
       .trim()
 
-    if (!imageDesc) imageDesc = "Futuristic Cyberpunk City with neon lights 8k"
+    if (!imageDesc) imageDesc = "Futuristic digital art cinematic lighting 8k"
 
-    const seed = Math.floor(Math.random() * 999999)
+    const seed = Math.floor(Math.random() * 9999999)
     const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageDesc)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`
 
     return {
       type: "image_card",
-      prompt: imageDesc,
-      imageUrl: imageUrl,
-      caption: `Yeh le bhai, "${imageDesc}" ki AI image ready hai!`
+      imageUrl: imageUrl
     }
   }
 
@@ -431,7 +446,6 @@ export default function Home() {
     const q = prompt.trim()
     const qLower = q.toLowerCase()
 
-    // 1. Check if user wants to create/generate an Image
     const isImageGenRequest = 
       qLower.startsWith("create image") || 
       qLower.startsWith("generate image") || 
@@ -448,7 +462,7 @@ export default function Home() {
     }
 
     if (hasAttachedPhoto) {
-      return `Bhai photo maine dekh li hai! Bahut badiya lag rahi hai. Bol iske baare mein kya janna hai?`
+      return `Photo upload ho gayi hai.`
     }
 
     const humanTalk = getHumanReply(q)
@@ -551,9 +565,7 @@ export default function Home() {
         answer = await think(prompt || "Explain this photo", !!currentPhoto)
       }
 
-      if (typeof answer === "object" && answer?.type === "image_card") {
-        speakVoice(answer.caption)
-      } else {
+      if (typeof answer !== "object") {
         speakVoice(answer)
       }
 
@@ -610,6 +622,24 @@ export default function Home() {
         style={{ display: "none" }} 
         onChange={handleImageSelect} 
       />
+
+      {/* Fullscreen Image Preview & Save Modal */}
+      {previewModalImg && (
+        <div className="image-viewer-modal" onClick={() => setPreviewModalImg(null)}>
+          <div className="viewer-content-card" onClick={(e) => e.stopPropagation()}>
+            <button className="viewer-close-btn" onClick={() => setPreviewModalImg(null)}>✕</button>
+            <div className="viewer-img-holder">
+              <img src={previewModalImg} alt="Preview" className="viewer-full-img" />
+            </div>
+            <div className="viewer-bottom-bar">
+              <a href={previewModalImg} target="_blank" rel="noreferrer" download="himo_image.jpg" className="viewer-save-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Save Image
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {currentTrack && (
         <div className="in-app-media-player">
@@ -751,11 +781,8 @@ export default function Home() {
               <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
                 <h1 className="hero-main-title">
-                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "Bol bhai! Kya create ya solve karna hai?"}
+                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "How can I help you today?"}
                 </h1>
-                <p className="sub-helper-tip">
-                  💡 <em>Tip: Tap '+' to share photos or type 'Create image of...' to generate AI art</em>
-                </p>
               </div>
             </div>
           )}
@@ -764,27 +791,18 @@ export default function Home() {
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
                 <div className="message-bubble">
-                  {/* User Uploaded Photo Rendering */}
                   {msg.attachedPhoto && (
-                    <div className="chat-attached-image-wrapper">
-                      <img src={msg.attachedPhoto} alt="Shared Upload" className="user-chat-img" />
+                    <div className="chat-attached-image-wrapper" onClick={() => setPreviewModalImg(msg.attachedPhoto)}>
+                      <img src={msg.attachedPhoto} alt="Shared" className="user-chat-img" />
                     </div>
                   )}
 
                   <div className="message-text">
                     {typeof msg.content === "object" && msg.content?.type === "image_card" ? (
-                      <div className="ai-generated-image-card">
-                        <div className="gen-img-container">
-                          <img src={msg.content.imageUrl} alt={msg.content.prompt} className="ai-gen-img" />
-                        </div>
-                        <div className="gen-img-footer">
-                          <p className="gen-caption-text">{msg.content.caption}</p>
-                          <a href={msg.content.imageUrl} target="_blank" rel="noreferrer" download="himo_ai_art.jpg" className="download-img-action-btn">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Download HD
-                          </a>
-                        </div>
-                      </div>
+                      <ImageCard 
+                        imageUrl={msg.content.imageUrl} 
+                        onImageClick={(url) => setPreviewModalImg(url)} 
+                      />
                     ) : typeof msg.content === "string" && msg.content.includes("```") ? (
                       <CodeBlock codeText="{msg.content}"/>
                     ) : (
@@ -813,19 +831,17 @@ export default function Home() {
 
         {/* Composer Dock */}
         <div className="dock-container">
-          {/* Image Attachment Preview */}
           {attachedImage && (
             <div className="attached-photo-preview-bar">
               <div className="preview-thumb-box">
                 <img src={attachedImage} alt="Attachment" className="thumb-img" />
                 <button type="button" onClick={() => setAttachedImage(null)} className="remove-thumb-btn">✕</button>
               </div>
-              <span className="preview-caption-hint">Photo ready to send</span>
+              <span className="preview-caption-hint">Photo ready</span>
             </div>
           )}
 
           <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
-            {/* Left + Action Button */}
             <div className="plus-btn-wrapper">
               <button
                 type="button"
@@ -843,9 +859,9 @@ export default function Home() {
                 <div className="popup-card plus-dropdown-menu" onClick={(e) => e.stopPropagation()}>
                   <button type="button" className="popup-menu-item plus-item" onClick={() => fileInputRef.current?.click()}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    <span>Upload / Share Image</span>
+                    <span>Upload Image</span>
                   </button>
-                  <button type="button" className="popup-menu-item plus-item" onClick={() => { setMessage("Create image of a futuristic superhero cat in 8k"); setPlusMenuOpen(false); textareaRef.current?.focus(); }}>
+                  <button type="button" className="popup-menu-item plus-item" onClick={() => { setMessage("Create image of "); setPlusMenuOpen(false); textareaRef.current?.focus(); }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                     <span>Generate AI Image</span>
                   </button>
@@ -858,7 +874,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Sun raha hoon bhai bol..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Ask Himo, share photo, or 'Create image of...'")} 
+              placeholder={isListening ? "Listening..." : (isTrainingModeActive ? "Train mode..." : "Ask Himo...")} 
               rows={1} 
             />
             
@@ -955,7 +971,6 @@ export default function Home() {
         .animated-shimmer { background: linear-gradient(90deg, #2563eb 0%, #7c3aed 20%, #ec4899 40%, #06b6d4 60%, #10b981 80%, #2563eb 100%); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: fluidShimmer 4s linear infinite; }
         @keyframes fluidShimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .hero-main-title { font-size: 2.2rem; font-weight: 700; color: #111827; line-height: 1.15; }
-        .sub-helper-tip { font-size: 0.88rem; color: #6b7280; margin-top: 8px; }
 
         .messages-list { display: flex; flex-direction: column; gap: 14px; padding-top: 16px; }
         .message-row { display: flex; width: 100%; }
@@ -967,27 +982,62 @@ export default function Home() {
         .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; }
         .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; }
 
-        /* Shared & AI Generated Images in Chat */
-        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 280px; border-radius: 14px; overflow: hidden; }
+        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 260px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        .ai-generated-image-card {
-          background: #0f172a; border-radius: 18px; overflow: hidden;
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); max-width: 380px; width: 100%;
-          margin: 6px 0; border: 1px solid #1e293b;
+        /* Clean AI Image Card & Animation */
+        .ai-image-wrapper {
+          position: relative; max-width: 340px; width: 100%; min-height: 280px;
+          border-radius: 18px; overflow: hidden; margin: 4px 0;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12); cursor: pointer;
+          background: #f1f5f9;
         }
-        .gen-img-container { width: 100%; height: 320px; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        .ai-gen-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .ai-gen-img:hover { transform: scale(1.02); }
-        .gen-img-footer { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: #1e293b; }
-        .gen-caption-text { color: #f1f5f9; font-size: 0.85rem; font-weight: 500; }
-        .download-img-action-btn {
-          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-          background: #2563eb; color: #fff; text-decoration: none; padding: 8px 14px;
-          border-radius: 10px; font-size: 0.82rem; font-weight: 600; width: fit-content;
+        .image-generating-skeleton {
+          position: absolute; inset: 0; background: #e2e8f0;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 12px; z-index: 2;
         }
-        
-        /* Floating In-App Media Player */
+        .ai-shimmer-sparkle {
+          width: 42px; height: 42px; border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+          animation: pulseRotate 1.5s infinite ease-in-out;
+        }
+        @keyframes pulseRotate {
+          0% { transform: scale(0.9) rotate(0deg); opacity: 0.8; }
+          50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
+          100% { transform: scale(0.9) rotate(360deg); opacity: 0.8; }
+        }
+        .generating-text { font-size: 0.85rem; font-weight: 600; color: #64748b; letter-spacing: 0.3px; }
+
+        .ai-rendered-img { width: 100%; height: auto; display: block; border-radius: 18px; transition: opacity 0.4s ease; }
+        .ai-rendered-img.hidden { opacity: 0; }
+        .ai-rendered-img.loaded { opacity: 1; }
+
+        /* Fullscreen Image Preview Modal */
+        .image-viewer-modal {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px);
+          z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        .viewer-content-card {
+          position: relative; max-width: 480px; width: 100%; background: #0f172a;
+          border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 1px solid #1e293b;
+        }
+        .viewer-close-btn {
+          position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6);
+          color: #ffffff; border: none; width: 32px; height: 32px; border-radius: 50%;
+          font-size: 16px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;
+        }
+        .viewer-img-holder { width: 100%; max-height: 70vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; }
+        .viewer-full-img { width: 100%; height: 100%; object-fit: contain; }
+        .viewer-bottom-bar { padding: 14px; background: #1e293b; display: flex; justify-content: center; }
+        .viewer-save-btn {
+          display: inline-flex; align-items: center; gap: 8px; background: #2563eb;
+          color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 12px;
+          font-size: 0.9rem; font-weight: 600;
+        }
+
+        /* Floating Media Player */
         .in-app-media-player {
           position: fixed; bottom: 84px; right: 14px; width: 280px; height: 180px;
           background: #0f172a; border-radius: 14px; overflow: hidden;
@@ -1013,7 +1063,6 @@ export default function Home() {
         
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 14px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 40%); display: flex; flex-direction: column; align-items: center; z-index: 10; }
         
-        /* Photo thumbnail in composer */
         .attached-photo-preview-bar {
           display: flex; align-items: center; gap: 10px; width: 100%; max-width: 800px;
           margin-bottom: 6px; padding: 0 4px;
@@ -1038,7 +1087,7 @@ export default function Home() {
           transition: background 0.2s, transform 0.15s;
         }
         .plus-action-btn:hover { background: #e5e7eb; color: #111827; }
-        .plus-dropdown-menu { bottom: 46px; left: 0; min-width: 210px; }
+        .plus-dropdown-menu { bottom: 46px; left: 0; min-width: 190px; }
         .plus-item { font-size: 0.85rem; font-weight: 500; }
 
         .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #111827; font-size: 0.95rem; font-family: inherit; resize: none; max-height: 140px; line-height: 1.35; padding: 6px 0; }
