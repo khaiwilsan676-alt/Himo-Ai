@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import LoginPage from "../components/LoginPage"
-import MathMasterEngine from "../lib/mathMasterEngine"
-import { auth } from "../lib/firebase"
+import MathMasterEngine from "../src/lib/mathMasterEngine"
+import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 
 // Precision Live Search & Calculation Engine
