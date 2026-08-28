@@ -9,7 +9,6 @@ import { handleDeviceAction } from "../src/lib/deviceControlEngine"
 import { getHumanReply } from "../src/lib/humanTalkEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
-import { TextToSpeech } from "@capacitor-community/text-to-speech"
 import { 
   saveChatToDB, 
   getAllChatsFromDB, 
@@ -26,9 +25,11 @@ function CodeBlock({ codeText }) {
 
   const handleCopy = () => {
     try {
-      navigator.clipboard.writeText(cleanCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      if (typeof navigator !== "undefined") {
+        navigator.clipboard.writeText(cleanCode)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
     } catch (e) {}
   }
 
@@ -59,17 +60,18 @@ function cleanFormatting(text) {
 }
 
 async function stopVoicePlayback() {
+  if (typeof window === "undefined") return
   try {
+    const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
     await TextToSpeech.stop()
   } catch (e) {}
   try {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel()
     }
   } catch (e) {}
 }
 
-// 100% Native Android Hardware TTS Speaker
 async function speakVoice(text) {
   if (!text || typeof window === "undefined") return
   try {
@@ -81,8 +83,9 @@ async function speakVoice(text) {
 
     if (!cleanText) return
 
-    // 1. Trigger Native Android TTS Engine
+    // 1. Capacitor Native TTS Engine
     try {
+      const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
       await TextToSpeech.speak({
         text: cleanText,
         lang: "hi-IN",
@@ -93,10 +96,10 @@ async function speakVoice(text) {
       })
       return
     } catch (nativeErr) {
-      console.warn("Native TTS fallback to WebSpeech:", nativeErr)
+      console.warn("Native TTS fallback:", nativeErr)
     }
 
-    // 2. Web Fallback if Native unavailable
+    // 2. Web Speech API Fallback
     if ("speechSynthesis" in window) {
       window.speechSynthesis.resume()
       const utterance = new SpeechSynthesisUtterance(cleanText)
@@ -105,7 +108,7 @@ async function speakVoice(text) {
       window.speechSynthesis.speak(utterance)
     }
   } catch (err) {
-    console.warn("Voice playback caught:", err)
+    console.warn("Voice playback error:", err)
   }
 }
 
@@ -121,14 +124,11 @@ export default function Home() {
   const [topMenuOpen, setTopMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
-  // Training Mode States
   const [isTrainingModeActive, setIsTrainingModeActive] = useState(false)
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinDigits, setPinDigits] = useState(["", "", "", ""])
   const [pinError, setPinError] = useState("")
   const [isListening, setIsListening] = useState(false)
-
-  // Hardware States
   const [currentTrack, setCurrentTrack] = useState(null)
 
   const mediaStreamRef = useRef(null)
@@ -315,7 +315,6 @@ export default function Home() {
     }
   }
 
-  // Dual Voice Recognition Trigger
   const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return
 
@@ -396,13 +395,11 @@ export default function Home() {
   async function think(prompt) {
     const q = prompt.trim()
 
-    // 1. Human Talk & Emotional Engine
     const humanTalk = getHumanReply(q)
     if (humanTalk) {
       return humanTalk
     }
 
-    // 2. In-App Music / Bhajan
     const qLower = q.toLowerCase()
     if (
       qLower.startsWith("play ") || 
@@ -414,31 +411,26 @@ export default function Home() {
       return handleInAppMusicPlay(q)
     }
 
-    // 3. Hardware Actions
     try {
       const deviceAction = await handleDeviceAction(q, null, null)
       if (deviceAction) return deviceAction
     } catch (e) {}
 
-    // 4. Memory
     try {
       const memoryAns = await getTrainedKnowledge(q)
       if (memoryAns) return cleanFormatting(memoryAns)
     } catch (e) {}
 
-    // 5. Math Master
     try {
       const mathResult = MathMasterEngine.evaluate(q)
       if (mathResult) return cleanFormatting(mathResult)
     } catch (e) {}
 
-    // 6. Code Engine
     try {
       const codeResult = generateCodeFromPrompt(q)
       if (codeResult) return codeResult
     } catch (e) {}
 
-    // 7. Web Search Engine
     try {
       const searchData = await fetchLiveWebData(q)
       if (searchData) return cleanFormatting(searchData)
@@ -493,7 +485,6 @@ export default function Home() {
         answer = await think(prompt)
       }
 
-      // Native TTS execution
       speakVoice(answer)
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
@@ -542,7 +533,6 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* In-App Floating Player */}
       {currentTrack && (
         <div className="in-app-media-player">
           <div className="player-top-header">
@@ -562,7 +552,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* 4-Box PIN Modal */}
       {showPinModal && (
         <div className="modal-backdrop" onClick={() => setShowPinModal(false)}>
           <div className="pin-card-modal" onClick={(e) => e.stopPropagation()}>
@@ -596,7 +585,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top-spacer" />
         <button className="new-chat-btn" onClick={() => { setMessages([]); setCurrentChatId(null); setSidebarOpen(false); }}>
@@ -645,7 +633,6 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Main Fullscreen Workspace */}
       <section className="workspace">
         <header className="topbar">
           <div className="left-nav">
@@ -680,7 +667,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Content Canvas */}
         <div className="canvas">
           {messages.length === 0 && (
             <div className="hero-screen-top-left">
@@ -729,7 +715,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Floating Input Composer */}
         <div className="dock-container">
           <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
             <textarea 
@@ -845,7 +830,6 @@ export default function Home() {
         .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; }
         .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; }
         
-        /* In-App Floating Media Player */
         .in-app-media-player {
           position: fixed; bottom: 76px; right: 14px; width: 280px; height: 180px;
           background: #0f172a; border-radius: 14px; overflow: hidden;
@@ -894,7 +878,6 @@ export default function Home() {
         .send-button-gemini { width: 34px; height: 34px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
 
-        /* 4-Box PIN Modal */
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; }
         .pin-card-modal { background: #ffffff; border-radius: 20px; padding: 26px 20px; max-width: 320px; width: 100%; text-align: center; }
         .pin-header h3 { font-size: 1.15rem; font-weight: 700; color: #111827; margin-bottom: 4px; }
