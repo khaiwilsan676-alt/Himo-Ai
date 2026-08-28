@@ -2,8 +2,11 @@
 
 import { useState, useRef, useEffect } from "react"
 import LoginPage from "../components/LoginPage"
+import MathMasterEngine from "@/lib/mathMasterEngine"
+import { auth } from "@/lib/firebase"
+import { onAuthStateChanged, signOut } from "firebase/auth"
 
-// Precision Live Search Engine
+// Precision Live Search & Calculation Engine
 async function think(prompt) {
   const q = prompt.trim()
   const qLower = q.toLowerCase()
@@ -12,6 +15,22 @@ async function think(prompt) {
     return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
   }
 
+  // 1. Math Engine Check (Supports +, -, ×, ÷, *, /, $, €, %, ^, (), numbers)
+  const mathPattern = /^[0-9+\-*/÷×().\s*%^$€]+$/
+  const hasOperatorOrDigits = /[0-9]/.test(q) && /[+\-*/÷×%^$€]/.test(q)
+
+  if (mathPattern.test(q) && hasOperatorOrDigits) {
+    try {
+      const calcResult = MathMasterEngine.evaluate(q)
+      if (typeof calcResult === "number" && !isNaN(calcResult)) {
+        return `According to Himo:\n\n${q} = ${calcResult}`
+      }
+    } catch (e) {
+      // Agar math evaluation fail ho toh search par jayega
+    }
+  }
+
+  // 2. Wikipedia Live Search Logic
   try {
     const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=&format=json&origin=*`)
     
@@ -22,7 +41,7 @@ async function think(prompt) {
       if (searchResults.length > 0) {
         const queryKeywords = qLower.split(" ").filter(w => w.length > 2)
 
-        // Strict relevant filter: Jo query se match ho wahi snippets uthao
+        // Strict relevant filter
         const matchedSnippets = searchResults
           .map(item => {
             let text = item.snippet.replace(/<[^>]+>/g, '')
@@ -53,7 +72,8 @@ async function think(prompt) {
 }
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [authChecking, setAuthChecking] = useState(true)
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -61,11 +81,18 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
+  // Real-time Firebase Auth Listener (No Dummy Bypass)
   useEffect(() => {
-    const token = localStorage.getItem("himo_auth") || localStorage.getItem("user") || localStorage.getItem("token")
-    if (token) {
-      setIsAuthenticated(true)
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user)
+      } else {
+        setCurrentUser(null)
+      }
+      setAuthChecking(false)
+    })
+
+    return () => unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -108,19 +135,61 @@ export default function Home() {
     }
   }
 
-  function handleLogout() {
-    localStorage.clear()
-    sessionStorage.clear()
-    setIsAuthenticated(false)
-    window.location.reload()
+  async function handleLogout() {
+    try {
+      await signOut(auth)
+      localStorage.clear()
+      sessionStorage.clear()
+      setCurrentUser(null)
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} onLogin={() => setIsAuthenticated(true)} />
+  // 1. Loading screen jab tak Firebase Auth real-time status check ho raha ho (Koi faltu screen flash nahi hogi)
+  if (authChecking) {
+    return (
+      <div className="auth-loading-screen">
+        <div className="loader-spinner"></div>
+        <style jsx>{`
+          .auth-loading-screen {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+          }
+          .loader-spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
   }
+
+  // 2. Real-time Firebase Authentication Check (Jab tak user Firebase se login na ho, direct LoginPage dikhega)
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={() => {}} onLogin={() => {}} />
+  }
+
+  // User ka initial ya photo letter nikalne ke liye
+  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
 
   return (
     <main className="app-shell">
+      {/* Top 30vh Multi-color Glow Mesh Overlay */}
+      <div className="top-glow-mesh" />
+
       {/* Sidebar Overlay */}
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
@@ -157,13 +226,6 @@ export default function Home() {
         </div>
 
         <div className="sidebar-footer">
-          <button className="footer-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-            Settings
-          </button>
           <button className="footer-item logout-btn" onClick={handleLogout}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -188,11 +250,13 @@ export default function Home() {
             </button>
             <span className="brand-name">
               <img src="/logo.png" alt="Himo Logo" className="brand-logo" />
-              Himo <span className="brand-badge">Omni V17.1</span>
+              Himo <span className="brand-plain-text">Omni V17.1</span>
             </span>
           </div>
           <div className="user-profile-badge">
-            <div className="avatar-chip">U</div>
+            <div className="avatar-chip" title={currentUser.email || ""}>
+              {userInitial}
+            </div>
           </div>
         </header>
 
@@ -214,9 +278,9 @@ export default function Home() {
                   <p>Help me write clean code</p>
                   <span>Tips for modern React and Next.js</span>
                 </div>
-                <div className="suggestion-card" onClick={() => handleSend("Tell me a quick tip")}>
-                  <p>Tell me a quick tip</p>
-                  <span>Learn something new right now</span>
+                <div className="suggestion-card" onClick={() => handleSend("7 + 728")}>
+                  <p>7 + 728</p>
+                  <span>Fast Math Engine Calculation</span>
                 </div>
               </div>
             </div>
@@ -233,7 +297,7 @@ export default function Home() {
                       </svg>
                     </div>
                   ) : (
-                    <div className="user-icon">U</div>
+                    <div className="user-icon">{userInitial}</div>
                   )}
                 </div>
                 <div className="message-bubble">
@@ -309,10 +373,29 @@ export default function Home() {
         .app-shell {
           display: flex;
           height: 100vh;
-          background: #131314;
-          color: #e3e3e3;
+          background: #ffffff;
+          color: #1f2937;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
           overflow: hidden;
+          position: relative;
+        }
+
+        /* Top 30vh Blue, Pink, Green, Purple Glow Mesh into White */
+        .top-glow-mesh {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 30vh;
+          pointer-events: none;
+          z-index: 1;
+          background: 
+            radial-gradient(circle at 15% 30%, rgba(96, 165, 250, 0.45), transparent 60%),
+            radial-gradient(circle at 45% 20%, rgba(244, 114, 182, 0.4), transparent 55%),
+            radial-gradient(circle at 75% 35%, rgba(52, 211, 153, 0.35), transparent 55%),
+            radial-gradient(circle at 90% 15%, rgba(192, 132, 252, 0.4), transparent 60%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 100%);
+          filter: blur(24px);
         }
 
         .workspace {
@@ -321,6 +404,8 @@ export default function Home() {
           flex-direction: column;
           position: relative;
           height: 100vh;
+          z-index: 2;
+          background: transparent;
         }
 
         /* Top Header */
@@ -330,7 +415,7 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #131314;
+          background: transparent;
           z-index: 10;
         }
 
@@ -342,8 +427,8 @@ export default function Home() {
 
         .brand-name {
           font-size: 1.15rem;
-          font-weight: 500;
-          color: #c4c7c5;
+          font-weight: 600;
+          color: #111827;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -356,19 +441,17 @@ export default function Home() {
           border-radius: 6px;
         }
 
-        .brand-badge {
-          font-size: 0.75rem;
-          padding: 2px 8px;
-          background: #1e1f20;
-          border: 1px solid #333538;
-          border-radius: 12px;
-          color: #9da3a7;
+        .brand-plain-text {
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: #6b7280;
+          margin-left: 2px;
         }
 
         .icon-btn {
           background: transparent;
           border: none;
-          color: #c4c7c5;
+          color: #374151;
           cursor: pointer;
           border-radius: 50%;
           width: 40px;
@@ -380,20 +463,21 @@ export default function Home() {
         }
 
         .icon-btn:hover {
-          background: #282a2c;
+          background: rgba(0, 0, 0, 0.05);
         }
 
         .avatar-chip {
           width: 34px;
           height: 34px;
           border-radius: 50%;
-          background: #4a5568;
+          background: #3b82f6;
           color: #ffffff;
           font-size: 0.9rem;
           font-weight: 600;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
         }
 
         /* Sidebar */
@@ -403,12 +487,14 @@ export default function Home() {
           left: -320px;
           width: 290px;
           height: 100vh;
-          background: #1e1f20;
+          background: #ffffff;
+          border-right: 1px solid #e5e7eb;
           transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 100;
           padding: 16px;
           display: flex;
           flex-direction: column;
+          box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
         }
 
         .sidebar.open {
@@ -418,7 +504,8 @@ export default function Home() {
         .sidebar-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.6);
+          background: rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(2px);
           z-index: 99;
         }
 
@@ -432,9 +519,9 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 12px;
-          background: #282a2c;
-          border: none;
-          color: #e3e3e3;
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          color: #1f2937;
           padding: 12px 18px;
           border-radius: 24px;
           cursor: pointer;
@@ -445,7 +532,7 @@ export default function Home() {
         }
 
         .new-chat-btn:hover {
-          background: #333538;
+          background: #e5e7eb;
         }
 
         .sidebar-section {
@@ -456,7 +543,7 @@ export default function Home() {
         .sidebar-label {
           font-size: 0.75rem;
           font-weight: 600;
-          color: #8e918f;
+          color: #9ca3af;
           margin-bottom: 12px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -473,14 +560,15 @@ export default function Home() {
           align-items: center;
           gap: 12px;
           padding: 10px 14px;
-          border-radius: 20px;
+          border-radius: 16px;
           font-size: 0.88rem;
-          color: #c4c7c5;
+          color: #4b5563;
           cursor: pointer;
         }
 
         .recent-item:hover {
-          background: #282a2c;
+          background: #f3f4f6;
+          color: #111827;
         }
 
         .truncate {
@@ -490,7 +578,7 @@ export default function Home() {
         }
 
         .sidebar-footer {
-          border-top: 1px solid #2d2f31;
+          border-top: 1px solid #e5e7eb;
           padding-top: 12px;
           display: flex;
           flex-direction: column;
@@ -503,25 +591,21 @@ export default function Home() {
           gap: 12px;
           background: transparent;
           border: none;
-          color: #c4c7c5;
+          color: #4b5563;
           padding: 10px 14px;
-          border-radius: 20px;
+          border-radius: 16px;
           cursor: pointer;
           font-size: 0.88rem;
           width: 100%;
         }
 
-        .footer-item:hover {
-          background: #282a2c;
-        }
-
         .logout-btn {
-          color: #f87171;
+          color: #dc2626;
         }
 
         .logout-btn:hover {
-          background: rgba(239, 68, 68, 0.15);
-          color: #ef4444;
+          background: #fef2f2;
+          color: #b91c1c;
         }
 
         /* Canvas & Hero */
@@ -535,7 +619,7 @@ export default function Home() {
         }
 
         .hero-screen {
-          margin-top: 8vh;
+          margin-top: 6vh;
           animation: fadeIn 0.4s ease-out;
         }
 
@@ -545,9 +629,9 @@ export default function Home() {
 
         .gradient-text {
           font-size: 3.2rem;
-          font-weight: 600;
-          background: linear-gradient(74deg, #4285f4 0%, #9b72cb 9%, #d96570 20%, #d96570 24%, #9b72cb 35%, #ffffff 100%);
-          background-size: 400% 100%;
+          font-weight: 700;
+          background: linear-gradient(74deg, #2563eb 0%, #7c3aed 30%, #db2777 60%, #059669 100%);
+          background-size: 200% 100%;
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           display: block;
@@ -556,8 +640,8 @@ export default function Home() {
 
         .hero-greeting h1 {
           font-size: 2.8rem;
-          font-weight: 500;
-          color: #444746;
+          font-weight: 600;
+          color: #9ca3af;
           line-height: 1.2;
         }
 
@@ -568,11 +652,12 @@ export default function Home() {
         }
 
         .suggestion-card {
-          background: #1e1f20;
+          background: #f9fafb;
+          border: 1px solid #f3f4f6;
           padding: 18px;
           border-radius: 16px;
           cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
+          transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -580,19 +665,20 @@ export default function Home() {
         }
 
         .suggestion-card:hover {
-          background: #282a2c;
+          background: #ffffff;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
           transform: translateY(-2px);
         }
 
         .suggestion-card p {
           font-size: 0.95rem;
-          font-weight: 500;
-          color: #e3e3e3;
+          font-weight: 600;
+          color: #1f2937;
         }
 
         .suggestion-card span {
           font-size: 0.8rem;
-          color: #8e918f;
+          color: #6b7280;
         }
 
         /* Message Rows */
@@ -619,7 +705,7 @@ export default function Home() {
         }
 
         .gemini-sparkle {
-          background: linear-gradient(135deg, #4285f4, #9b72cb, #d96570);
+          background: linear-gradient(135deg, #2563eb, #9333ea, #db2777);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           display: flex;
@@ -630,14 +716,14 @@ export default function Home() {
         .user-icon {
           width: 32px;
           height: 32px;
-          background: #333538;
+          background: #e5e7eb;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 0.85rem;
           font-weight: 600;
-          color: #e3e3e3;
+          color: #374151;
         }
 
         .message-bubble {
@@ -645,7 +731,7 @@ export default function Home() {
         }
 
         .message-row.user .message-bubble {
-          background: #282a2c;
+          background: #f3f4f6;
           padding: 12px 18px;
           border-radius: 20px;
           border-top-right-radius: 4px;
@@ -654,7 +740,7 @@ export default function Home() {
         .message-text {
           font-size: 1rem;
           line-height: 1.65;
-          color: #e3e3e3;
+          color: #1f2937;
           word-break: break-word;
         }
 
@@ -678,7 +764,7 @@ export default function Home() {
         .shimmer-line {
           height: 12px;
           border-radius: 6px;
-          background: linear-gradient(90deg, #282a2c 25%, #3c4043 50%, #282a2c 75%);
+          background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
         }
@@ -703,7 +789,7 @@ export default function Home() {
           left: 0;
           right: 0;
           padding: 16px 20px 24px;
-          background: linear-gradient(180deg, transparent 0%, #131314 40%);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 45%);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -712,19 +798,20 @@ export default function Home() {
         .composer-shell {
           width: 100%;
           max-width: 800px;
-          background: #1e1f20;
+          background: #ffffff;
           border-radius: 28px;
           padding: 12px 18px;
           display: flex;
           align-items: flex-end;
           gap: 12px;
-          border: 1px solid #2d2f31;
-          transition: border-color 0.2s;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .composer-shell:focus-within {
-          border-color: #444746;
-          background: #202124;
+          border-color: #93c5fd;
+          box-shadow: 0 4px 24px rgba(59, 130, 246, 0.12);
         }
 
         .composer-shell textarea {
@@ -732,7 +819,7 @@ export default function Home() {
           background: transparent;
           border: none;
           outline: none;
-          color: #e3e3e3;
+          color: #1f2937;
           font-size: 1rem;
           font-family: inherit;
           resize: none;
@@ -742,7 +829,7 @@ export default function Home() {
         }
 
         .composer-shell textarea::placeholder {
-          color: #8e918f;
+          color: #9ca3af;
         }
 
         .composer-actions {
@@ -755,24 +842,25 @@ export default function Home() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: #e3e3e3;
-          color: #131314;
+          background: #111827;
+          color: #ffffff;
           border: none;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: opacity 0.2s, transform 0.1s;
+          transition: opacity 0.2s, transform 0.1s, background 0.2s;
         }
 
         .send-button-gemini:disabled {
-          background: #282a2c;
-          color: #8e918f;
+          background: #e5e7eb;
+          color: #9ca3af;
           cursor: not-allowed;
         }
 
         .send-button-gemini:not(:disabled):hover {
           transform: scale(1.05);
+          background: #1f2937;
         }
 
         @media (max-width: 600px) {
@@ -784,4 +872,3 @@ export default function Home() {
     </main>
   )
 }
-
