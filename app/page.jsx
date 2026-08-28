@@ -18,11 +18,7 @@ import {
 
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
-  
-  const cleanCode = (codeText || "")
-    .replace(/^```[a-zA-Z]*\n?/, "")
-    .replace(/```$/, "")
-    .trim()
+  const cleanCode = (codeText || "").replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(cleanCode)
@@ -35,9 +31,7 @@ function CodeBlock({ codeText }) {
       <div className="code-card-header">
         <span className="code-lang-label">Code</span>
         <button type="button" onClick={handleCopy} className="copy-action-btn" title="Copy code">
-          {copied ? (
-            <span className="copied-text">Copied ✓</span>
-          ) : (
+          {copied ? <span className="copied-text">Copied ✓</span> : (
             <span className="copy-inner">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -48,9 +42,7 @@ function CodeBlock({ codeText }) {
           )}
         </button>
       </div>
-      <pre className="code-pre-block">
-        <code>{cleanCode}</code>
-      </pre>
+      <pre className="code-pre-block"><code>{cleanCode}</code></pre>
     </div>
   )
 }
@@ -58,6 +50,16 @@ function CodeBlock({ codeText }) {
 function cleanFormatting(text) {
   if (!text) return ""
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
+}
+
+// Browser Text-To-Speech (TTS) Voice Engine
+function speakVoice(text) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.rate = 1.0
+  utterance.pitch = 1.0
+  window.speechSynthesis.speak(utterance)
 }
 
 async function think(prompt) {
@@ -68,7 +70,7 @@ async function think(prompt) {
     return "Yo! Himo Omni Engine ready hai. Kya solve ya build karna hai?"
   }
 
-  // 1. Human Newton Trained Memory (First Priority)
+  // 1. Human Newton Trained Memory (Highest Priority)
   try {
     const memoryAns = await getTrainedKnowledge(q)
     if (memoryAns) return cleanFormatting(memoryAns)
@@ -107,16 +109,19 @@ export default function Home() {
   const [topMenuOpen, setTopMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
-  // Human Newton Training Mode States
+  // Voice Training Engine States
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinDigits, setPinDigits] = useState(["", "", "", ""])
   const [pinError, setPinError] = useState("")
-  const [showTrainingStudio, setShowTrainingStudio] = useState(false)
-  const [trainTopic, setTrainTopic] = useState("")
-  const [trainAnswer, setTrainAnswer] = useState("")
-  const [trainingList, setTrainingList] = useState([])
-  const [trainSuccessMsg, setTrainSuccessMsg] = useState("")
+  const [showVoiceTrainer, setShowVoiceTrainer] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [voiceLiveTranscript, setVoiceLiveTranscript] = useState("")
+  const [voiceFeedbackMsg, setVoiceFeedbackMsg] = useState("")
+  
+  // Text Support Chat Training Inside Studio
+  const [trainTextInput, setTrainTextInput] = useState("")
 
+  const recognitionRef = useRef(null)
   const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
@@ -197,7 +202,7 @@ export default function Home() {
     })
   }
 
-  // Handle PIN Input Change with Auto-Focus
+  // 4-Digit PIN Logic
   const handlePinChange = (val, idx) => {
     if (val.length > 1) val = val.slice(-1)
     const updated = [...pinDigits]
@@ -216,34 +221,103 @@ export default function Home() {
     }
   }
 
-  const handleVerifyPinAndOpenMode = async () => {
+  // Parse & Save Voice/Text Pattern: "when i say [X] you say [Y]"
+  const processTrainingPattern = async (rawSentence) => {
+    const text = rawSentence.trim()
+    const patternRegex = /(?:when\s+i\s+say|jb\s+m\s+bolu|jab\s+main\s+bolu)\s+(.*?)\s+(?:you\s+say|tu\s+bolna|tum\s+bolna|answer)\s+(.*)/i
+    const match = text.match(patternRegex)
+
+    if (match && match[1] && match[2]) {
+      const topic = match[1].trim()
+      const answer = match[2].trim()
+
+      await saveTrainedKnowledge(topic, answer)
+
+      const reply = `Got it! When you say "${topic}", I will say "${answer}". Memory saved permanently.`
+      setVoiceFeedbackMsg(reply)
+      speakVoice(`Got it! I have saved this in my memory.`)
+      return true
+    } else {
+      const errorReply = "Please say like: 'When I say [question] you say [answer]'"
+      setVoiceFeedbackMsg(errorReply)
+      speakVoice(errorReply)
+      return false
+    }
+  }
+
+  // Setup Speech Recognition Web Audio Engine
+  const startVoiceListening = () => {
+    if (typeof window === "undefined") return
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Browser speech recognition not supported. Please use Chrome/Edge or type in Support Chat below.")
+      return
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = "en-US"
+
+    recognition.onstart = () => {
+      setIsListening(true)
+      setVoiceLiveTranscript("Listening... Speak now!")
+    }
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join("")
+      setVoiceLiveTranscript(transcript)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+      if (voiceLiveTranscript && voiceLiveTranscript !== "Listening... Speak now!") {
+        processTrainingPattern(voiceLiveTranscript)
+      }
+    }
+
+    recognition.onerror = () => {
+      setIsListening(false)
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+  }
+
+  const stopVoiceListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+    setIsListening(false)
+  }
+
+  const handleVerifyPinAndOpenVoice = () => {
     const entered = pinDigits.join("")
     if (entered === "5656") {
       setShowPinModal(false)
       setPinDigits(["", "", "", ""])
       setPinError("")
-      
-      const list = await getAllTrainedKnowledgeList()
-      setTrainingList(list)
-      setShowTrainingStudio(true)
+      setShowVoiceTrainer(true)
+      setVoiceFeedbackMsg("")
+      setVoiceLiveTranscript("Press the mic button and speak...")
+      speakVoice("Voice training engine active. I am listening.")
     } else {
       setPinError("Galat Password! (5656 enter karein)")
     }
   }
 
-  const handleSaveTraining = async (e) => {
+  const handleSupportTextTrainSubmit = async (e) => {
     e.preventDefault()
-    if (!trainTopic.trim() || !trainAnswer.trim()) return
-
-    await saveTrainedKnowledge(trainTopic, trainAnswer)
-    setTrainSuccessMsg(`'${trainTopic.trim()}' successfully Newton Brain memory mein sikh gaya!`)
-    setTrainTopic("")
-    setTrainAnswer("")
-
-    const list = await getAllTrainedKnowledgeList()
-    setTrainingList(list)
-
-    setTimeout(() => setTrainSuccessMsg(""), 3500)
+    if (!trainTextInput.trim()) return
+    await processTrainingPattern(trainTextInput)
+    setTrainTextInput("")
   }
 
   async function handleSend(textToSend) {
@@ -316,7 +390,7 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* 4-Box PIN Modal for Training Mode */}
+      {/* 4-Box PIN Security Modal */}
       {showPinModal && (
         <div className="modal-backdrop" onClick={() => setShowPinModal(false)}>
           <div className="pin-card-modal" onClick={(e) => e.stopPropagation()}>
@@ -343,73 +417,71 @@ export default function Home() {
 
             {pinError && <p className="pin-error-text">{pinError}</p>}
 
-            <button type="button" className="mode-on-btn" onClick={handleVerifyPinAndOpenMode}>
+            <button type="button" className="mode-on-btn" onClick={handleVerifyPinAndOpenVoice}>
               Mode on
             </button>
           </div>
         </div>
       )}
 
-      {/* Newton Brain Training Studio Modal */}
-      {showTrainingStudio && (
-        <div className="modal-backdrop" onClick={() => setShowTrainingStudio(false)}>
-          <div className="training-studio-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="studio-top">
+      {/* Voice Training Engine Studio Modal */}
+      {showVoiceTrainer && (
+        <div className="modal-backdrop" onClick={() => setShowVoiceTrainer(false)}>
+          <div className="voice-studio-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="voice-top-header">
               <div>
-                <h2>Human Newton Training Studio</h2>
-                <p>Himo ko naya gyan sikhayein (Permanent Dimag Memory)</p>
+                <h2>Voice Training Engine</h2>
+                <p>Speak: "Hi Himo, when I say [X] you say [Y]"</p>
               </div>
-              <button type="button" className="close-studio-btn" onClick={() => setShowTrainingStudio(false)}>✕</button>
+              <button type="button" className="close-voice-btn" onClick={() => setShowVoiceTrainer(false)}>✕</button>
             </div>
 
-            {trainSuccessMsg && <div className="train-success-banner">{trainSuccessMsg}</div>}
-
-            <form onSubmit={handleSaveTraining} className="train-form">
-              <label>Sawal / Topic (User kya poochega?)</label>
-              <input
-                type="text"
-                placeholder="Jaise: Himo ka founder kaun hai?"
-                value={trainTopic}
-                onChange={(e) => setTrainTopic(e.target.value)}
-                required
-                className="studio-input"
-              />
-
-              <label>Jawab / Information (Himo ko kya sikhana hai?)</label>
-              <textarea
-                placeholder="Jo exact answer Himo ko yaad rakhna chahiye..."
-                value={trainAnswer}
-                onChange={(e) => setTrainAnswer(e.target.value)}
-                required
-                rows={3}
-                className="studio-textarea"
-              />
-
-              <button type="submit" className="save-knowledge-btn">
-                Dimag Mein Save Karein
-              </button>
-            </form>
-
-            <div className="trained-list-section">
-              <h4>Permanent Sikhi Huyi Knowledge ({trainingList.length})</h4>
-              <div className="trained-scroll-view">
-                {trainingList.length === 0 ? (
-                  <p className="no-data">Abhi tak koi custom topic nahi sikhaya gaya.</p>
-                ) : (
-                  trainingList.map((item, idx) => (
-                    <div key={idx} className="trained-item-card">
-                      <strong>Q: {item.rawTopic}</strong>
-                      <p>A: {item.answer}</p>
-                    </div>
-                  ))
-                )}
+            {/* Glowing Voice Radar Circle */}
+            <div className="voice-interaction-stage">
+              <div 
+                className={`voice-mic-orb ${isListening ? "orb-listening" : ""}`}
+                onClick={isListening ? stopVoiceListening : startVoiceListening}
+              >
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
               </div>
+              <p className="mic-status-hint">
+                {isListening ? "Listening... Speak sentence now" : "Tap Mic to Start Speaking"}
+              </p>
+            </div>
+
+            {/* Real-time Live Transcript & Feedback */}
+            <div className="transcript-box">
+              <span className="box-tag">Live Speech / Input:</span>
+              <p className="transcript-text">{voiceLiveTranscript || "Waiting for voice..."}</p>
+              {voiceFeedbackMsg && (
+                <div className="voice-feedback-banner">
+                  <span>{voiceFeedbackMsg}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Support Text Chat Training */}
+            <div className="support-text-section">
+              <span className="support-label">Support Chat (Type to Train):</span>
+              <form onSubmit={handleSupportTextTrainSubmit} className="support-input-row">
+                <input
+                  type="text"
+                  placeholder="e.g. When I say who made you you say I was created by Himo"
+                  value={trainTextInput}
+                  onChange={(e) => setTrainTextInput(e.target.value)}
+                  className="support-input"
+                />
+                <button type="submit" className="support-send-btn">Train</button>
+              </form>
             </div>
           </div>
         </div>
       )}
 
-      {/* Sidebar */}
+      {/* Slide-out Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top-spacer" />
         <button className="new-chat-btn" onClick={() => { setMessages([]); setCurrentChatId(null); setSidebarOpen(false); }}>
@@ -586,70 +658,56 @@ export default function Home() {
         .send-button-gemini { width: 38px; height: 38px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
 
-        /* Modal Overlay */
-        .modal-backdrop {
-          position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65);
-          backdrop-filter: blur(4px); z-index: 200;
-          display: flex; align-items: center; justify-content: center; padding: 16px;
-        }
-
-        /* 4-Box PIN Security Card */
-        .pin-card-modal {
-          background: #ffffff; border-radius: 24px; padding: 32px 24px;
-          max-width: 360px; width: 100%; text-align: center;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); animation: popIn 0.2s ease-out;
-        }
+        /* PIN Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .pin-card-modal { background: #ffffff; border-radius: 24px; padding: 32px 24px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25); }
         .pin-header h3 { font-size: 1.3rem; font-weight: 700; color: #111827; margin-bottom: 6px; }
         .pin-header p { font-size: 0.85rem; color: #6b7280; margin-bottom: 24px; }
         .pin-boxes-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
-        .pin-digit-box {
-          width: 52px; height: 58px; text-align: center; font-size: 1.6rem; font-weight: 700;
-          border: 2px solid #e5e7eb; border-radius: 14px; outline: none; transition: border-color 0.2s;
-        }
+        .pin-digit-box { width: 52px; height: 58px; text-align: center; font-size: 1.6rem; font-weight: 700; border: 2px solid #e5e7eb; border-radius: 14px; outline: none; }
         .pin-digit-box:focus { border-color: #2563eb; background: #eff6ff; }
         .pin-error-text { font-size: 0.82rem; color: #dc2626; font-weight: 600; margin-bottom: 12px; }
-        .mode-on-btn {
-          width: 100%; padding: 14px; background: #2563eb; color: #ffffff; font-size: 1rem;
-          font-weight: 700; border-radius: 14px; border: none; cursor: pointer; transition: background 0.2s;
-        }
-        .mode-on-btn:hover { background: #1d4ed8; }
+        .mode-on-btn { width: 100%; padding: 14px; background: #2563eb; color: #ffffff; font-size: 1rem; font-weight: 700; border-radius: 14px; border: none; cursor: pointer; }
 
-        /* Training Studio Full Modal */
-        .training-studio-modal {
-          background: #ffffff; border-radius: 24px; padding: 24px;
-          max-width: 540px; width: 100%; max-height: 85vh; overflow-y: auto;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column; gap: 16px;
-          animation: popIn 0.2s ease-out;
+        /* Voice Training Studio Modal */
+        .voice-studio-modal {
+          background: #ffffff; border-radius: 28px; padding: 26px; max-width: 480px; width: 100%;
+          box-shadow: 0 24px 48px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 18px;
         }
-        .studio-top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .studio-top h2 { font-size: 1.25rem; font-weight: 800; color: #111827; }
-        .studio-top p { font-size: 0.82rem; color: #6b7280; }
-        .close-studio-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: #9ca3af; }
-        .train-success-banner { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; }
-        .train-form { display: flex; flex-direction: column; gap: 8px; }
-        .train-form label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-top: 4px; }
-        .studio-input, .studio-textarea {
-          width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #d1d5db;
-          font-size: 0.92rem; outline: none; font-family: inherit;
+        .voice-top-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .voice-top-header h2 { font-size: 1.3rem; font-weight: 800; color: #111827; }
+        .voice-top-header p { font-size: 0.82rem; color: #6b7280; }
+        .close-voice-btn { background: transparent; border: none; font-size: 1.3rem; cursor: pointer; color: #9ca3af; }
+        
+        .voice-interaction-stage { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0; }
+        .voice-mic-orb {
+          width: 80px; height: 80px; border-radius: 50%; background: #2563eb; color: #fff;
+          display: flex; align-items: center; justify-content: center; cursor: pointer;
+          box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4); transition: transform 0.2s, background 0.2s;
         }
-        .studio-input:focus, .studio-textarea:focus { border-color: #2563eb; }
-        .save-knowledge-btn {
-          margin-top: 10px; padding: 13px; background: #111827; color: #ffffff;
-          font-weight: 700; border-radius: 12px; border: none; cursor: pointer;
+        .voice-mic-orb:hover { transform: scale(1.05); }
+        .orb-listening {
+          background: #dc2626; box-shadow: 0 0 0 12px rgba(220, 38, 38, 0.2), 0 0 0 24px rgba(220, 38, 38, 0.1);
+          animation: pulseWave 1.4s infinite ease-in-out;
         }
-        .save-knowledge-btn:hover { background: #1f2937; }
-        .trained-list-section { border-top: 1px solid #e5e7eb; padding-top: 14px; }
-        .trained-list-section h4 { font-size: 0.9rem; font-weight: 700; color: #4b5563; margin-bottom: 8px; }
-        .trained-scroll-view { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
-        .trained-item-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; }
-        .trained-item-card strong { color: #1e40af; display: block; margin-bottom: 2px; }
-        .trained-item-card p { color: #374151; margin: 0; }
-        .no-data { font-size: 0.8rem; color: #9ca3af; }
-
-        @keyframes popIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
+        @keyframes pulseWave {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+          100% { transform: scale(1); }
         }
+        .mic-status-hint { font-size: 0.88rem; font-weight: 600; color: #374151; }
+        
+        .transcript-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; }
+        .box-tag { font-size: 0.75rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; }
+        .transcript-text { font-size: 0.95rem; color: #1f2937; margin: 4px 0 0; font-weight: 500; min-height: 24px; }
+        .voice-feedback-banner { margin-top: 10px; background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; }
+        
+        .support-text-section { border-top: 1px solid #e5e7eb; padding-top: 14px; }
+        .support-label { font-size: 0.8rem; font-weight: 600; color: #6b7280; display: block; margin-bottom: 6px; }
+        .support-input-row { display: flex; gap: 8px; }
+        .support-input { flex: 1; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 0.88rem; outline: none; }
+        .support-input:focus { border-color: #2563eb; }
+        .support-send-btn { padding: 10px 16px; background: #111827; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
 
         .auth-loading-screen { height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #fff; }
         .loader-spinner { width: 38px; height: 38px; border: 3px solid #f3f4f6; border-top: 3px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; }
