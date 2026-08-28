@@ -89,10 +89,11 @@ export default function Home() {
   const [pinError, setPinError] = useState("")
   const [isListening, setIsListening] = useState(false)
 
-  // Hardware Camera & Screenshot States
+  // Hardware Camera, Screenshot & Music Player States
   const [showCameraModal, setShowCameraModal] = useState(false)
   const [capturedPhoto, setCapturedPhoto] = useState(null)
   const [screenshotToast, setScreenshotToast] = useState(null)
+  const [currentTrack, setCurrentTrack] = useState(null)
 
   const videoCameraRef = useRef(null)
   const cameraStreamRef = useRef(null)
@@ -152,7 +153,7 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
-  // Camera Handlers
+  // Live Camera Handlers
   const openLiveCamera = async () => {
     setShowCameraModal(true)
     setCapturedPhoto(null)
@@ -196,38 +197,32 @@ export default function Home() {
     setCapturedPhoto(null)
   }
 
-  // Real Screenshot Capture & Auto-Download Handler
+  // Real Snapshot via HTML2Canvas Loader
   const captureScreenshot = () => {
     if (typeof window === "undefined") return
-    try {
-      const canvas = document.createElement("canvas")
-      const w = window.innerWidth
-      const h = window.innerHeight
-      canvas.width = w
-      canvas.height = h
-      const ctx = canvas.getContext("2d")
+    
+    // Load html2canvas if not present
+    const takeSnap = () => {
+      if (window.html2canvas) {
+        window.html2canvas(document.body).then((canvas) => {
+          const imgData = canvas.toDataURL("image/png")
+          const dlLink = document.createElement("a")
+          dlLink.download = `Himo_Screenshot_${Date.now()}.png`
+          dlLink.href = imgData
+          dlLink.click()
 
-      ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, w, h)
-      ctx.fillStyle = "#111827"
-      ctx.font = "bold 20px sans-serif"
-      ctx.fillText("Himo Omni Screen Snapshot", 24, 40)
-      ctx.font = "14px sans-serif"
-      ctx.fillStyle = "#6b7280"
-      ctx.fillText(new Date().toLocaleString(), 24, 65)
-
-      const imgData = canvas.toDataURL("image/png")
-      const dlLink = document.createElement("a")
-      dlLink.download = `Himo_Screenshot_${Date.now()}.png`
-      dlLink.href = imgData
-      dlLink.click()
-
-      setScreenshotToast("Screenshot Saved Successfully!")
-      speakVoice("Screenshot taken and saved to device.")
-      setTimeout(() => setScreenshotToast(null), 3500)
-    } catch (e) {
-      console.error(e)
+          setScreenshotToast("Screenshot Saved to Device!")
+          speakVoice("Screenshot taken and saved.")
+          setTimeout(() => setScreenshotToast(null), 3500)
+        })
+      } else {
+        const script = document.createElement("script")
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+        script.onload = takeSnap
+        document.head.appendChild(script)
+      }
     }
+    takeSnap()
   }
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
@@ -300,9 +295,8 @@ export default function Home() {
     if (
       lower.startsWith("delete ") || 
       lower.startsWith("forget ") || 
-      lower.startsWith("delete memory ") || 
-      lower.startsWith("remove memory ") || 
       lower.startsWith("remove ") || 
+      lower.startsWith("delete memory ") || 
       lower.includes("bhul jao")
     ) {
       const targetQuery = text
@@ -385,39 +379,68 @@ export default function Home() {
     recognition.start()
   }
 
+  // Play Song / Bhajan inside App Engine
+  const handleInAppMusicPlay = (query) => {
+    const cleanTrack = query
+      .replace(/^(play|chalao|suno|gana|song|bhajan|lagao)\s+/i, "")
+      .replace(/\b(song|gana|bhajan|music|audio|video|play)\b/gi, "")
+      .trim()
+
+    const songTitle = cleanTrack || "Top Bhajan & Music"
+    const embedSearchUrl = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(songTitle)}&autoplay=1`
+
+    setCurrentTrack({
+      title: songTitle,
+      url: embedSearchUrl
+    })
+
+    return `Playing "${songTitle}" on main screen...`
+  }
+
   async function think(prompt) {
     const q = prompt.trim()
     const qLower = q.toLowerCase()
 
     if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
-      return "Yo! Himo Omni Engine ready hai. Kya solve, capture ya build karna hai?"
+      return "Yo! Himo Omni Engine ready hai. Kya solve, play, ya capture karna hai?"
     }
 
-    // 1. Hardware & System Actions (Screenshot, Camera, Open App)
+    // 1. In-App Music / Song / Bhajan Player Trigger
+    if (
+      qLower.startsWith("play ") || 
+      qLower.includes("gana chalao") || 
+      qLower.includes("bhajan chalao") || 
+      qLower.includes("song play") || 
+      qLower.startsWith("lagao ")
+    ) {
+      return handleInAppMusicPlay(q)
+    }
+
+    // 2. Hardware Actions (Screenshot, Camera, Open App)
     try {
       const deviceAction = await handleDeviceAction(q, openLiveCamera, captureScreenshot)
       if (deviceAction) return deviceAction
     } catch (e) {}
 
-    // 2. Human Newton Trained Memory
+    // 3. Human Newton Trained Memory
     try {
       const memoryAns = await getTrainedKnowledge(q)
       if (memoryAns) return cleanFormatting(memoryAns)
     } catch (e) {}
 
-    // 3. Math Master
+    // 4. Math Master
     try {
       const mathResult = MathMasterEngine.evaluate(q)
       if (mathResult) return cleanFormatting(mathResult)
     } catch (e) {}
 
-    // 4. Code Engine
+    // 5. Code Engine
     try {
       const codeResult = generateCodeFromPrompt(q)
       if (codeResult) return codeResult
     } catch (e) {}
 
-    // 5. Web Search Engine
+    // 6. Web Search Engine
     try {
       const searchData = await fetchLiveWebData(q)
       if (searchData) return cleanFormatting(searchData)
@@ -432,8 +455,9 @@ export default function Home() {
 
     const lowerPrompt = prompt.toLowerCase()
 
-    if (['stop', 'chup', 'ruko', 'pause', 'stop speaking', 'shant'].includes(lowerPrompt)) {
+    if (['stop', 'chup', 'ruko', 'pause', 'stop speaking', 'shant', 'stop music'].includes(lowerPrompt)) {
       stopVoicePlayback()
+      setCurrentTrack(null)
       setMessage("")
       return
     }
@@ -525,6 +549,25 @@ export default function Home() {
         <div className="screenshot-toast">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           <span>{screenshotToast}</span>
+        </div>
+      )}
+
+      {/* In-App Floating Music / Video Player on Main Screen */}
+      {currentTrack && (
+        <div className="in-app-media-player">
+          <div className="player-top-header">
+            <div className="track-title-tag">
+              <span className="equalizer-bar"></span>
+              <span>Playing: {currentTrack.title}</span>
+            </div>
+            <button type="button" onClick={() => setCurrentTrack(null)} className="close-player-btn" title="Close Player">✕</button>
+          </div>
+          <iframe 
+            src={currentTrack.url} 
+            title="Music Player" 
+            allow="autoplay; encrypted-media" 
+            className="player-iframe"
+          />
         </div>
       )}
 
@@ -633,7 +676,7 @@ export default function Home() {
           </div>
           <div className="settings-container">
             <button type="button" className="settings-icon-btn" onClick={(e) => { e.stopPropagation(); setSettingsMenuOpen(!settingsMenuOpen); }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </button>
             {settingsMenuOpen && (
               <div className="popup-card settings-popup">
@@ -736,7 +779,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Ask Himo, take screenshot, or open apps...")} 
+              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Play song, take photo, or ask anything...")} 
               rows={1} 
             />
             
@@ -832,6 +875,22 @@ export default function Home() {
         .message-row.assistant .message-bubble { background: transparent; padding: 4px 0; }
         .message-text { font-size: 1rem; line-height: 1.6; color: #1f2937; }
         
+        /* Floating In-App Media Player */
+        .in-app-media-player {
+          position: fixed; bottom: 84px; right: 20px; width: 310px; height: 210px;
+          background: #0f172a; border-radius: 16px; overflow: hidden;
+          box-shadow: 0 12px 30px rgba(0,0,0,0.35); border: 1.5px solid #1e293b;
+          z-index: 150; display: flex; flex-direction: column;
+        }
+        .player-top-header {
+          display: flex; justify-content: space-between; align-items: center;
+          background: #1e293b; padding: 6px 12px; color: #f8fafc; font-size: 0.78rem; font-weight: 600;
+        }
+        .track-title-tag { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 240px; }
+        .equalizer-bar { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulseWave 1s infinite; }
+        .close-player-btn { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; }
+        .player-iframe { width: 100%; flex: 1; border: none; }
+
         .code-container-card { background: #0f172a; border-radius: 14px; overflow: hidden; border: 1px solid #1e293b; margin: 10px 0; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); width: 100%; }
         .code-card-header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 8px 16px; border-bottom: 1px solid #334155; }
         .code-lang-label { font-size: 0.8rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }

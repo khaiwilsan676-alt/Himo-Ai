@@ -4,7 +4,7 @@ const STORE_CHATS = "chat_sessions";
 const STORE_TRAINED_BRAIN = "newton_brain_memory";
 
 function openDB() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (typeof window === "undefined" || !window.indexedDB) {
       return resolve(null);
     }
@@ -21,24 +21,23 @@ function openDB() {
     };
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve(null);
   });
 }
 
-// Chat functions
 export async function saveChatToDB(chatObj) {
   try {
     const db = await openDB();
     if (!db) return;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_CHATS, "readwrite");
       const store = tx.objectStore(STORE_CHATS);
       store.put(chatObj);
       tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => resolve(false);
     });
   } catch (err) {
-    console.error("IndexedDB Save Chat Error:", err);
+    return false;
   }
 }
 
@@ -46,15 +45,14 @@ export async function getAllChatsFromDB() {
   try {
     const db = await openDB();
     if (!db) return [];
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_CHATS, "readonly");
       const store = tx.objectStore(STORE_CHATS);
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => resolve([]);
     });
   } catch (err) {
-    console.error("IndexedDB Fetch Chats Error:", err);
     return [];
   }
 }
@@ -63,25 +61,24 @@ export async function deleteChatFromDB(chatId) {
   try {
     const db = await openDB();
     if (!db) return;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_CHATS, "readwrite");
       const store = tx.objectStore(STORE_CHATS);
       store.delete(chatId);
       tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => resolve(false);
     });
   } catch (err) {
-    console.error("IndexedDB Delete Chat Error:", err);
+    return false;
   }
 }
 
-// Human Newton Training Memory Functions
 export async function saveTrainedKnowledge(topic, answer) {
   try {
     const db = await openDB();
     if (!db) return;
     const cleanTopic = topic.trim().toLowerCase();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_TRAINED_BRAIN, "readwrite");
       const store = tx.objectStore(STORE_TRAINED_BRAIN);
       store.put({
@@ -91,10 +88,10 @@ export async function saveTrainedKnowledge(topic, answer) {
         trainedAt: Date.now()
       });
       tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => resolve(false);
     });
   } catch (err) {
-    console.error("IndexedDB Save Knowledge Error:", err);
+    return false;
   }
 }
 
@@ -102,41 +99,64 @@ export async function getTrainedKnowledge(query) {
   try {
     const db = await openDB();
     if (!db) return null;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_TRAINED_BRAIN, "readonly");
       const store = tx.objectStore(STORE_TRAINED_BRAIN);
       const req = store.getAll();
       req.onsuccess = () => {
         const memories = req.result || [];
         const cleanQ = query.trim().toLowerCase();
-
-        // Exact match or fuzzy keyword match
-        const found = memories.find((m) => {
-          return cleanQ.includes(m.topic) || m.topic.includes(cleanQ);
-        });
-
+        const found = memories.find((m) => cleanQ.includes(m.topic) || m.topic.includes(cleanQ));
         resolve(found ? found.answer : null);
       };
-      req.onerror = () => reject(req.error);
+      req.onerror = () => resolve(null);
     });
   } catch (err) {
-    console.error("IndexedDB Fetch Knowledge Error:", err);
     return null;
   }
 }
 
-export async function getAllTrainedKnowledgeList() {
+export async function deleteTrainedKnowledge(topicOrQuery) {
   try {
     const db = await openDB();
-    if (!db) return [];
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_TRAINED_BRAIN, "readonly");
+    if (!db) return null;
+    const cleanQ = topicOrQuery.trim().toLowerCase();
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_TRAINED_BRAIN, "readwrite");
       const store = tx.objectStore(STORE_TRAINED_BRAIN);
       const req = store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
+
+      req.onsuccess = () => {
+        const memories = req.result || [];
+        const target = memories.find(m => cleanQ.includes(m.topic) || m.topic.includes(cleanQ));
+        if (target) {
+          store.delete(target.topic);
+          resolve(target.rawTopic || target.topic);
+        } else {
+          resolve(null);
+        }
+      };
+      tx.oncomplete = () => {};
+      tx.onerror = () => resolve(null);
     });
   } catch (err) {
-    return [];
+    return null;
+  }
+}
+
+export async function clearAllTrainedKnowledge() {
+  try {
+    const db = await openDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_TRAINED_BRAIN, "readwrite");
+      const store = tx.objectStore(STORE_TRAINED_BRAIN);
+      store.clear();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch (err) {
+    return false;
   }
 }
