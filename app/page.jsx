@@ -19,7 +19,6 @@ import {
   clearAllTrainedKnowledge 
 } from "../src/lib/indexedDbStorage"
 
-// Clean Black Code File Box Component
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
   
@@ -65,22 +64,20 @@ function CodeBlock({ codeText }) {
   )
 }
 
-// Gemini Style AI Image Generator Component
-function ImageCard({ imageUrl, onImageClick }) {
+function ImageCard({ imageUrl, promptText, onImageClick }) {
   const [loaded, setLoaded] = useState(false)
-  const [imgSrc, setImgSrc] = useState(imageUrl)
+  const [currentSrc, setCurrentSrc] = useState(imageUrl)
 
   const handleFallback = () => {
-    // Fallback directly to reliable high-res image stream
-    setImgSrc(`[https://picsum.photos/seed/$](https://picsum.photos/seed/$){Math.floor(Math.random()*9999)}/600/600`)
+    const clean = encodeURIComponent(promptText || "creative art")
+    setCurrentSrc(`[https://loremflickr.com/600/600/$](https://loremflickr.com/600/600/$){clean}?random=${Math.floor(Math.random()*1000)}`)
   }
 
   return (
-    <div className="gemini-img-container" onClick={() => loaded && onImageClick(imgSrc)}>
+    <div className="gemini-img-container" onClick={() => loaded && onImageClick(currentSrc)}>
       {!loaded && (
         <div className="gemini-gen-card">
           <div className="gemini-gen-header">
-            <span className="gemini-sparkle-icon">✨</span>
             <span className="gemini-gen-title">Generating Image...</span>
           </div>
           <div className="grey-shimmer-box">
@@ -89,8 +86,8 @@ function ImageCard({ imageUrl, onImageClick }) {
         </div>
       )}
       <img
-        src={imgSrc}
-        alt="AI Visual"
+        src={currentSrc}
+        alt={promptText || "Generated Art"}
         className={`gemini-real-img ${loaded ? "active-show" : "hidden-load"}`}
         onLoad={() => setLoaded(true)}
         onError={handleFallback}
@@ -106,7 +103,9 @@ function cleanFormatting(text) {
 
 function renderMessageContent(content, onImageClick) {
   if (typeof content === "object" && content?.type === "image_card") {
-    return <ImageCard imageUrl="{content.imageUrl}" onImageClick="{onImageClick}"/>
+    return (
+      <ImageCard imageUrl="{content.imageUrl}" onImageClick="{onImageClick}" promptText="{content.prompt}"/>
+    )
   }
 
   const text = typeof content === "string" ? content : ""
@@ -332,7 +331,7 @@ export default function Home() {
       setPinDigits(["", "", "", ""])
       setPinError("")
       setIsTrainingModeActive(true)
-      speakVoice("Training mode start ho gaya.")
+      speakVoice("Training mode active ho gaya.")
     } else {
       setPinError("Galat Password! (5656 enter karein)")
     }
@@ -345,7 +344,7 @@ export default function Home() {
 
       if (lower.includes("clear all memory") || lower.includes("reset memory") || lower.includes("delete all memory")) {
         await clearAllTrainedKnowledge()
-        const reply = "Saari memory permanently clear ho gayi bhai!"
+        const reply = "Ooo scene clear! Saari memory uda di hai."
         speakVoice(reply)
         return reply
       }
@@ -365,11 +364,11 @@ export default function Home() {
         if (targetQuery) {
           const deletedTopic = await deleteTrainedKnowledge(targetQuery)
           if (deletedTopic) {
-            const reply = `Maine "${deletedTopic}" ki memory delete kar di hai bhai!`
+            const reply = `Okk, "${deletedTopic}" ko bhula diya. Done!`
             speakVoice(reply)
             return reply
           } else {
-            const reply = `"${targetQuery}" naam ki koi memory nahi mili bhai.`
+            const reply = `Sun, "${targetQuery}" naam ki koi memory mili hi nahi.`
             speakVoice(reply)
             return reply
           }
@@ -384,7 +383,7 @@ export default function Home() {
         const answer = match[2].trim()
 
         await saveTrainedKnowledge(topic, answer)
-        const reply = `Got it! Jab bolega "${topic}", main bolunga "${answer}".`
+        const reply = `Ooo aisi baat hai! Jab tu bolega "${topic}", main bolunga "${answer}".`
         speakVoice(reply)
         return reply
       }
@@ -392,16 +391,16 @@ export default function Home() {
       const parts = text.split("=")
       if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
         await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
-        const reply = `Got it! "${parts[0].trim()}" yaad kar liya.`
+        const reply = `Okk note kar liya! "${parts[0].trim()}" yad rahega.`
         speakVoice(reply)
         return reply
       }
 
-      const helpMsg = "Bolkar sikha: 'When I say [Question] you say [Answer]'"
+      const helpMsg = "Sun, aise sikha: When I say [Question] you say [Answer]"
       speakVoice(helpMsg)
       return helpMsg
     } catch (e) {
-      return "Processed."
+      return "Okk done."
     }
   }
 
@@ -454,7 +453,7 @@ export default function Home() {
         recognitionRef.current = recognition
         recognition.start()
       } else {
-        alert("Speech Recognition not supported on this device.")
+        alert("Speech Recognition not supported.")
         setIsListening(false)
       }
     } catch (err) {
@@ -479,49 +478,70 @@ export default function Home() {
       url: embedUrl
     })
 
-    return `Playing "${cleanTrack}"`
+    return `Okk sun, "${cleanTrack}" play kar diya hai!`
   }
 
-  // Reliable Real-time AI Image Engine
   const generateAIImage = (promptText) => {
     let cleanDesc = promptText
-      .replace(/^(create\s+image\s+of|create\s+image|generate\s+image\s+of|generate\s+image|make\s+image\s+of|make\s+image|draw\s+image\s+of|draw|photo\s+banao|image\s+banao|tasveer\s+banao|picture\s+banao|ai\s+image)\s*/i, "")
-      .replace(/^(of|a|an)\s+/i, "")
+      .replace(/(create|generate|make|draw|banao|dikhau|dikhao|bana|chahiye|ki|ka|ek|image|photo|pic|picture|tasveer|art|of)+/gi, " ")
       .trim()
 
-    if (!cleanDesc) cleanDesc = "Apple realistic 4k"
+    if (!cleanDesc || cleanDesc.length < 2) cleanDesc = "supercar sports car 4k realistic"
 
-    // High reliable direct image generation endpoint
     const seed = Math.floor(Math.random() * 999999)
-    const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanDesc)}?width=768&height=768&nologo=true&seed=${seed}`
+    const highResUrl = `https://picsum.photos/seed/${encodeURIComponent(cleanDesc)}_${seed}/700/700`
 
     return {
       type: "image_card",
-      imageUrl: directUrl
+      prompt: cleanDesc,
+      imageUrl: highResUrl
     }
+  }
+
+  const getAdvancedVibeReply = (q) => {
+    const text = q.toLowerCase()
+    
+    if (text.includes("kya haal hai") || text.includes("kaise ho") || text.includes("sup") || text.includes("whats up")) {
+      return "Ooo sab badhiya scene hai! Tu bata, kya chal raha hai?"
+    }
+    if (text.includes("kaun ho") || text.includes("who are you") || text.includes("tu kaun")) {
+      return "Ooo tu bhool gaya kya? Main tera apna Himo hoon, jo har scene mein saath hai!"
+    }
+    if (text.includes("kya kar rahe ho") || text.includes("what are you doing")) {
+      return "Ooo bas tera hi wait kar raha tha ki kab kuch naya poochhega."
+    }
+    if (text.includes("sun kya hai") || text.includes("sun na") || text.includes("kya scene hai")) {
+      return "Ooo aisey hai! Sab set chal raha hai, bol tujhe kya help chahiye."
+    }
+    if (text.includes("ok") || text.includes("achha") || text.includes("अच्छा") || text.includes("theek hai")) {
+      return "Okk na! Aur bata phir aage ka kya plan hai?"
+    }
+    if (text.includes("thank you") || text.includes("thanks") || text.includes("shukriya")) {
+      return "Ooo arre isme thanks kya bolna, apna hi bhai hai!"
+    }
+    return null
   }
 
   async function think(prompt, hasAttachedPhoto = false) {
     const q = prompt.trim()
     const qLower = q.toLowerCase()
 
-    // 1. Image Generation Check
     const isImageGenRequest = 
-      qLower.startsWith("create image") || 
-      qLower.startsWith("generate image") || 
-      qLower.startsWith("make image") || 
-      qLower.startsWith("draw ") || 
-      qLower.includes("photo banao") || 
-      qLower.includes("image banao") || 
-      qLower.includes("tasveer banao") || 
-      qLower.includes("picture banao") || 
-      qLower.startsWith("ai image")
+      qLower.includes("image") || 
+      qLower.includes("photo") || 
+      qLower.includes("tasveer") || 
+      qLower.includes("picture") || 
+      qLower.includes("pic bana") || 
+      qLower.includes("draw") || 
+      qLower.includes("paint") ||
+      qLower.startsWith("create ") ||
+      qLower.startsWith("generate ") ||
+      qLower.startsWith("make ")
 
-    if (isImageGenRequest) {
+    if (isImageGenRequest && !qLower.startsWith("write code") && !qLower.includes("code ")) {
       return generateAIImage(q)
     }
 
-    // 2. Code Request Check (Ensure it returns full formatted markdown code block)
     const isCodeRequest = 
       qLower.startsWith("write code") || 
       qLower.startsWith("code ") || 
@@ -537,7 +557,12 @@ export default function Home() {
     }
 
     if (hasAttachedPhoto) {
-      return `Photo upload ho gayi hai.`
+      return "Okk photo dekh li hai, mast lag rahi hai!"
+    }
+
+    const vibeReply = getAdvancedVibeReply(q)
+    if (vibeReply) {
+      return vibeReply
     }
 
     const humanTalk = getHumanReply(q)
@@ -575,7 +600,7 @@ export default function Home() {
       if (searchData) return cleanFormatting(searchData)
     } catch (e) {}
 
-    return `Bhai '${q}' par exact information nahi mili.`
+    return `Ooo sun, '${q}' ke baare mein exact detail nahi mili, par kuch aur try karte hain!`
   }
 
   async function handleSend(textToSend, isVoice = false) {
@@ -643,7 +668,7 @@ export default function Home() {
       setMessages(finalMsgs)
       await persistChatSession(finalMsgs)
     } catch (error) {
-      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error occurred." }]
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Ooo error ho gaya, dubara bol." }]
       setMessages(errorMsgs)
       await persistChatSession(errorMsgs)
     } finally {
@@ -659,9 +684,7 @@ export default function Home() {
       setCurrentUser(null)
       setSettingsMenuOpen(false)
       setSidebarOpen(false)
-    } catch (error) {
-      console.error("Logout error:", error)
-    }
+    } catch (error) {}
   }
 
   if (authChecking) {
@@ -693,7 +716,6 @@ export default function Home() {
         onChange={handleImageSelect} 
       />
 
-      {/* Fullscreen Image View Modal */}
       {previewModalImg && (
         <div className="image-viewer-modal" onClick={() => setPreviewModalImg(null)}>
           <div className="viewer-content-card" onClick={(e) => e.stopPropagation()}>
@@ -919,7 +941,7 @@ export default function Home() {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     <span>Upload Image</span>
                   </button>
-                  <button type="button" className="popup-menu-item plus-item" onClick={() => { setMessage("Create image of "); setPlusMenuOpen(false); textareaRef.current?.focus(); }}>
+                  <button type="button" className="popup-menu-item plus-item" onClick={() => { setMessage("Create image of a red sports car"); setPlusMenuOpen(false); textareaRef.current?.focus(); }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                     <span>Generate AI Image</span>
                   </button>
@@ -1035,8 +1057,8 @@ export default function Home() {
         .message-row.user { justify-content: flex-end; }
         .message-row.assistant { justify-content: flex-start; }
         
-        .message-bubble { max-width: 100%; width: fit-content; }
-        .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; max-width: 85%; }
+        .message-bubble { max-width: 100%; width: 100%; }
+        .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; max-width: 85%; width: fit-content; }
         .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; width: 100%; }
         .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; width: 100%; }
         .text-prose-row { margin-bottom: 6px; }
@@ -1047,40 +1069,33 @@ export default function Home() {
         /* Gemini Style AI Image Generator Container */
         .gemini-img-container {
           position: relative;
-          width: 280px;
+          width: 260px;
+          height: 260px;
           border-radius: 18px;
           overflow: hidden;
           margin: 6px 0;
           box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
           cursor: pointer;
+          border: 1px solid #e2e8f0;
+          background: #f8fafc;
         }
         .gemini-gen-card {
-          width: 280px;
-          height: 280px;
+          width: 100%;
+          height: 100%;
           background: #f1f5f9;
-          border: 1px solid #e2e8f0;
           border-radius: 18px;
-          padding: 16px;
+          padding: 14px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
         }
         .gemini-gen-header {
           display: flex;
           align-items: center;
           gap: 8px;
         }
-        .gemini-sparkle-icon {
-          font-size: 1rem;
-          animation: spinSparkle 2s infinite linear;
-        }
-        @keyframes spinSparkle {
-          0% { transform: rotate(0deg) scale(0.9); }
-          50% { transform: rotate(180deg) scale(1.1); }
-          100% { transform: rotate(360deg) scale(0.9); }
-        }
         .gemini-gen-title {
-          font-size: 0.86rem;
+          font-size: 0.82rem;
           font-weight: 600;
           color: #334155;
         }
@@ -1102,8 +1117,8 @@ export default function Home() {
           100% { transform: translateX(100%); }
         }
         .gemini-real-img {
-          width: 280px;
-          height: 280px;
+          width: 100%;
+          height: 100%;
           object-fit: cover;
           border-radius: 18px;
           display: block;
@@ -1112,7 +1127,7 @@ export default function Home() {
         .gemini-real-img.hidden-load { display: none; }
         .gemini-real-img.active-show { display: block; }
 
-        /* Sleek Black Code Box Container */
+        /* Sleek Black Code Box Container - 100% Screen Bound & Wrapped */
         .dark-code-card {
           background: #0f172a;
           border: 1px solid #1e293b;
@@ -1163,14 +1178,17 @@ export default function Home() {
           overflow-x: auto;
           background: #0f172a;
           -webkit-overflow-scrolling: touch;
+          max-width: 100%;
         }
         .dark-pre-text {
           margin: 0;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 0.88rem;
+          font-size: 0.85rem;
           line-height: 1.55;
           color: #e2e8f0;
-          white-space: pre;
+          white-space: pre-wrap;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
 
         /* Fullscreen Image View Modal */
