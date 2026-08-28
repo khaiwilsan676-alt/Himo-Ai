@@ -79,7 +79,7 @@ const ENCYCLOPEDIA = {
 
 const DEFAULT_MEMORY = {
   qaMemory: {
-    "who are you": "Main Himo AI hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
+    "who are you": "Main Himo hoon — aapka 100% self-built, independent, personalized cognitive intelligence!",
     "who made you": "Main ek autonomous private AI engine hoon. Creator ID: 8Gef8W6R5DQyhJeKVtDVURHg5Wv2.",
     "hello himo": "Yo! Himo Omni Engine active hai. Creator ID verified. Aaj kya create ya solve karna hai?",
     "what can you do": "Main 100% offline code generate karta hoon, math evaluate karta hoon, aur creator ke sikhane par khud ko human ki tarah train karta hoon.",
@@ -717,7 +717,7 @@ function HimoChatPage({ user, onLogout }) {
           {messages.length === 0 && (
             <div className="hero-screen">
               <div className="hero-greeting">
-                <span className="gradient-text">Himo Omni AI</span>
+                <span className="gradient-text">Himo Omni</span>
                 <h1>Pure Native Intelligence & Deep Engine</h1>
               </div>
 
