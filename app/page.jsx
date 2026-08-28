@@ -9,34 +9,19 @@ import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { saveChatToDB, getAllChatsFromDB, deleteChatFromDB } from "../src/lib/indexedDbStorage"
 
-function HimoBrainIcon({ size = 26, className = "" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" className={className}>
-      <path d="M 52 35 C 48 35 44 38 43 43 C 41 53 37 60 33 60 C 29 60 27 55 28 48 C 29 41 35 36 41 36 C 45 36 48 34 49 30 C 50 26 48 22 43 23 C 33 25 24 33 22 43 C 20 54 24 64 32 66 C 39 68 45 63 48 55 C 50 49 53 44 57 44 C 61 44 63 48 62 55 C 60 64 53 71 44 71 C 39 71 36 74 37 78 C 38 82 42 84 48 83 C 60 81 70 70 72 57 C 74 44 68 35 58 35 Z" fill="currentColor" />
-      <path d="M 49 15 C 31 16 17 29 15 47 C 14 55 16 63 21 69 C 23 71 26 70 27 67 C 28 64 26 62 23 58 C 20 52 19 46 20 40 C 22 28 32 19 46 18 C 50 18 53 15 52 11 C 51 8 47 7 43 8 C 39 9 35 11 31 14" fill="currentColor" />
-      <path d="M 58 13 C 74 16 86 29 87 46 C 88 59 81 72 71 79 C 68 81 65 80 64 77 C 63 74 65 71 68 69 C 75 63 79 53 78 43 C 77 31 69 22 57 20 C 53 19 51 16 52 12 C 53 8 56 7 58 13 Z" fill="currentColor" />
-      <path d="M 52 86 C 46 90 40 91 35 88 C 32 86 31 83 33 80 C 35 77 38 78 40 79 C 43 81 47 80 51 77 C 54 75 57 77 58 80 C 59 83 56 86 52 86 Z" fill="currentColor" />
-      <circle cx="51" cy="28" r="3.2" fill="currentColor" />
-      <circle cx="34" cy="50" r="3.2" fill="currentColor" />
-      <circle cx="67" cy="57" r="3.2" fill="currentColor" />
-    </svg>
-  )
-}
-
 function CodeBlock({ codeText }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false)
   
-  // Extract pure code without markdown backticks
   const cleanCode = (codeText || "")
     .replace(/^```[a-zA-Z]*\n?/, "")
     .replace(/```$/, "")
-    .trim();
+    .trim()
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(cleanCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    navigator.clipboard.writeText(cleanCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="code-container-card">
@@ -60,111 +45,116 @@ function CodeBlock({ codeText }) {
         <code>{cleanCode}</code>
       </pre>
     </div>
-  );
+  )
+}
+
+function cleanFormatting(text) {
+  if (!text) return ""
+  return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
 async function think(prompt) {
-  const q = prompt.trim();
-  const qLower = q.toLowerCase();
+  const q = prompt.trim()
+  const qLower = q.toLowerCase()
 
   if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
-    return "Yo! Himo Omni Engine ready hai. Kya solve ya build karna hai?";
+    return "Yo! Himo Omni Engine ready hai. Kya solve ya build karna hai?"
   }
 
   // 1. Math Master (Calculations & Tables)
   try {
-    const mathResult = MathMasterEngine.evaluate(q);
-    if (mathResult) return mathResult;
+    const mathResult = MathMasterEngine.evaluate(q)
+    if (mathResult) return cleanFormatting(mathResult)
   } catch (e) {}
 
-  // 2. Intelligent Code Generator (Highest priority for programming prompts)
+  // 2. Code Engine
   try {
-    const codeResult = generateCodeFromPrompt(q);
-    if (codeResult) return codeResult;
+    const codeResult = generateCodeFromPrompt(q)
+    if (codeResult) return codeResult
   } catch (e) {}
 
-  // 3. Clean Web Knowledge Search
+  // 3. Web Knowledge Search
   try {
-    const searchData = await fetchLiveWebData(q);
-    if (searchData) return searchData;
+    const searchData = await fetchLiveWebData(q)
+    if (searchData) return cleanFormatting(searchData)
   } catch (e) {}
 
-  return `'${q}' par exact information nahi mili. Specific question poochhein.`;
+  return `'${q}' par exact information nahi mili. Specific question poochhein.`
 }
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authChecking, setAuthChecking] = useState(true);
-  const [message, setMessage] = useState("");
-  const [currentChatId, setCurrentChatId] = useState(null);
-  const [savedSessions, setSavedSessions] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [topMenuOpen, setTopMenuOpen] = useState(false);
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null)
+  const [authChecking, setAuthChecking] = useState(true)
+  const [message, setMessage] = useState("")
+  const [currentChatId, setCurrentChatId] = useState(null)
+  const [savedSessions, setSavedSessions] = useState([])
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [topMenuOpen, setTopMenuOpen] = useState(false)
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
-  const messagesEndRef = useRef(null);
-  const textareaRef = useRef(null);
+  const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
 
   useEffect(() => {
     try {
-      const cachedUser = localStorage.getItem("himo_cached_user");
+      const cachedUser = localStorage.getItem("himo_cached_user")
       if (cachedUser) {
-        setCurrentUser(JSON.parse(cachedUser));
-        setAuthChecking(false);
+        setCurrentUser(JSON.parse(cachedUser))
+        setAuthChecking(false)
       }
     } catch (e) {}
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL };
-        setCurrentUser(safeUserData);
-        localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData));
+        const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL }
+        setCurrentUser(safeUserData)
+        localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
       } else {
-        setCurrentUser(null);
-        localStorage.removeItem("himo_cached_user");
+        setCurrentUser(null)
+        localStorage.removeItem("himo_cached_user")
       }
-      setAuthChecking(false);
-    });
+      setAuthChecking(false)
+    })
 
     getAllChatsFromDB().then((chats) => {
       if (chats && chats.length > 0) {
-        const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt);
-        setSavedSessions(sorted);
+        const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+        setSavedSessions(sorted)
       }
-    });
+    })
 
-    return () => unsubscribe();
-  }, []);
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, loading])
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+      textareaRef.current.style.height = "auto"
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`
     }
-  }, [message]);
+  }, [message])
 
   useEffect(() => {
     const handleOutsideClick = () => {
-      setTopMenuOpen(false);
-      setSettingsMenuOpen(false);
-    };
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, []);
+      setTopMenuOpen(false)
+      setSettingsMenuOpen(false)
+    }
+    window.addEventListener("click", handleOutsideClick)
+    return () => window.removeEventListener("click", handleOutsideClick)
+  }, [])
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
-    if (!updatedMessages || updatedMessages.length === 0) return;
-    const id = chatId || `chat_${Date.now()}`;
-    if (!currentChatId) setCurrentChatId(id);
+    if (!updatedMessages || updatedMessages.length === 0) return
+    const id = chatId || `chat_${Date.now()}`
+    if (!currentChatId) setCurrentChatId(id)
 
-    const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation";
-    const currentSession = savedSessions.find(s => s.id === id);
+    const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation"
+    const currentSession = savedSessions.find(s => s.id === id)
     
     const sessionObj = {
       id: id,
@@ -172,54 +162,54 @@ export default function Home() {
       pinned: currentSession?.pinned || false,
       messages: updatedMessages,
       updatedAt: Date.now()
-    };
+    }
 
-    await saveChatToDB(sessionObj);
+    await saveChatToDB(sessionObj)
 
     setSavedSessions(prev => {
-      const filtered = prev.filter(s => s.id !== id);
-      const newList = [sessionObj, ...filtered];
-      return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt);
-    });
-  };
+      const filtered = prev.filter(s => s.id !== id)
+      const newList = [sessionObj, ...filtered]
+      return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+    })
+  }
 
   async function handleSend(textToSend) {
-    const prompt = (typeof textToSend === "string" ? textToSend : message).trim();
-    if (!prompt || loading) return;
+    const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
+    if (!prompt || loading) return
 
-    setMessage("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    setMessage("")
+    if (textareaRef.current) textareaRef.current.style.height = "auto"
 
-    const newMsgs = [...messages, { role: "user", content: prompt }];
-    setMessages(newMsgs);
-    setLoading(true);
+    const newMsgs = [...messages, { role: "user", content: prompt }]
+    setMessages(newMsgs)
+    setLoading(true)
 
-    await persistChatSession(newMsgs);
+    await persistChatSession(newMsgs)
 
     try {
-      const answer = await think(prompt);
-      const finalMsgs = [...newMsgs, { role: "assistant", content: answer }];
-      setMessages(finalMsgs);
-      await persistChatSession(finalMsgs);
+      const answer = await think(prompt)
+      const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
+      setMessages(finalMsgs)
+      await persistChatSession(finalMsgs)
     } catch (error) {
-      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error processing request." }];
-      setMessages(errorMsgs);
-      await persistChatSession(errorMsgs);
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error processing request." }]
+      setMessages(errorMsgs)
+      await persistChatSession(errorMsgs)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   async function handleLogout() {
     try {
-      await signOut(auth);
-      localStorage.removeItem("himo_cached_user");
-      sessionStorage.clear();
-      setCurrentUser(null);
-      setSettingsMenuOpen(false);
-      setSidebarOpen(false);
+      await signOut(auth)
+      localStorage.removeItem("himo_cached_user")
+      sessionStorage.clear()
+      setCurrentUser(null)
+      setSettingsMenuOpen(false)
+      setSidebarOpen(false)
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Logout error:", error)
     }
   }
 
@@ -228,16 +218,16 @@ export default function Home() {
       <div className="auth-loading-screen">
         <div className="loader-spinner"></div>
       </div>
-    );
+    )
   }
 
   if (!currentUser) {
-    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />;
+    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />
   }
 
-  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U");
-  const isTyping = message.trim().length > 0;
-  const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned;
+  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
+  const isTyping = message.trim().length > 0
+  const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned
 
   return (
     <main className="app-shell">
@@ -317,15 +307,14 @@ export default function Home() {
           <div className="messages-list">
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
-                <div className="message-icon">
-                  {msg.role === "assistant" ? <div className="himo-brain-badge"><HimoBrainIcon size={24} /></div> : <div className="user-icon">{userInitial}</div>}
-                </div>
                 <div className="message-bubble">
                   <div className="message-text">
                     {msg.content.includes("```") ? (
                       <CodeBlock codeText="{msg.content}"/>
                     ) : (
-                      msg.content.split("\n").map((line, i) => <p key={i}>{line || "\u00A0"}</p>)
+                      cleanFormatting(msg.content).split("\n").map((line, i) => (
+                        <p key={i}>{line || "\u00A0"}</p>
+                      ))
                     )}
                   </div>
                 </div>
@@ -334,8 +323,12 @@ export default function Home() {
 
             {loading && (
               <div className="message-row assistant">
-                <div className="message-icon"><div className="himo-brain-badge pulse-brain"><HimoBrainIcon size="{24}"/></div></div>
-                <div className="message-bubble"><div className="gemini-shimmer-loader"><div className="shimmer-line line-1"></div><div className="shimmer-line line-2"></div></div></div>
+                <div className="message-bubble">
+                  <div className="gemini-shimmer-loader">
+                    <div className="shimmer-line line-1"></div>
+                    <div className="shimmer-line line-2"></div>
+                  </div>
+                </div>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -387,13 +380,15 @@ export default function Home() {
         .animated-shimmer { background: linear-gradient(90deg, #2563eb 0%, #7c3aed 20%, #ec4899 40%, #06b6d4 60%, #10b981 80%, #2563eb 100%); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: fluidShimmer 4s linear infinite; }
         @keyframes fluidShimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .hero-main-title { font-size: 2.7rem; font-weight: 700; color: #111827; }
-        .messages-list { display: flex; flex-direction: column; gap: 24px; padding-top: 24px; }
-        .message-row { display: flex; gap: 16px; width: 100%; }
-        .message-row.user { flex-direction: row-reverse; }
-        .himo-brain-badge { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: #111827; }
-        .user-icon { width: 32px; height: 32px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600; }
+        
+        .messages-list { display: flex; flex-direction: column; gap: 18px; padding-top: 24px; }
+        .message-row { display: flex; width: 100%; }
+        .message-row.user { justify-content: flex-end; }
+        .message-row.assistant { justify-content: flex-start; }
+        
         .message-bubble { max-width: 88%; }
         .message-row.user .message-bubble { background: #f3f4f6; padding: 12px 18px; border-radius: 20px; border-top-right-radius: 4px; }
+        .message-row.assistant .message-bubble { background: transparent; padding: 4px 0; }
         .message-text { font-size: 1rem; line-height: 1.6; color: #1f2937; }
         
         /* Modern Clean Code Block Card */
@@ -467,5 +462,5 @@ export default function Home() {
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
     </main>
-  );
+  )
 }
