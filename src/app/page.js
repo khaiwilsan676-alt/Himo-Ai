@@ -7,6 +7,8 @@ import { generateAutomaticAnswer } from "../lib/aiEngine"
 import { teachHimo, queryLearnedHimo } from "../lib/autonomousTrainer"
 import { 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut 
@@ -239,7 +241,21 @@ function LoginPage({ onLoginSuccess }) {
       localStorage.setItem("userPhoto", userData.photoURL);
       if (onLoginSuccess) onLoginSuccess(userData);
     } catch (error) {
-      setErrorMsg("Google Sign-In failed: " + error.message);
+      if (
+        error.code === 'auth/popup-blocked' ||
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/operation-not-supported-in-this-environment' ||
+        error.message?.includes('popup')
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          setErrorMsg("Google Sign-In failed: " + redirectErr.message);
+        }
+      } else {
+        setErrorMsg("Google Sign-In failed: " + error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -254,9 +270,25 @@ function LoginPage({ onLoginSuccess }) {
     try {
       let userCredential;
       if (isSignUp) {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } catch (signUpErr) {
+          if (signUpErr.code === 'auth/email-already-in-use') {
+            userCredential = await signInWithEmailAndPassword(auth, email, password);
+          } else {
+            throw signUpErr;
+          }
+        }
       } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        try {
+          userCredential = await signInWithEmailAndPassword(auth, email, password);
+        } catch (signInErr) {
+          if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+            userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          } else {
+            throw signInErr;
+          }
+        }
       }
       const user = userCredential.user;
       const userData = {
@@ -269,7 +301,11 @@ function LoginPage({ onLoginSuccess }) {
       localStorage.setItem("userPhoto", userData.photoURL);
       if (onLoginSuccess) onLoginSuccess(userData);
     } catch (error) {
-      setErrorMsg(error.message);
+      let msg = error.message;
+      if (error.code === 'auth/wrong-password') msg = "Incorrect password. Please try again.";
+      if (error.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+      if (error.code === 'auth/invalid-email') msg = "Invalid email format.";
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -880,21 +916,54 @@ function HimoChatPage({ user, onLogout }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null)
-  const [initializing, setInitializing] = useState(true)
+  const [user, setUser] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedEmail = localStorage.getItem("userEmail");
+      if (savedEmail) {
+        return {
+          email: savedEmail,
+          name: localStorage.getItem("userName") || savedEmail.split('@')[0],
+          photoURL: localStorage.getItem("userPhoto") || "/IMG_20260826_084111.jpg"
+        };
+      }
+    }
+    return null;
+  });
 
   useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result && result.user) {
+        const u = result.user;
+        const userData = {
+          name: u.displayName || u.email.split('@')[0],
+          email: u.email,
+          photoURL: u.photoURL || "/IMG_20260826_084111.jpg"
+        };
+        localStorage.setItem("userEmail", userData.email);
+        localStorage.setItem("userName", userData.name);
+        localStorage.setItem("userPhoto", userData.photoURL);
+        setUser(userData);
+      }
+    }).catch((err) => {
+      console.error("Redirect result error:", err);
+    });
+
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
       if (firebaseUser) {
-        setUser({
+        const userData = {
           email: firebaseUser.email,
           name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
           photoURL: firebaseUser.photoURL || "/IMG_20260826_084111.jpg"
-        });
+        };
+        localStorage.setItem("userEmail", userData.email);
+        localStorage.setItem("userName", userData.name);
+        localStorage.setItem("userPhoto", userData.photoURL);
+        setUser(userData);
       } else {
-        setUser(null);
+        if (!localStorage.getItem("userEmail")) {
+          setUser(null);
+        }
       }
-      setInitializing(false);
     });
 
     return () => unsubscribe();
@@ -907,15 +976,11 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setUser(null);
-      localStorage.clear();
     } catch (e) {
       console.error(e);
     }
-  }
-
-  if (initializing) {
-    return <div style={{ background: '#131314', width: '100vw', height: '100vh' }}></div>
+    setUser(null);
+    localStorage.clear();
   }
 
   if (!user) {
