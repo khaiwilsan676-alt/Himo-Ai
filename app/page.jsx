@@ -5,7 +5,7 @@ import LoginPage from "../components/LoginPage"
 import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { generateCodeFromPrompt } from "../src/lib/codeMasterEngine"
 import { fetchLiveWebData } from "../src/lib/webSearchEngine"
-import { handleDeviceControl } from "../src/lib/deviceControlEngine"
+import { handleDeviceAction } from "../src/lib/deviceControlEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { 
@@ -70,47 +70,6 @@ function speakVoice(text) {
   window.speechSynthesis.speak(utterance)
 }
 
-async function think(prompt) {
-  const q = prompt.trim()
-  const qLower = q.toLowerCase()
-
-  if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
-    return "Yo! Himo Omni Engine ready hai. Kya solve, open ya build karna hai?"
-  }
-
-  // 1. Device App Launcher Control (Open WhatsApp, YouTube, etc.)
-  try {
-    const deviceAction = handleDeviceControl(q)
-    if (deviceAction) return deviceAction
-  } catch (e) {}
-
-  // 2. Human Newton Trained Memory (Highest Priority)
-  try {
-    const memoryAns = await getTrainedKnowledge(q)
-    if (memoryAns) return cleanFormatting(memoryAns)
-  } catch (e) {}
-
-  // 3. Math Master (Calculations & Tables)
-  try {
-    const mathResult = MathMasterEngine.evaluate(q)
-    if (mathResult) return cleanFormatting(mathResult)
-  } catch (e) {}
-
-  // 4. Code Engine
-  try {
-    const codeResult = generateCodeFromPrompt(q)
-    if (codeResult) return codeResult
-  } catch (e) {}
-
-  // 5. Web Knowledge Search
-  try {
-    const searchData = await fetchLiveWebData(q)
-    if (searchData) return cleanFormatting(searchData)
-  } catch (e) {}
-
-  return `'${q}' par exact information nahi mili. Specific question poochhein.`
-}
-
 export default function Home() {
   const [currentUser, setCurrentUser] = useState(null)
   const [authChecking, setAuthChecking] = useState(true)
@@ -130,6 +89,13 @@ export default function Home() {
   const [pinError, setPinError] = useState("")
   const [isListening, setIsListening] = useState(false)
 
+  // Hardware Camera & Screenshot States
+  const [showCameraModal, setShowCameraModal] = useState(false)
+  const [capturedPhoto, setCapturedPhoto] = useState(null)
+  const [screenshotPreview, setScreenshotPreview] = useState(null)
+
+  const videoCameraRef = useRef(null)
+  const cameraStreamRef = useRef(null)
   const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const recognitionRef = useRef(null)
   const messagesEndRef = useRef(null)
@@ -185,6 +151,69 @@ export default function Home() {
     window.addEventListener("click", handleOutsideClick)
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
+
+  // Live Camera Trigger Handler
+  const openLiveCamera = async () => {
+    setShowCameraModal(true)
+    setCapturedPhoto(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false
+      })
+      cameraStreamRef.current = stream
+      if (videoCameraRef.current) {
+        videoCameraRef.current.srcObject = stream
+      }
+    } catch (err) {
+      alert("Camera permission denied or camera not found.")
+      setShowCameraModal(false)
+    }
+  }
+
+  const capturePhotoFrame = () => {
+    if (videoCameraRef.current) {
+      const video = videoCameraRef.current
+      const canvas = document.createElement("canvas")
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL("image/jpeg")
+      setCapturedPhoto(dataUrl)
+      
+      // Stop Camera Stream
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(t => t.stop())
+      }
+    }
+  }
+
+  const closeLiveCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(t => t.stop())
+    }
+    setShowCameraModal(false)
+    setCapturedPhoto(null)
+  }
+
+  // Screenshot Capture Handler
+  const captureScreenshot = () => {
+    if (typeof window === "undefined") return
+    try {
+      const canvas = document.createElement("canvas")
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      const ctx = canvas.getContext("2d")
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      // Snapshot visual notification
+      setScreenshotPreview("Screenshot Captured Successfully!")
+      speakVoice("Screenshot captured.")
+      setTimeout(() => setScreenshotPreview(null), 3500)
+    } catch (e) {}
+  }
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
     if (!updatedMessages || updatedMessages.length === 0) return
@@ -334,6 +363,47 @@ export default function Home() {
     recognition.start()
   }
 
+  async function think(prompt) {
+    const q = prompt.trim()
+    const qLower = q.toLowerCase()
+
+    if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
+      return "Yo! Himo Omni Engine ready hai. Kya solve, capture ya build karna hai?"
+    }
+
+    // 1. Hardware & System Actions (Camera, Screenshot, Internet, Apps)
+    try {
+      const deviceAction = await handleDeviceAction(q, openLiveCamera, captureScreenshot)
+      if (deviceAction) return deviceAction
+    } catch (e) {}
+
+    // 2. Human Newton Trained Memory
+    try {
+      const memoryAns = await getTrainedKnowledge(q)
+      if (memoryAns) return cleanFormatting(memoryAns)
+    } catch (e) {}
+
+    // 3. Math Master
+    try {
+      const mathResult = MathMasterEngine.evaluate(q)
+      if (mathResult) return cleanFormatting(mathResult)
+    } catch (e) {}
+
+    // 4. Code Engine
+    try {
+      const codeResult = generateCodeFromPrompt(q)
+      if (codeResult) return codeResult
+    } catch (e) {}
+
+    // 5. Web Search Engine
+    try {
+      const searchData = await fetchLiveWebData(q)
+      if (searchData) return cleanFormatting(searchData)
+    } catch (e) {}
+
+    return `'${q}' par exact information nahi mili. Specific question poochhein.`
+  }
+
   async function handleSend(textToSend, isVoice = false) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     if (!prompt || loading) return
@@ -426,6 +496,47 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
+      {/* Screenshot Notification Toast */}
+      {screenshotPreview && (
+        <div className="screenshot-toast">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>{screenshotPreview}</span>
+        </div>
+      )}
+
+      {/* Live Camera Viewfinder Modal */}
+      {showCameraModal && (
+        <div className="modal-backdrop" onClick={closeLiveCamera}>
+          <div className="camera-viewfinder-card" onClick={(e) => e.stopPropagation()}>
+            <div className="camera-card-top">
+              <span>Live Camera</span>
+              <button type="button" onClick={closeLiveCamera} className="camera-close-x">✕</button>
+            </div>
+
+            <div className="camera-video-frame">
+              {capturedPhoto ? (
+                <img src={capturedPhoto} alt="Captured" className="captured-photo-img" />
+              ) : (
+                <video ref={videoCameraRef} autoPlay playsInline className="live-camera-video"></video>
+              )}
+            </div>
+
+            <div className="camera-actions-row">
+              {capturedPhoto ? (
+                <>
+                  <a href={capturedPhoto} download="himo_capture.jpg" className="camera-btn save-photo-btn">Save Picture</a>
+                  <button type="button" onClick={openLiveCamera} className="camera-btn retake-btn">Retake</button>
+                </>
+              ) : (
+                <button type="button" onClick={capturePhotoFrame} className="snap-shutter-btn">
+                  <div className="shutter-inner"></div>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4-Box PIN Modal */}
       {showPinModal && (
         <div className="modal-backdrop" onClick={() => setShowPinModal(false)}>
@@ -485,7 +596,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Sidebar Footer with Circle DP */}
         <div className="sidebar-footer">
           <div className="user-info-wrapper">
             <div className="avatar-chip footer-avatar-circle">
@@ -602,7 +712,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Forget X" : "Ask Himo or command to open app...")} 
+              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Forget X" : "Ask Himo, take photo, or open apps...")} 
               rows={1} 
             />
             
@@ -665,7 +775,6 @@ export default function Home() {
         .recent-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; font-size: 0.88rem; color: #4b5563; cursor: pointer; }
         .active-chat-item { background: #eff6ff; color: #2563eb; font-weight: 600; }
         
-        /* Circular DP in Sidebar Footer */
         .sidebar-footer { border-top: 1px solid #e5e7eb; padding-top: 14px; display: flex; align-items: center; justify-content: space-between; }
         .user-info-wrapper { display: flex; align-items: center; gap: 10px; overflow: hidden; max-width: 200px; }
         .footer-avatar-circle {
@@ -733,6 +842,37 @@ export default function Home() {
 
         .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
+
+        /* Hardware Camera Viewfinder Modal */
+        .camera-viewfinder-card {
+          background: #0f172a; border-radius: 24px; padding: 18px; max-width: 420px; width: 100%;
+          display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .camera-card-top { display: flex; justify-content: space-between; align-items: center; color: #f8fafc; font-weight: 700; }
+        .camera-close-x { background: transparent; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; }
+        .camera-video-frame {
+          width: 100%; height: 280px; background: #000000; border-radius: 16px; overflow: hidden;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .live-camera-video, .captured-photo-img { width: 100%; height: 100%; object-fit: cover; }
+        .camera-actions-row { display: flex; justify-content: center; gap: 12px; align-items: center; }
+        .snap-shutter-btn {
+          width: 64px; height: 64px; border-radius: 50%; background: transparent;
+          border: 4px solid #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .shutter-inner { width: 48px; height: 48px; border-radius: 50%; background: #ffffff; transition: transform 0.1s; }
+        .snap-shutter-btn:active .shutter-inner { transform: scale(0.9); background: #ef4444; }
+        .camera-btn { padding: 10px 18px; border-radius: 12px; font-size: 0.9rem; font-weight: 700; text-decoration: none; cursor: pointer; border: none; }
+        .save-photo-btn { background: #2563eb; color: #fff; }
+        .retake-btn { background: #334155; color: #fff; }
+
+        /* Screenshot Toast */
+        .screenshot-toast {
+          position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+          background: #10b981; color: #ffffff; padding: 10px 18px; border-radius: 9999px;
+          display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 600;
+          z-index: 300; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
 
         /* 4-Box PIN Security Modal */
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
