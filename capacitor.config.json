@@ -1,7 +1,7 @@
 {
   "appId": "com.himo.ai",
   "appName": "Himo",
-  "webDir": "public",
+  "webDir": "out",
   "bundledWebRuntime": false,
   "server": {
     "url": "https://himo-ai-six.vercel.app",
