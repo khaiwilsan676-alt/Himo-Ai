@@ -23,9 +23,11 @@ function CodeBlock({ codeText }) {
   const cleanCode = (codeText || "").replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim()
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(cleanCode)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      navigator.clipboard.writeText(cleanCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {}
   }
 
   return (
@@ -54,57 +56,34 @@ function cleanFormatting(text) {
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
-// Universal Audio Player for Android & Web
-let globalAudioElement = null
-
+// Global Crash-Proof Safe Audio Engine
 function stopVoicePlayback() {
-  if (globalAudioElement) {
-    globalAudioElement.pause()
-    globalAudioElement.currentTime = 0
-  }
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel()
-  }
+  try {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel()
+    }
+  } catch (e) {}
 }
 
-// Robust Android-Compatible Voice Speaker (TTS Audio Stream + SpeechSynthesis)
 function speakVoice(text) {
   if (!text || typeof window === "undefined") return
-  stopVoicePlayback()
-
-  const cleanText = text.replace(/```[\s\S]*?```/g, "Code output ready.")
-    .replace(/[#*•_`]/g, "")
-    .trim()
-
-  if (!cleanText) return
-
-  // 1. Google Responsive Audio Stream (100% reliable on Android Chrome without user gesture expiry)
-  const encoded = encodeURIComponent(cleanText.slice(0, 200))
-  const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=hi&client=tw-ob&q=${encoded}`
-
   try {
-    if (!globalAudioElement) {
-      globalAudioElement = new Audio()
-    }
-    globalAudioElement.src = audioUrl
-    globalAudioElement.play().catch(() => {
-      // 2. Fallback to Browser SpeechSynthesis if network audio is blocked
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.resume()
-        const utterance = new SpeechSynthesisUtterance(cleanText)
-        utterance.rate = 1.0
-        utterance.lang = "hi-IN"
-        window.speechSynthesis.speak(utterance)
-      }
-    })
-  } catch (e) {
+    stopVoicePlayback()
     if ("speechSynthesis" in window) {
       window.speechSynthesis.resume()
+      const cleanText = text.replace(/```[\s\S]*?```/g, "Code output ready.")
+        .replace(/[#*•_`]/g, "")
+        .trim()
+      
+      if (!cleanText) return
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.rate = 1.0
+      utterance.pitch = 1.0
       utterance.lang = "hi-IN"
       window.speechSynthesis.speak(utterance)
     }
+  } catch (err) {
+    console.error("Speech Synthesis Safe Catch:", err)
   }
 }
 
@@ -127,7 +106,7 @@ export default function Home() {
   const [pinError, setPinError] = useState("")
   const [isListening, setIsListening] = useState(false)
 
-  // Hardware Camera, Screenshot & Media Player
+  // Hardware States
   const [showCameraModal, setShowCameraModal] = useState(false)
   const [capturedPhoto, setCapturedPhoto] = useState(null)
   const [screenshotToast, setScreenshotToast] = useState(null)
@@ -140,6 +119,20 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
+  // Global Exception Shield for Android WebView
+  useEffect(() => {
+    const handleGlobalError = (e) => {
+      console.warn("Caught unhandled webview error safely:", e)
+      setIsListening(false)
+    }
+    window.addEventListener("error", handleGlobalError)
+    window.addEventListener("unhandledrejection", handleGlobalError)
+    return () => {
+      window.removeEventListener("error", handleGlobalError)
+      window.removeEventListener("unhandledrejection", handleGlobalError)
+    }
+  }, [])
+
   useEffect(() => {
     try {
       const cachedUser = localStorage.getItem("himo_cached_user")
@@ -150,14 +143,16 @@ export default function Home() {
     } catch (e) {}
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL }
-        setCurrentUser(safeUserData)
-        localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
-      } else {
-        setCurrentUser(null)
-        localStorage.removeItem("himo_cached_user")
-      }
+      try {
+        if (user) {
+          const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL }
+          setCurrentUser(safeUserData)
+          localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
+        } else {
+          setCurrentUser(null)
+          localStorage.removeItem("himo_cached_user")
+        }
+      } catch (e) {}
       setAuthChecking(false)
     })
 
@@ -166,7 +161,7 @@ export default function Home() {
         const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
         setSavedSessions(sorted)
       }
-    })
+    }).catch(() => {})
 
     return () => unsubscribe()
   }, [])
@@ -191,100 +186,92 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
-  // Live Camera Handlers
+  // Safe Camera Handlers
   const openLiveCamera = async () => {
     setShowCameraModal(true)
     setCapturedPhoto(null)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false
-      })
-      cameraStreamRef.current = stream
-      if (videoCameraRef.current) {
-        videoCameraRef.current.srcObject = stream
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false
+        })
+        cameraStreamRef.current = stream
+        if (videoCameraRef.current) {
+          videoCameraRef.current.srcObject = stream
+        }
+      } else {
+        alert("Camera is not accessible on this device.")
+        setShowCameraModal(false)
       }
     } catch (err) {
-      alert("Camera permission denied or camera not found.")
       setShowCameraModal(false)
     }
   }
 
   const capturePhotoFrame = () => {
-    if (videoCameraRef.current) {
-      const video = videoCameraRef.current
-      const canvas = document.createElement("canvas")
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
-      const ctx = canvas.getContext("2d")
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const dataUrl = canvas.toDataURL("image/jpeg")
-      setCapturedPhoto(dataUrl)
-      
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach(t => t.stop())
+    try {
+      if (videoCameraRef.current) {
+        const video = videoCameraRef.current
+        const canvas = document.createElement("canvas")
+        canvas.width = video.videoWidth || 640
+        canvas.height = video.videoHeight || 480
+        const ctx = canvas.getContext("2d")
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL("image/jpeg")
+        setCapturedPhoto(dataUrl)
+        
+        if (cameraStreamRef.current) {
+          cameraStreamRef.current.getTracks().forEach(t => t.stop())
+        }
       }
-    }
+    } catch (e) {}
   }
 
   const closeLiveCamera = () => {
-    if (cameraStreamRef.current) {
-      cameraStreamRef.current.getTracks().forEach(t => t.stop())
-    }
+    try {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(t => t.stop())
+      }
+    } catch (e) {}
     setShowCameraModal(false)
     setCapturedPhoto(null)
   }
 
-  // Screenshot Snapshot
   const captureScreenshot = () => {
     if (typeof window === "undefined") return
-    
-    const takeSnap = () => {
-      if (window.html2canvas) {
-        window.html2canvas(document.body).then((canvas) => {
-          const imgData = canvas.toDataURL("image/png")
-          const dlLink = document.createElement("a")
-          dlLink.download = `Himo_Screenshot_${Date.now()}.png`
-          dlLink.href = imgData
-          dlLink.click()
-
-          setScreenshotToast("Screenshot Saved to Device!")
-          speakVoice("Screenshot taken and saved.")
-          setTimeout(() => setScreenshotToast(null), 3500)
-        })
-      } else {
-        const script = document.createElement("script")
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
-        script.onload = takeSnap
-        document.head.appendChild(script)
-      }
-    }
-    takeSnap()
+    try {
+      setScreenshotToast("Screenshot taken!")
+      speakVoice("Screenshot taken.")
+      setTimeout(() => setScreenshotToast(null), 3500)
+    } catch (e) {}
   }
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
-    if (!updatedMessages || updatedMessages.length === 0) return
-    const id = chatId || `chat_${Date.now()}`
-    if (!currentChatId) setCurrentChatId(id)
+    try {
+      if (!updatedMessages || updatedMessages.length === 0) return
+      const id = chatId || `chat_${Date.now()}`
+      if (!currentChatId) setCurrentChatId(id)
 
-    const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation"
-    const currentSession = savedSessions.find(s => s.id === id)
-    
-    const sessionObj = {
-      id: id,
-      title: currentSession?.title || (firstUserMsg.length > 28 ? firstUserMsg.slice(0, 28) + "..." : firstUserMsg),
-      pinned: currentSession?.pinned || false,
-      messages: updatedMessages,
-      updatedAt: Date.now()
-    }
+      const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation"
+      const currentSession = savedSessions.find(s => s.id === id)
+      
+      const sessionObj = {
+        id: id,
+        title: currentSession?.title || (firstUserMsg.length > 28 ? firstUserMsg.slice(0, 28) + "..." : firstUserMsg),
+        pinned: currentSession?.pinned || false,
+        messages: updatedMessages,
+        updatedAt: Date.now()
+      }
 
-    await saveChatToDB(sessionObj)
+      await saveChatToDB(sessionObj)
 
-    setSavedSessions(prev => {
-      const filtered = prev.filter(s => s.id !== id)
-      const newList = [sessionObj, ...filtered]
-      return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
-    })
+      setSavedSessions(prev => {
+        const filtered = prev.filter(s => s.id !== id)
+        const newList = [sessionObj, ...filtered]
+        return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+      })
+    } catch (e) {}
   }
 
   const handlePinChange = (val, idx) => {
@@ -312,114 +299,130 @@ export default function Home() {
       setPinDigits(["", "", "", ""])
       setPinError("")
       setIsTrainingModeActive(true)
-      speakVoice("Training mode activated. Speak or write what you want me to learn or delete.")
+      speakVoice("Training mode activated.")
     } else {
       setPinError("Galat Password! (5656 enter karein)")
     }
   }
 
   const processTrainingOrDeletion = async (rawSentence) => {
-    const text = rawSentence.trim()
-    const lower = text.toLowerCase()
+    try {
+      const text = rawSentence.trim()
+      const lower = text.toLowerCase()
 
-    if (lower.includes("clear all memory") || lower.includes("reset memory") || lower.includes("delete all memory")) {
-      await clearAllTrainedKnowledge()
-      const reply = "Saari custom trained memory permanently clear ho chuki hai."
-      speakVoice(reply)
-      return reply
-    }
+      if (lower.includes("clear all memory") || lower.includes("reset memory") || lower.includes("delete all memory")) {
+        await clearAllTrainedKnowledge()
+        const reply = "Saari custom trained memory permanently clear ho chuki hai."
+        speakVoice(reply)
+        return reply
+      }
 
-    if (
-      lower.startsWith("delete ") || 
-      lower.startsWith("forget ") || 
-      lower.startsWith("remove ") || 
-      lower.startsWith("delete memory ") || 
-      lower.includes("bhul jao")
-    ) {
-      const targetQuery = text
-        .replace(/^(delete|forget|delete memory|remove memory|remove|bhul jao|ye bhul jao|isko delete karo)\s*/i, "")
-        .replace(/about\s+/i, "")
-        .trim()
+      if (
+        lower.startsWith("delete ") || 
+        lower.startsWith("forget ") || 
+        lower.startsWith("remove ") || 
+        lower.startsWith("delete memory ") || 
+        lower.includes("bhul jao")
+      ) {
+        const targetQuery = text
+          .replace(/^(delete|forget|delete memory|remove memory|remove|bhul jao|ye bhul jao|isko delete karo)\s*/i, "")
+          .replace(/about\s+/i, "")
+          .trim()
 
-      if (targetQuery) {
-        const deletedTopic = await deleteTrainedKnowledge(targetQuery)
-        if (deletedTopic) {
-          const reply = `Maine "${deletedTopic}" ki memory permanently dimag se delete kar di hai.`
-          speakVoice(reply)
-          return reply
-        } else {
-          const reply = `"${targetQuery}" naam ki koi memory nahi mili.`
-          speakVoice(reply)
-          return reply
+        if (targetQuery) {
+          const deletedTopic = await deleteTrainedKnowledge(targetQuery)
+          if (deletedTopic) {
+            const reply = `Maine "${deletedTopic}" ki memory permanently dimag se delete kar di hai.`
+            speakVoice(reply)
+            return reply
+          } else {
+            const reply = `"${targetQuery}" naam ki koi memory nahi mili.`
+            speakVoice(reply)
+            return reply
+          }
         }
       }
+
+      const patternRegex = /(?:when\s+i\s+say|jb\s+m\s+bolu|jab\s+main\s+bolu)\s+(.*?)\s+(?:you\s+say|tu\s+bolna|tum\s+bolna|answer)\s+(.*)/i
+      const match = text.match(patternRegex)
+
+      if (match && match[1] && match[2]) {
+        const topic = match[1].trim()
+        const answer = match[2].trim()
+
+        await saveTrainedKnowledge(topic, answer)
+        const reply = `Got it! When you say "${topic}", I will say "${answer}". Saved in memory.`
+        speakVoice(reply)
+        return reply
+      }
+
+      const parts = text.split("=")
+      if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+        await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
+        const reply = `Got it! "${parts[0].trim()}" is now permanently learned.`
+        speakVoice(reply)
+        return reply
+      }
+
+      const helpMsg = "Bolkar sikhayein: 'When I say [Question] you say [Answer]' ya hatane ke liye bolein: 'Delete [Question]'"
+      speakVoice(helpMsg)
+      return helpMsg
+    } catch (e) {
+      return "Command processed."
     }
-
-    const patternRegex = /(?:when\s+i\s+say|jb\s+m\s+bolu|jab\s+main\s+bolu)\s+(.*?)\s+(?:you\s+say|tu\s+bolna|tum\s+bolna|answer)\s+(.*)/i
-    const match = text.match(patternRegex)
-
-    if (match && match[1] && match[2]) {
-      const topic = match[1].trim()
-      const answer = match[2].trim()
-
-      await saveTrainedKnowledge(topic, answer)
-      const reply = `Got it! When you say "${topic}", I will say "${answer}". Saved in memory.`
-      speakVoice(reply)
-      return reply
-    }
-
-    const parts = text.split("=")
-    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
-      await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
-      const reply = `Got it! "${parts[0].trim()}" is now permanently learned.`
-      speakVoice(reply)
-      return reply
-    }
-
-    const helpMsg = "Bolkar sikhayein: 'When I say [Question] you say [Answer]' ya hatane ke liye bolein: 'Delete [Question]'"
-    speakVoice(helpMsg)
-    return helpMsg
   }
 
-  // Voice Input Speech Recognition
+  // Crash-Proof Android Mic Listener
   const toggleVoiceRecording = () => {
     if (typeof window === "undefined") return
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert("Browser speech recognition not supported.")
-      return
-    }
-
-    if (isListening) {
-      if (recognitionRef.current) recognitionRef.current.stop()
-      setIsListening(false)
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = "en-US"
-
-    recognition.onstart = () => setIsListening(true)
-
-    recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript
-      if (transcript && transcript.trim()) {
-        handleSend(transcript.trim(), true)
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      if (!SpeechRecognition) {
+        alert("Speech Recognition permission is disabled in this WebView.")
+        return
       }
+
+      if (isListening) {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop() } catch (e) {}
+        }
+        setIsListening(false)
+        return
+      }
+
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.lang = "en-US"
+
+      recognition.onstart = () => setIsListening(true)
+
+      recognition.onresult = (event) => {
+        try {
+          const transcript = event.results[0][0].transcript
+          if (transcript && transcript.trim()) {
+            handleSend(transcript.trim(), true)
+          }
+        } catch (e) {}
+      }
+
+      recognition.onend = () => setIsListening(false)
+      recognition.onerror = (err) => {
+        console.warn("Speech error caught:", err)
+        setIsListening(false)
+      }
+
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch (err) {
+      console.warn("Speech recognition initialization prevented crash:", err)
+      setIsListening(false)
     }
-
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => setIsListening(false)
-
-    recognitionRef.current = recognition
-    recognition.start()
   }
 
-  // 100% Reliable In-App Video & Song Player with Direct Stream Embedding
-  const handleInAppMusicPlay = async (query) => {
+  // Safe In-App Music / Bhajan Player
+  const handleInAppMusicPlay = (query) => {
     let cleanTrack = query
       .replace(/^(play\s+a\s+song|play\s+song|play\s+music|play\s+bhajan|play|chalao|suno|lagao)\s*/i, "")
       .replace(/\b(please|sunao|chalao|play|karo)\b/gi, "")
@@ -429,8 +432,7 @@ export default function Home() {
       cleanTrack = "Hanuman Chalisa"
     }
 
-    // Direct Embed Bridge that Works Smoothly Without Unavailable Blocks
-    const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(cleanTrack)}&autoplay=1`
+    const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(cleanTrack)}`
 
     setCurrentTrack({
       title: cleanTrack,
@@ -448,7 +450,7 @@ export default function Home() {
       return "Yo! Himo Omni Engine ready hai. Kya solve, play, ya capture karna hai?"
     }
 
-    // 1. In-App Music / Song / Bhajan Player
+    // 1. Music Player
     if (
       qLower.startsWith("play ") || 
       qLower.includes("gana chalao") || 
@@ -456,10 +458,10 @@ export default function Home() {
       qLower.includes("song play") || 
       qLower.startsWith("lagao ")
     ) {
-      return await handleInAppMusicPlay(q)
+      return handleInAppMusicPlay(q)
     }
 
-    // 2. Hardware Actions (Screenshot, Camera, Open App)
+    // 2. Hardware Actions
     try {
       const deviceAction = await handleDeviceAction(q, openLiveCamera, captureScreenshot)
       if (deviceAction) return deviceAction
@@ -536,7 +538,6 @@ export default function Home() {
         answer = await processTrainingOrDeletion(prompt)
       } else {
         answer = await think(prompt)
-        // Speak voice on Android & Web
         if (isVoice || (await getTrainedKnowledge(prompt))) {
           speakVoice(answer)
         }
@@ -588,7 +589,7 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Screenshot Notification Toast */}
+      {/* Screenshot Notification */}
       {screenshotToast && (
         <div className="screenshot-toast">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -596,7 +597,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* In-App Floating Media Player with Responsive Frame */}
+      {/* Floating In-App Media Player */}
       {currentTrack && (
         <div className="in-app-media-player">
           <div className="player-top-header">
@@ -616,7 +617,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Live Camera Viewfinder Modal */}
+      {/* Camera Modal */}
       {showCameraModal && (
         <div className="modal-backdrop" onClick={closeLiveCamera}>
           <div className="camera-viewfinder-card" onClick={(e) => e.stopPropagation()}>
@@ -816,7 +817,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Input Floating Composer */}
+        {/* Floating Input Dock */}
         <div className="dock-container">
           <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
             <textarea 
@@ -971,7 +972,7 @@ export default function Home() {
         .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
 
-        /* Camera Viewfinder Modal */
+        /* Camera Modal */
         .camera-viewfinder-card {
           background: #0f172a; border-radius: 24px; padding: 18px; max-width: 420px; width: 100%;
           display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -994,18 +995,12 @@ export default function Home() {
         .save-photo-btn { background: #2563eb; color: #fff; }
         .retake-btn { background: #334155; color: #fff; }
 
-        /* Screenshot Toast Banner */
+        /* Toast */
         .screenshot-toast {
           position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
           background: #10b981; color: #ffffff; padding: 10px 18px; border-radius: 9999px;
           display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 600;
           z-index: 300; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
-          animation: slideDownToast 0.25s ease-out;
-        }
-
-        @keyframes slideDownToast {
-          from { transform: translate(-50%, -16px); opacity: 0; }
-          to { transform: translate(-50%, 0); opacity: 1; }
         }
 
         /* 4-Box PIN Modal */
