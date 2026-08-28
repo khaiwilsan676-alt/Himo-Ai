@@ -23,133 +23,148 @@ function HimoBrainIcon({ size = 26, className = "" }) {
   )
 }
 
-function CodeBlock({ content }) {
-  const [copied, setCopied] = useState(false)
-  const code = content.replace(/```[a-z]*\n?/gi, "").replace(/```$/, "").trim()
+function CodeBlock({ codeText }) {
+  const [copied, setCopied] = useState(false);
+  
+  // Extract pure code without markdown backticks
+  const cleanCode = (codeText || "")
+    .replace(/^```[a-zA-Z]*\n?/, "")
+    .replace(/```$/, "")
+    .trim();
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    navigator.clipboard.writeText(cleanCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="code-wrapper">
-      <div className="code-header">
-        <span>Code</span>
-        <button onClick={handleCopy} className="copy-btn">
-          {copied ? "Copied ✓" : "Copy Code"}
+    <div className="code-container-card">
+      <div className="code-card-header">
+        <span className="code-lang-label">Code</span>
+        <button type="button" onClick={handleCopy} className="copy-action-btn" title="Copy code">
+          {copied ? (
+            <span className="copied-text">Copied ✓</span>
+          ) : (
+            <span className="copy-inner">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy Code
+            </span>
+          )}
         </button>
       </div>
-      <pre className="code-content">
-        <code>{code}</code>
+      <pre className="code-pre-block">
+        <code>{cleanCode}</code>
       </pre>
     </div>
-  )
+  );
 }
 
 async function think(prompt) {
-  const q = prompt.trim()
-  const qLower = q.toLowerCase()
+  const q = prompt.trim();
+  const qLower = q.toLowerCase();
 
   if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
-    return "Yo! Himo Omni Engine ready hai. Kya solve ya build karna hai?"
+    return "Yo! Himo Omni Engine ready hai. Kya solve ya build karna hai?";
   }
 
   // 1. Math Master (Calculations & Tables)
   try {
-    const mathResult = MathMasterEngine.evaluate(q)
-    if (mathResult) return mathResult
+    const mathResult = MathMasterEngine.evaluate(q);
+    if (mathResult) return mathResult;
   } catch (e) {}
 
-  // 2. Pure Code Engine (Only Code)
+  // 2. Intelligent Code Generator (Highest priority for programming prompts)
   try {
-    const codeResult = generateCodeFromPrompt(q)
-    if (codeResult) return codeResult
+    const codeResult = generateCodeFromPrompt(q);
+    if (codeResult) return codeResult;
   } catch (e) {}
 
-  // 3. Clean Web Knowledge
+  // 3. Clean Web Knowledge Search
   try {
-    const searchData = await fetchLiveWebData(q)
-    if (searchData) return searchData
+    const searchData = await fetchLiveWebData(q);
+    if (searchData) return searchData;
   } catch (e) {}
 
-  return `'${q}' par exact information nahi mili. Specific question poochhein.`
+  return `'${q}' par exact information nahi mili. Specific question poochhein.`;
 }
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState(null)
-  const [authChecking, setAuthChecking] = useState(true)
-  const [message, setMessage] = useState("")
-  const [currentChatId, setCurrentChatId] = useState(null)
-  const [savedSessions, setSavedSessions] = useState([])
-  const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [topMenuOpen, setTopMenuOpen] = useState(false)
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [message, setMessage] = useState("");
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [savedSessions, setSavedSessions] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
-  const messagesEndRef = useRef(null)
-  const textareaRef = useRef(null)
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     try {
-      const cachedUser = localStorage.getItem("himo_cached_user")
+      const cachedUser = localStorage.getItem("himo_cached_user");
       if (cachedUser) {
-        setCurrentUser(JSON.parse(cachedUser))
-        setAuthChecking(false)
+        setCurrentUser(JSON.parse(cachedUser));
+        setAuthChecking(false);
       }
     } catch (e) {}
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL }
-        setCurrentUser(safeUserData)
-        localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
+        const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL };
+        setCurrentUser(safeUserData);
+        localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData));
       } else {
-        setCurrentUser(null)
-        localStorage.removeItem("himo_cached_user")
+        setCurrentUser(null);
+        localStorage.removeItem("himo_cached_user");
       }
-      setAuthChecking(false)
-    })
+      setAuthChecking(false);
+    });
 
     getAllChatsFromDB().then((chats) => {
       if (chats && chats.length > 0) {
-        const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
-        setSavedSessions(sorted)
+        const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt);
+        setSavedSessions(sorted);
       }
-    })
+    });
 
-    return () => unsubscribe()
-  }, [])
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, loading])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
     }
-  }, [message])
+  }, [message]);
 
   useEffect(() => {
     const handleOutsideClick = () => {
-      setTopMenuOpen(false)
-      setSettingsMenuOpen(false)
-    }
-    window.addEventListener("click", handleOutsideClick)
-    return () => window.removeEventListener("click", handleOutsideClick)
-  }, [])
+      setTopMenuOpen(false);
+      setSettingsMenuOpen(false);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
-    if (!updatedMessages || updatedMessages.length === 0) return
-    const id = chatId || `chat_${Date.now()}`
-    if (!currentChatId) setCurrentChatId(id)
+    if (!updatedMessages || updatedMessages.length === 0) return;
+    const id = chatId || `chat_${Date.now()}`;
+    if (!currentChatId) setCurrentChatId(id);
 
-    const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation"
-    const currentSession = savedSessions.find(s => s.id === id)
+    const firstUserMsg = updatedMessages.find(m => m.role === "user")?.content || "New conversation";
+    const currentSession = savedSessions.find(s => s.id === id);
     
     const sessionObj = {
       id: id,
@@ -157,54 +172,54 @@ export default function Home() {
       pinned: currentSession?.pinned || false,
       messages: updatedMessages,
       updatedAt: Date.now()
-    }
+    };
 
-    await saveChatToDB(sessionObj)
+    await saveChatToDB(sessionObj);
 
     setSavedSessions(prev => {
-      const filtered = prev.filter(s => s.id !== id)
-      const newList = [sessionObj, ...filtered]
-      return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
-    })
-  }
+      const filtered = prev.filter(s => s.id !== id);
+      const newList = [sessionObj, ...filtered];
+      return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt);
+    });
+  };
 
   async function handleSend(textToSend) {
-    const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
-    if (!prompt || loading) return
+    const prompt = (typeof textToSend === "string" ? textToSend : message).trim();
+    if (!prompt || loading) return;
 
-    setMessage("")
-    if (textareaRef.current) textareaRef.current.style.height = "auto"
+    setMessage("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const newMsgs = [...messages, { role: "user", content: prompt }]
-    setMessages(newMsgs)
-    setLoading(true)
+    const newMsgs = [...messages, { role: "user", content: prompt }];
+    setMessages(newMsgs);
+    setLoading(true);
 
-    await persistChatSession(newMsgs)
+    await persistChatSession(newMsgs);
 
     try {
-      const answer = await think(prompt)
-      const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
-      setMessages(finalMsgs)
-      await persistChatSession(finalMsgs)
+      const answer = await think(prompt);
+      const finalMsgs = [...newMsgs, { role: "assistant", content: answer }];
+      setMessages(finalMsgs);
+      await persistChatSession(finalMsgs);
     } catch (error) {
-      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error processing request." }]
-      setMessages(errorMsgs)
-      await persistChatSession(errorMsgs)
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error processing request." }];
+      setMessages(errorMsgs);
+      await persistChatSession(errorMsgs);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function handleLogout() {
     try {
-      await signOut(auth)
-      localStorage.removeItem("himo_cached_user")
-      sessionStorage.clear()
-      setCurrentUser(null)
-      setSettingsMenuOpen(false)
-      setSidebarOpen(false)
+      await signOut(auth);
+      localStorage.removeItem("himo_cached_user");
+      sessionStorage.clear();
+      setCurrentUser(null);
+      setSettingsMenuOpen(false);
+      setSidebarOpen(false);
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Logout error:", error);
     }
   }
 
@@ -213,16 +228,16 @@ export default function Home() {
       <div className="auth-loading-screen">
         <div className="loader-spinner"></div>
       </div>
-    )
+    );
   }
 
   if (!currentUser) {
-    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />
+    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />;
   }
 
-  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
-  const isTyping = message.trim().length > 0
-  const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned
+  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U");
+  const isTyping = message.trim().length > 0;
+  const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned;
 
   return (
     <main className="app-shell">
@@ -308,7 +323,7 @@ export default function Home() {
                 <div className="message-bubble">
                   <div className="message-text">
                     {msg.content.includes("```") ? (
-                      <CodeBlock content="{msg.content}"/>
+                      <CodeBlock codeText="{msg.content}"/>
                     ) : (
                       msg.content.split("\n").map((line, i) => <p key={i}>{line || "\u00A0"}</p>)
                     )}
@@ -381,12 +396,64 @@ export default function Home() {
         .message-row.user .message-bubble { background: #f3f4f6; padding: 12px 18px; border-radius: 20px; border-top-right-radius: 4px; }
         .message-text { font-size: 1rem; line-height: 1.6; color: #1f2937; }
         
-        /* Code Block Component Styles */
-        .code-wrapper { background: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; margin: 6px 0; max-width: 100%; }
-        .code-header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 8px 14px; font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
-        .copy-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
-        .copy-btn:hover { background: rgba(255,255,255,0.2); }
-        .code-content { padding: 14px 16px; margin: 0; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.88rem; line-height: 1.5; overflow-x: auto; white-space: pre; }
+        /* Modern Clean Code Block Card */
+        .code-container-card {
+          background: #0f172a;
+          border-radius: 14px;
+          overflow: hidden;
+          border: 1px solid #1e293b;
+          margin: 10px 0;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+          width: 100%;
+        }
+        .code-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #1e293b;
+          padding: 8px 16px;
+          border-bottom: 1px solid #334155;
+        }
+        .code-lang-label {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .copy-action-btn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #f1f5f9;
+          padding: 5px 12px;
+          border-radius: 8px;
+          font-size: 0.78rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .copy-action-btn:hover {
+          background: rgba(255, 255, 255, 0.18);
+        }
+        .copy-inner {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .copied-text {
+          color: #34d399;
+          font-weight: 600;
+        }
+        .code-pre-block {
+          padding: 16px 18px;
+          margin: 0;
+          color: #e2e8f0;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.9rem;
+          line-height: 1.55;
+          overflow-x: auto;
+          white-space: pre;
+        }
         
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 24px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 45%); display: flex; flex-direction: column; align-items: center; }
         .composer-shell { width: 100%; max-width: 800px; background: #ffffff; border-radius: 28px; padding: 12px 18px; display: flex; align-items: flex-end; gap: 12px; border: 1.5px solid #e5e7eb; }
@@ -400,5 +467,5 @@ export default function Home() {
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
     </main>
-  )
+  );
 }
