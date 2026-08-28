@@ -200,7 +200,6 @@ export default function Home() {
   const captureScreenshot = () => {
     if (typeof window === "undefined") return
     try {
-      // Dynamic screen renderer fallback
       const canvas = document.createElement("canvas")
       const w = window.innerWidth
       const h = window.innerHeight
@@ -208,7 +207,6 @@ export default function Home() {
       canvas.height = h
       const ctx = canvas.getContext("2d")
 
-      // Capture visible background & layout
       ctx.fillStyle = "#ffffff"
       ctx.fillRect(0, 0, w, h)
       ctx.fillStyle = "#111827"
@@ -218,7 +216,6 @@ export default function Home() {
       ctx.fillStyle = "#6b7280"
       ctx.fillText(new Date().toLocaleString(), 24, 65)
 
-      // Auto-download Snapshot
       const imgData = canvas.toDataURL("image/png")
       const dlLink = document.createElement("a")
       dlLink.download = `Himo_Screenshot_${Date.now()}.png`
@@ -300,9 +297,16 @@ export default function Home() {
       return reply
     }
 
-    if (lower.startsWith("forget ") || lower.startsWith("delete memory ") || lower.startsWith("remove memory ") || lower.includes("bhul jao")) {
+    if (
+      lower.startsWith("delete ") || 
+      lower.startsWith("forget ") || 
+      lower.startsWith("delete memory ") || 
+      lower.startsWith("remove memory ") || 
+      lower.startsWith("remove ") || 
+      lower.includes("bhul jao")
+    ) {
       const targetQuery = text
-        .replace(/^(forget|delete memory|remove memory|bhul jao|ye bhul jao|isko delete karo)\s*/i, "")
+        .replace(/^(delete|forget|delete memory|remove memory|remove|bhul jao|ye bhul jao|isko delete karo)\s*/i, "")
         .replace(/about\s+/i, "")
         .trim()
 
@@ -341,7 +345,7 @@ export default function Home() {
       return reply
     }
 
-    const helpMsg = "Bolkar sikhayein: 'When I say [Question] you say [Answer]' ya hatane ke liye bolein: 'Forget [Question]'"
+    const helpMsg = "Bolkar sikhayein: 'When I say [Question] you say [Answer]' ya hatane ke liye bolein: 'Delete [Question]'"
     speakVoice(helpMsg)
     return helpMsg
   }
@@ -443,7 +447,9 @@ export default function Home() {
     }
 
     const isDirectDeleteCommand = 
+      lowerPrompt.startsWith("delete ") || 
       lowerPrompt.startsWith("forget ") || 
+      lowerPrompt.startsWith("remove ") || 
       lowerPrompt.startsWith("delete memory ") || 
       lowerPrompt.includes("clear all memory")
 
@@ -684,7 +690,7 @@ export default function Home() {
                 </h1>
                 {isTrainingModeActive && (
                   <p className="training-guide-text">
-                    Add: <em>"When I say [X] you say [Y]"</em> | Delete: <em>"Forget [X]"</em>
+                    Add: <em>"When I say [X] you say [Y]"</em> | Delete: <em>"Delete [X]"</em>
                   </p>
                 )}
               </div>
@@ -730,7 +736,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Forget X" : "Ask Himo, take screenshot, or open apps...")} 
+              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Ask Himo, take screenshot, or open apps...")} 
               rows={1} 
             />
             
