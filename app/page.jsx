@@ -70,12 +70,29 @@ export default function Home() {
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
+  // 1. Instant Cache Check + Realtime Firebase Auth Persistence
   useEffect(() => {
+    try {
+      const cachedUser = localStorage.getItem("himo_cached_user")
+      if (cachedUser) {
+        setCurrentUser(JSON.parse(cachedUser))
+        setAuthChecking(false)
+      }
+    } catch (e) {}
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setCurrentUser(user)
+        const safeUserData = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        }
+        setCurrentUser(safeUserData)
+        localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
       } else {
         setCurrentUser(null)
+        localStorage.removeItem("himo_cached_user")
       }
       setAuthChecking(false)
     })
@@ -117,10 +134,23 @@ export default function Home() {
   async function handleLogout() {
     try {
       await signOut(auth)
+      localStorage.removeItem("himo_cached_user")
+      sessionStorage.clear()
       setCurrentUser(null)
     } catch (error) {
       console.error("Logout error:", error)
     }
+  }
+
+  const handleSuccessfulLogin = (user) => {
+    const safeUserData = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL
+    }
+    setCurrentUser(safeUserData)
+    localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
   }
 
   if (authChecking) {
@@ -154,7 +184,7 @@ export default function Home() {
   }
 
   if (!currentUser) {
-    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />
+    return <LoginPage onLoginSuccess={handleSuccessfulLogin} />
   }
 
   const userInitial = currentUser.displayName 
