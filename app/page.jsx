@@ -110,10 +110,9 @@ export default function Home() {
   const [screenshotToast, setScreenshotToast] = useState(null)
   const [currentTrack, setCurrentTrack] = useState(null)
 
-  const videoCameraRef = useRef(null)
-  const cameraStreamRef = useRef(null)
-  const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
+  const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
+  const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -169,66 +168,6 @@ export default function Home() {
     window.addEventListener("click", handleOutsideClick)
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
-
-  // Camera Handlers
-  const openLiveCamera = async () => {
-    setShowCameraModal(true)
-    setCapturedPhoto(null)
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false
-        })
-        cameraStreamRef.current = stream
-        if (videoCameraRef.current) {
-          videoCameraRef.current.srcObject = stream
-        }
-      } else {
-        setShowCameraModal(false)
-      }
-    } catch (err) {
-      setShowCameraModal(false)
-    }
-  }
-
-  const capturePhotoFrame = () => {
-    try {
-      if (videoCameraRef.current) {
-        const video = videoCameraRef.current
-        const canvas = document.createElement("canvas")
-        canvas.width = video.videoWidth || 640
-        canvas.height = video.videoHeight || 480
-        const ctx = canvas.getContext("2d")
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const dataUrl = canvas.toDataURL("image/jpeg")
-        setCapturedPhoto(dataUrl)
-        
-        if (cameraStreamRef.current) {
-          cameraStreamRef.current.getTracks().forEach(t => t.stop())
-        }
-      }
-    } catch (e) {}
-  }
-
-  const closeLiveCamera = () => {
-    try {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach(t => t.stop())
-      }
-    } catch (e) {}
-    setShowCameraModal(false)
-    setCapturedPhoto(null)
-  }
-
-  const captureScreenshot = () => {
-    if (typeof window === "undefined") return
-    try {
-      setScreenshotToast("Screenshot taken!")
-      speakVoice("Screenshot taken.")
-      setTimeout(() => setScreenshotToast(null), 3500)
-    } catch (e) {}
-  }
 
   const persistChatSession = async (updatedMessages, chatId = currentChatId) => {
     try {
@@ -355,7 +294,7 @@ export default function Home() {
     }
   }
 
-  // Direct In-App System Microphone Permission Trigger + Recognition
+  // Universal WebView & Browser Voice Engine
   const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return
 
@@ -363,59 +302,59 @@ export default function Home() {
       if (recognitionRef.current) {
         try { recognitionRef.current.stop() } catch (e) {}
       }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop())
+      }
       setIsListening(false)
       return
     }
 
-    // Trigger System Native Permission Dialog Directly on screen
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        // Once user selects "Allow" on screen dialog, release test stream
-        stream.getTracks().forEach(t => t.stop())
-      } catch (err) {
-        console.warn("User dismissed or denied microphone dialog:", err)
-        setIsListening(false)
-        return
-      }
-    }
-
-    // Start Speech Recognition seamlessly
     try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      if (!SpeechRecognition) return
-
-      const recognition = new SpeechRecognition()
-      recognition.continuous = false
-      recognition.interimResults = false
-      recognition.lang = "en-US"
-
-      recognition.onstart = () => setIsListening(true)
-
-      recognition.onresult = (event) => {
-        try {
-          const transcript = event.results[0][0].transcript
-          if (transcript && transcript.trim()) {
-            handleSend(transcript.trim(), true)
-          }
-        } catch (e) {}
+      // 1. Request hardware mic permission (Works in WebView & Chrome)
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaStreamRef.current = stream
       }
 
-      recognition.onend = () => setIsListening(false)
-      recognition.onerror = (err) => {
-        console.warn("Speech error:", err)
+      // 2. Initialize Speech Recognition
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition()
+        recognition.continuous = false
+        recognition.interimResults = false
+        recognition.lang = "en-US"
+
+        recognition.onstart = () => setIsListening(true)
+        recognition.onresult = (event) => {
+          try {
+            const transcript = event.results[0][0].transcript
+            if (transcript && transcript.trim()) {
+              handleSend(transcript.trim(), true)
+            }
+          } catch (e) {}
+        }
+        recognition.onend = () => {
+          if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(t => t.stop())
+          }
+          setIsListening(false)
+        }
+        recognition.onerror = () => {
+          setIsListening(false)
+        }
+
+        recognitionRef.current = recognition
+        recognition.start()
+      } else {
+        alert("Speech Recognition engine not supported in this Android WebView.")
         setIsListening(false)
       }
-
-      recognitionRef.current = recognition
-      recognition.start()
     } catch (err) {
-      console.warn("Recognition init error:", err)
+      console.warn("Speech error:", err)
       setIsListening(false)
     }
   }
 
-  // Safe In-App Music / Bhajan Player
   const handleInAppMusicPlay = (query) => {
     let cleanTrack = query
       .replace(/^(play\s+a\s+song|play\s+song|play\s+music|play\s+bhajan|play|chalao|suno|lagao)\s*/i, "")
@@ -455,7 +394,7 @@ export default function Home() {
     }
 
     try {
-      const deviceAction = await handleDeviceAction(q, openLiveCamera, captureScreenshot)
+      const deviceAction = await handleDeviceAction(q, null, null)
       if (deviceAction) return deviceAction
     } catch (e) {}
 
@@ -577,14 +516,6 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Screenshot Notification */}
-      {screenshotToast && (
-        <div className="screenshot-toast">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <span>{screenshotToast}</span>
-        </div>
-      )}
-
       {/* In-App Floating Player */}
       {currentTrack && (
         <div className="in-app-media-player">
@@ -602,39 +533,6 @@ export default function Home() {
             allowFullScreen
             className="player-iframe"
           />
-        </div>
-      )}
-
-      {/* Camera Modal */}
-      {showCameraModal && (
-        <div className="modal-backdrop" onClick={closeLiveCamera}>
-          <div className="camera-viewfinder-card" onClick={(e) => e.stopPropagation()}>
-            <div className="camera-card-top">
-              <span>Live Camera</span>
-              <button type="button" onClick={closeLiveCamera} className="camera-close-x">✕</button>
-            </div>
-
-            <div className="camera-video-frame">
-              {capturedPhoto ? (
-                <img src={capturedPhoto} alt="Captured" className="captured-photo-img" />
-              ) : (
-                <video ref={videoCameraRef} autoPlay playsInline className="live-camera-video"></video>
-              )}
-            </div>
-
-            <div className="camera-actions-row">
-              {capturedPhoto ? (
-                <>
-                  <a href={capturedPhoto} download="himo_capture.jpg" className="camera-btn save-photo-btn">Save Picture</a>
-                  <button type="button" onClick={openLiveCamera} className="camera-btn retake-btn">Retake</button>
-                </>
-              ) : (
-                <button type="button" onClick={capturePhotoFrame} className="snap-shutter-btn">
-                  <div className="shutter-inner"></div>
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -721,11 +619,11 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Main Fullscreen Workspace */}
+      {/* Main Workspace */}
       <section className="workspace">
         <header className="topbar">
           <div className="left-nav">
-            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="6" x2="21" y2="6"></line></svg></button>
             <span className="brand-name">Himo Omni</span>
 
             {isTrainingModeActive && (
@@ -969,36 +867,6 @@ export default function Home() {
 
         .send-button-gemini { width: 34px; height: 34px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
-
-        /* Camera Modal */
-        .camera-viewfinder-card {
-          background: #0f172a; border-radius: 20px; padding: 14px; max-width: 380px; width: 100%;
-          display: flex; flex-direction: column; gap: 12px;
-        }
-        .camera-card-top { display: flex; justify-content: space-between; align-items: center; color: #f8fafc; font-weight: 700; font-size: 0.9rem; }
-        .camera-close-x { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; }
-        .camera-video-frame {
-          width: 100%; height: 250px; background: #000000; border-radius: 14px; overflow: hidden;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .live-camera-video, .captured-photo-img { width: 100%; height: 100%; object-fit: cover; }
-        .camera-actions-row { display: flex; justify-content: center; gap: 10px; align-items: center; }
-        .snap-shutter-btn {
-          width: 56px; height: 56px; border-radius: 50%; background: transparent;
-          border: 3px solid #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer;
-        }
-        .shutter-inner { width: 42px; height: 42px; border-radius: 50%; background: #ffffff; }
-        .camera-btn { padding: 8px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; text-decoration: none; border: none; }
-        .save-photo-btn { background: #2563eb; color: #fff; }
-        .retake-btn { background: #334155; color: #fff; }
-
-        /* Toast */
-        .screenshot-toast {
-          position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-          background: #10b981; color: #ffffff; padding: 8px 14px; border-radius: 9999px;
-          display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600;
-          z-index: 300;
-        }
 
         /* 4-Box PIN Modal */
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; }
