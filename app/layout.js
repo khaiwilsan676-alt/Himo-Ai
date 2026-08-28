@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Himo AI',
-  description: 'Himo AI - Web Search & Code Extractor',
+  title: 'Himo',
+  description: 'Himo - Web Search & Code Extractor',
 };
 
 export default function RootLayout({ children }) {

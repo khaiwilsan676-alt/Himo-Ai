@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import LoginPage from "../Components/LoginPage"
+import LoginPage from "../components/LoginPage"
 
 // Precision Live Search Engine
 async function think(prompt) {
@@ -201,7 +201,7 @@ export default function Home() {
           {messages.length === 0 && (
             <div className="hero-screen">
               <div className="hero-greeting">
-                <span className="gradient-text">Himo Omni Ai</span>
+                <span className="gradient-text">Himo Omni</span>
                 <h1>How can I help you today?</h1>
               </div>
 

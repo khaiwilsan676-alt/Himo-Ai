@@ -1,6 +1,6 @@
 {
   "appId": "com.himo.ai",
-  "appName": "Himo AI",
+  "appName": "Himo",
   "webDir": "public",
   "bundledWebRuntime": false,
   "server": {
