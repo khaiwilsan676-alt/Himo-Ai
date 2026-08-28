@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import LoginPage from "../Components/LoginPage"
+import LoginPage from "../components/LoginPage"
 
 // Precision Live Search Engine
 async function think(prompt) {
