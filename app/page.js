@@ -1,40 +1,59 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import LoginPage from "../Components/LoginPage"
 
-// Live Web Search & Code Extractor (Free, Serverless & Fast)
-async function searchWeb(query) {
-  const qLower = query.toLowerCase().trim()
+// Precision Live Search Engine
+async function think(prompt) {
+  const q = prompt.trim()
+  const qLower = q.toLowerCase()
+
   if (['hi', 'hii', 'hello', 'hii himo', 'hi himo'].includes(qLower)) {
-    return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Kya find ya build karna hai?"
+    return "Yo! Himo Omni Engine active hai. Live Web Search & Coding ready hai. Aaj kya find ya build karna hai?"
   }
 
   try {
-    const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`)
+    const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=&format=json&origin=*`)
+    
     if (res.ok) {
       const data = await res.json()
-      if (data?.query?.search?.length > 0) {
-        const snippets = data.query.search.slice(0, 3).map(item => {
-          let text = item.snippet.replace(/<[^>]+>/g, '')
-          text = text.replace(/Wikipedia|Merriam-Webster|Britannica/gi, '')
-          return text.replace(/\s{2,}/g, ' ').trim()
-        }).filter(t => t.length > 15)
+      const searchResults = data?.query?.search || []
 
-        if (snippets.length > 0) {
+      if (searchResults.length > 0) {
+        const queryKeywords = qLower.split(" ").filter(w => w.length > 2)
+
+        // Strict relevant filter: Jo query se match ho wahi snippets uthao
+        const matchedSnippets = searchResults
+          .map(item => {
+            let text = item.snippet.replace(/<[^>]+>/g, '')
+            text = text.replace(/Wikipedia|Merriam-Webster|Britannica|Dictionary/gi, '')
+            return text.replace(/\s{2,}/g, ' ').trim()
+          })
+          .filter(snippet => {
+            if (snippet.length < 20) return false
+            const snipLower = snippet.toLowerCase()
+            return queryKeywords.some(kw => snipLower.includes(kw))
+          })
+          .slice(0, 3)
+
+        if (matchedSnippets.length > 0) {
           let output = "According to Himo:\n\n"
-          snippets.forEach(s => {
+          matchedSnippets.forEach(s => {
             output += `• ${s}\n\n`
           })
           return output.trim()
         }
       }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Search fetch error:", err)
+  }
 
-  return `According to Himo:\n\n'${query}' ke baare me exact live details match nahi hui. Thoda different keywords se try karo.`
+  return `According to Himo:\n\n'${q}' par koi exact relevant information nahi mili. Please specific topic likh kar search karo.`
 }
 
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -43,10 +62,16 @@ export default function Home() {
   const textareaRef = useRef(null)
 
   useEffect(() => {
+    const token = localStorage.getItem("himo_auth") || localStorage.getItem("user") || localStorage.getItem("token")
+    if (token) {
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
-  // Auto-resize textarea like modern chat inputs
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
@@ -65,7 +90,7 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const answer = await searchWeb(prompt)
+      const answer = await think(prompt)
 
       setMessages((current) => [
         ...current,
@@ -81,6 +106,17 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleLogout() {
+    localStorage.clear()
+    sessionStorage.clear()
+    setIsAuthenticated(false)
+    window.location.reload()
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} onLogin={() => setIsAuthenticated(true)} />
   }
 
   return (
@@ -128,6 +164,14 @@ export default function Home() {
             </svg>
             Settings
           </button>
+          <button className="footer-item logout-btn" onClick={handleLogout}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+          </button>
         </div>
       </aside>
 
@@ -144,7 +188,7 @@ export default function Home() {
             </button>
             <span className="brand-name">
               <img src="/logo.png" alt="Himo Logo" className="brand-logo" />
-              Himo <span className="brand-badge">2.5 Flash</span>
+              Himo <span className="brand-badge">Omni V17.1</span>
             </span>
           </div>
           <div className="user-profile-badge">
@@ -157,7 +201,7 @@ export default function Home() {
           {messages.length === 0 && (
             <div className="hero-screen">
               <div className="hero-greeting">
-                <span className="gradient-text">Hello there</span>
+                <span className="gradient-text">Himo Omni Ai</span>
                 <h1>How can I help you today?</h1>
               </div>
 
@@ -252,9 +296,6 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <p className="disclaimer-text">
-            Himo may display inaccurate info, so double-check its responses.
-          </p>
         </div>
       </section>
 
@@ -451,6 +492,9 @@ export default function Home() {
         .sidebar-footer {
           border-top: 1px solid #2d2f31;
           padding-top: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
         }
 
         .footer-item {
@@ -471,11 +515,20 @@ export default function Home() {
           background: #282a2c;
         }
 
+        .logout-btn {
+          color: #f87171;
+        }
+
+        .logout-btn:hover {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+        }
+
         /* Canvas & Hero */
         .canvas {
           flex: 1;
           overflow-y: auto;
-          padding: 0 16px 200px 16px;
+          padding: 0 16px 140px 16px;
           max-width: 820px;
           width: 100%;
           margin: 0 auto;
@@ -649,7 +702,7 @@ export default function Home() {
           bottom: 0;
           left: 0;
           right: 0;
-          padding: 16px 20px 20px;
+          padding: 16px 20px 24px;
           background: linear-gradient(180deg, transparent 0%, #131314 40%);
           display: flex;
           flex-direction: column;
@@ -722,17 +775,10 @@ export default function Home() {
           transform: scale(1.05);
         }
 
-        .disclaimer-text {
-          font-size: 0.75rem;
-          color: #8e918f;
-          margin-top: 10px;
-          text-align: center;
-        }
-
         @media (max-width: 600px) {
           .gradient-text { font-size: 2.2rem; }
           .hero-greeting h1 { font-size: 1.8rem; }
-          .canvas { padding-bottom: 180px; }
+          .canvas { padding-bottom: 120px; }
         }
       `}</style>
     </main>
