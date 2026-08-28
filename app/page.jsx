@@ -19,14 +19,9 @@ import {
   clearAllTrainedKnowledge 
 } from "../src/lib/indexedDbStorage"
 
-// Proper Black File Code Container
 function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false)
-  const raw = typeof codeText === "string" ? codeText : ""
-  const firstLine = raw.split("\n")[0] || ""
-  const langMatch = firstLine.match(/^```(\w+)?/)
-  const language = (langMatch && langMatch[1]) ? langMatch[1].toUpperCase() : "CODE"
-  const cleanCode = raw.replace(/^```[a-zA-Z0-9_-]*\n?/, "").replace(/```$/, "").trim()
+  const cleanCode = (codeText || "").replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim()
 
   const handleCopy = () => {
     try {
@@ -39,44 +34,42 @@ function CodeBlock({ codeText }) {
   }
 
   return (
-    <div className="dark-code-card">
-      <div className="dark-code-header">
-        <div className="file-indicator">
-          <span className="dot-circle red"></span>
-          <span className="dot-circle yellow"></span>
-          <span className="dot-circle green"></span>
-          <span className="lang-badge-tag">{language}</span>
-        </div>
-        <button type="button" onClick={handleCopy} className="copy-icon-btn" title="Copy code">
-          {copied ? <span className="copied-tag">✓ Copied</span> : <span>Copy code</span>}
+    <div className="code-container-card">
+      <div className="code-card-header">
+        <span className="code-lang-label">Code</span>
+        <button type="button" onClick={handleCopy} className="copy-action-btn" title="Copy code">
+          {copied ? <span className="copied-text">Copied ✓</span> : (
+            <span className="copy-inner">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy Code
+            </span>
+          )}
         </button>
       </div>
-      <div className="dark-code-scroll">
-        <pre className="dark-pre-text"><code>{cleanCode}</code></pre>
-      </div>
+      <pre className="code-pre-block"><code>{cleanCode}</code></pre>
     </div>
   )
 }
 
-// Strict 100px x 100px High-Graphic AI Image Card
-function HighGraphicImageCard({ promptText, onImageClick }) {
-  const [imgLoaded, setImgLoaded] = useState(false)
-  const seed = Math.floor(Math.random() * 999999)
-  const cleanPrompt = encodeURIComponent(promptText.replace(/(create|generate|make|image|photo|of|banao|dikhao)/gi, "").trim() || "modern high detail artwork")
-  const highResUrl = `[https://image.pollinations.ai/prompt/$](https://image.pollinations.ai/prompt/$){cleanPrompt}?seed=${seed}&width=768&height=768&nologo=true`
+function ImageCard({ imageUrl, onImageClick }) {
+  const [loaded, setLoaded] = useState(false)
 
   return (
-    <div className="strict-100px-img-wrapper" onClick={() => onImageClick(highResUrl)}>
-      {!imgLoaded && (
-        <div className="strict-loader">
-          <div className="tiny-spinner"></div>
+    <div className="ai-image-wrapper" onClick={() => onImageClick(imageUrl)}>
+      {!loaded && (
+        <div className="image-generating-skeleton">
+          <div className="ai-shimmer-sparkle"></div>
+          <span className="generating-text">Generating visual...</span>
         </div>
       )}
-      <img 
-        src={highResUrl} 
-        alt={promptText} 
-        className={`strict-100px-img-elem ${imgLoaded ? "img-visible" : "img-hidden"}`} 
-        onLoad={() => setImgLoaded(true)}
+      <img
+        src={imageUrl}
+        alt="AI Generation"
+        className={`ai-rendered-img ${loaded ? "loaded" : "hidden"}`}
+        onLoad={() => setLoaded(true)}
       />
     </div>
   )
@@ -87,58 +80,40 @@ function cleanFormatting(text) {
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
-function renderMessageContent(content, onImageClick) {
-  if (typeof content === "object" && content?.type === "ai_image") {
-    return <HighGraphicImageCard promptText={content.prompt} onImageClick={onImageClick} />
-  }
-
-  const text = typeof content === "string" ? content : ""
-
-  if (text.includes("```")) {
-    const parts = text.split(/(```[\s\S]*?```)/g)
-    return parts.map((part, i) => {
-      if (part.startsWith("```") && part.endsWith("```")) {
-        return <CodeBlock key={i} codeText={part} />
-      }
-      if (!part.trim()) return null
-      return (
-        <div key={i} className="text-prose-row">
-          {cleanFormatting(part).split("\n").map((line, j) => (
-            <p key={j}>{line || "\u00A0"}</p>
-          ))}
-        </div>
-      )
-    })
-  }
-
-  return (
-    <div className="text-prose-row">
-      {cleanFormatting(text).split("\n").map((line, i) => (
-        <p key={i}>{line || "\u00A0"}</p>
-      ))}
-    </div>
-  )
-}
-
 async function stopVoicePlayback() {
   if (typeof window === "undefined") return
   try {
     const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
     await TextToSpeech.stop()
   } catch (e) {}
-  try { if ("speechSynthesis" in window) window.speechSynthesis.cancel() } catch (e) {}
+  try {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel()
+    }
+  } catch (e) {}
 }
 
 async function speakVoice(text) {
   if (!text || typeof window === "undefined") return
   try {
     await stopVoicePlayback()
-    const cleanText = text.replace(/```[\s\S]*?```/g, "Code ready hai.").replace(/[#*•_`]/g, "").trim()
+
+    const cleanText = text.replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
+      .replace(/[#*•_`]/g, "")
+      .trim()
+
     if (!cleanText) return
 
     try {
       const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
-      await TextToSpeech.speak({ text: cleanText.slice(0, 250), lang: "hi-IN", rate: 1.0, pitch: 1.0, volume: 1.0, category: "ambient" })
+      await TextToSpeech.speak({
+        text: cleanText.slice(0, 250),
+        lang: "hi-IN",
+        rate: 1.0,
+        pitch: 1.0,
+        volume: 1.0,
+        category: "ambient"
+      })
       return
     } catch (nativeErr) {}
 
@@ -168,11 +143,17 @@ export default function Home() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [previewModalImg, setPreviewModalImg] = useState(null)
 
+  const [isTrainingModeActive, setIsTrainingModeActive] = useState(false)
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""])
+  const [pinError, setPinError] = useState("")
   const [isListening, setIsListening] = useState(false)
+  const [currentTrack, setCurrentTrack] = useState(null)
 
   const fileInputRef = useRef(null)
   const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
+  const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -188,9 +169,9 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       try {
         if (user) {
-          const userData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL }
-          setCurrentUser(userData)
-          localStorage.setItem("himo_cached_user", JSON.stringify(userData))
+          const safeUserData = { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL }
+          setCurrentUser(safeUserData)
+          localStorage.setItem("himo_cached_user", JSON.stringify(safeUserData))
         } else {
           setCurrentUser(null)
           localStorage.removeItem("himo_cached_user")
@@ -201,7 +182,8 @@ export default function Home() {
 
     getAllChatsFromDB().then((chats) => {
       if (chats && chats.length > 0) {
-        setSavedSessions(chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt))
+        const sorted = chats.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+        setSavedSessions(sorted)
       }
     }).catch(() => {})
 
@@ -247,7 +229,12 @@ export default function Home() {
       }
 
       await saveChatToDB(sessionObj)
-      setSavedSessions(prev => [sessionObj, ...prev.filter(s => s.id !== id)].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt))
+
+      setSavedSessions(prev => {
+        const filtered = prev.filter(s => s.id !== id)
+        const newList = [sessionObj, ...filtered]
+        return newList.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt)
+      })
     } catch (e) {}
   }
 
@@ -255,101 +242,248 @@ export default function Home() {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (uploadEvent) => setAttachedImage(uploadEvent.target.result)
+      reader.onload = (uploadEvent) => {
+        setAttachedImage(uploadEvent.target.result)
+      }
       reader.readAsDataURL(file)
     }
     setPlusMenuOpen(false)
   }
 
+  const handlePinChange = (val, idx) => {
+    if (val.length > 1) val = val.slice(-1)
+    const updated = [...pinDigits]
+    updated[idx] = val
+    setPinDigits(updated)
+    setPinError("")
+
+    if (val && idx < 3) {
+      pinInputRefs[idx + 1].current?.focus()
+    }
+  }
+
+  const handlePinKeyDown = (e, idx) => {
+    if (e.key === "Backspace" && !pinDigits[idx] && idx > 0) {
+      pinInputRefs[idx - 1].current?.focus()
+    }
+  }
+
+  const handleVerifyPinAndActivateMode = () => {
+    const entered = pinDigits.join("")
+    if (entered === "5656") {
+      setShowPinModal(false)
+      setPinDigits(["", "", "", ""])
+      setPinError("")
+      setIsTrainingModeActive(true)
+      speakVoice("Training mode start ho gaya hai bhai!")
+    } else {
+      setPinError("Galat Password! (5656 enter karein)")
+    }
+  }
+
+  const processTrainingOrDeletion = async (rawSentence) => {
+    try {
+      const text = rawSentence.trim()
+      const lower = text.toLowerCase()
+
+      if (lower.includes("clear all memory") || lower.includes("reset memory") || lower.includes("delete all memory")) {
+        await clearAllTrainedKnowledge()
+        const reply = "Saari memory permanently clear ho gayi bhai!"
+        speakVoice(reply)
+        return reply
+      }
+
+      if (
+        lower.startsWith("delete ") || 
+        lower.startsWith("forget ") || 
+        lower.startsWith("remove ") || 
+        lower.startsWith("delete memory ") || 
+        lower.includes("bhul jao")
+      ) {
+        const targetQuery = text
+          .replace(/^(delete|forget|delete memory|remove memory|remove|bhul jao|ye bhul jao|isko delete karo)\s*/i, "")
+          .replace(/about\s+/i, "")
+          .trim()
+
+        if (targetQuery) {
+          const deletedTopic = await deleteTrainedKnowledge(targetQuery)
+          if (deletedTopic) {
+            const reply = `Maine "${deletedTopic}" ki memory delete kar di hai bhai!`
+            speakVoice(reply)
+            return reply
+          } else {
+            const reply = `"${targetQuery}" naam ki koi memory nahi mili bhai.`
+            speakVoice(reply)
+            return reply
+          }
+        }
+      }
+
+      const patternRegex = /(?:when\s+i\s+say|jb\s+m\s+bolu|jab\s+main\s+bolu)\s+(.*?)\s+(?:you\s+say|tu\s+bolna|tum\s+bolna|answer)\s+(.*)/i
+      const match = text.match(patternRegex)
+
+      if (match && match[1] && match[2]) {
+        const topic = match[1].trim()
+        const answer = match[2].trim()
+
+        await saveTrainedKnowledge(topic, answer)
+        const reply = `Got it bhai! Jab bolega "${topic}", main bolunga "${answer}".`
+        speakVoice(reply)
+        return reply
+      }
+
+      const parts = text.split("=")
+      if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+        await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
+        const reply = `Got it bhai! "${parts[0].trim()}" yaad kar liya.`
+        speakVoice(reply)
+        return reply
+      }
+
+      const helpMsg = "Bolkar sikha bhai: 'When I say [Question] you say [Answer]'"
+      speakVoice(helpMsg)
+      return helpMsg
+    } catch (e) {
+      return "Processed bhai."
+    }
+  }
+
   const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return
+
     if (isListening) {
-      if (recognitionRef.current) try { recognitionRef.current.stop() } catch (e) {}
-      if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach(t => t.stop())
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop() } catch (e) {}
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop())
+      }
       setIsListening(false)
       return
     }
+
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        mediaStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaStreamRef.current = stream
       }
+
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
         recognition.continuous = false
         recognition.interimResults = false
         recognition.lang = "hi-IN"
+
         recognition.onstart = () => setIsListening(true)
         recognition.onresult = (event) => {
-          const transcript = event.results[0]?.[0]?.transcript
-          if (transcript) handleSend(transcript.trim())
+          try {
+            const transcript = event.results[0][0].transcript
+            if (transcript && transcript.trim()) {
+              handleSend(transcript.trim(), true)
+            }
+          } catch (e) {}
         }
-        recognition.onend = () => setIsListening(false)
+
+        recognition.onend = () => {
+          if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(t => t.stop())
+          }
+          setIsListening(false)
+        }
+
         recognition.onerror = () => setIsListening(false)
+
         recognitionRef.current = recognition
         recognition.start()
+      } else {
+        alert("Speech Recognition engine not supported on this device.")
+        setIsListening(false)
       }
-    } catch (err) { setIsListening(false) }
+    } catch (err) {
+      setIsListening(false)
+    }
+  }
+
+  const handleInAppMusicPlay = (query) => {
+    let cleanTrack = query
+      .replace(/^(play\s+a\s+song|play\s+song|play\s+music|play\s+bhajan|play|chalao|suno|lagao)\s*/i, "")
+      .replace(/\b(please|sunao|chalao|play|karo)\b/gi, "")
+      .trim()
+
+    if (!cleanTrack || cleanTrack === "a" || cleanTrack === "song") {
+      cleanTrack = "Hanuman Chalisa"
+    }
+
+    const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(cleanTrack)}`
+
+    setCurrentTrack({
+      title: cleanTrack,
+      url: embedUrl
+    })
+
+    return `Gana "${cleanTrack}" screen par play ho raha hai bhai!`
+  }
+
+  const generateAIImage = (promptText) => {
+    let imageDesc = promptText
+      .replace(/^(generate\s+image\s+of|generate\s+image|create\s+image\s+of|create\s+image|make\s+image\s+of|make\s+image|draw\s+image\s+of|draw|photo\s+banao|image\s+banao|tasveer\s+banao|picture\s+banao|generate\s+pic|create\s+pic|ai\s+image)\s*/i, "")
+      .replace(/^(of|a|an)\s+/i, "")
+      .trim()
+
+    if (!imageDesc) imageDesc = "Futuristic digital art cinematic lighting 8k"
+
+    const seed = Math.floor(Math.random() * 9999999)
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imageDesc)}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`
+
+    return {
+      type: "image_card",
+      imageUrl: imageUrl
+    }
   }
 
   async function think(prompt, hasAttachedPhoto = false) {
     const q = prompt.trim()
     const qLower = q.toLowerCase()
 
-    // 1. Math Calculation Priority
-    const isMathQuery = /[\d]+\s*[\+\-\*\/\%\^]\s*[\d]+/.test(q) || !isNaN(Number(q.replace(/\s+/g, "")))
-    if (isMathQuery) {
-      try {
-        const mathResult = MathMasterEngine.evaluate(q)
-        if (mathResult) return cleanFormatting(mathResult)
-      } catch (e) {}
+    const isImageGenRequest = 
+      qLower.startsWith("create image") || 
+      qLower.startsWith("generate image") || 
+      qLower.startsWith("make image") || 
+      qLower.startsWith("draw ") || 
+      qLower.includes("photo banao") || 
+      qLower.includes("image banao") || 
+      qLower.includes("tasveer banao") || 
+      qLower.includes("picture banao") || 
+      qLower.startsWith("ai image")
+
+    if (isImageGenRequest) {
+      return generateAIImage(q)
     }
 
-    // 2. Strict Code Request Check
-    const isCodeRequest = 
-      qLower.startsWith("write code") || 
-      qLower.startsWith("code ") || 
-      qLower.includes("code in") ||
-      qLower.includes("ka code") || 
-      qLower.includes("function") || 
-      qLower.includes("script") ||
-      qLower.includes("html") ||
-      qLower.includes("component") ||
-      qLower.includes("react") ||
-      qLower.includes("javascript") ||
-      qLower.includes("python") ||
-      qLower.includes("java") ||
-      qLower.includes("css") ||
-      qLower.includes("sql")
-
-    if (isCodeRequest) {
-      const codeOutput = generateCodeFromPrompt(q)
-      if (codeOutput) return codeOutput
-    }
-
-    // 3. High-Graphic AI Image Request Check
-    const isImageKeyword = 
-      qLower.includes("image") || 
-      qLower.includes("photo") || 
-      qLower.includes("tasveer") || 
-      qLower.includes("picture") || 
-      qLower.includes("generate") || 
-      qLower.includes("create") ||
-      qLower.includes("banao") || 
-      qLower.includes("draw")
-
-    if (isImageKeyword && !isMathQuery) {
-      return { type: "ai_image", prompt: q }
-    }
-
-    if (hasAttachedPhoto) return "Okk photo dekh li hai, mast lag rahi hai!"
-
-    if (qLower.includes("kya haal hai") || qLower.includes("sup")) {
-      return "Ooo sab badhiya scene hai! Tu bata, kya chal raha hai?"
+    if (hasAttachedPhoto) {
+      return `Photo upload ho gayi hai.`
     }
 
     const humanTalk = getHumanReply(q)
-    if (humanTalk) return humanTalk
+    if (humanTalk) {
+      return humanTalk
+    }
+
+    if (
+      qLower.startsWith("play ") || 
+      qLower.includes("gana chalao") || 
+      qLower.includes("bhajan chalao") || 
+      qLower.includes("song play") || 
+      qLower.startsWith("lagao ")
+    ) {
+      return handleInAppMusicPlay(q)
+    }
+
+    try {
+      const deviceAction = await handleDeviceAction(q, null, null)
+      if (deviceAction) return deviceAction
+    } catch (e) {}
 
     try {
       const memoryAns = await getTrainedKnowledge(q)
@@ -361,32 +495,87 @@ export default function Home() {
       if (mathResult) return cleanFormatting(mathResult)
     } catch (e) {}
 
-    return `Ooo sun, '${q}' par processing complete hai!`
+    try {
+      const codeResult = generateCodeFromPrompt(q)
+      if (codeResult) return codeResult
+    } catch (e) {}
+
+    try {
+      const searchData = await fetchLiveWebData(q)
+      if (searchData) return cleanFormatting(searchData)
+    } catch (e) {}
+
+    return `Bhai '${q}' par exact information nahi mili. Ek baar specific sawaal poochh na!`
   }
 
-  async function handleSend(textToSend) {
+  async function handleSend(textToSend, isVoice = false) {
     const prompt = (typeof textToSend === "string" ? textToSend : message).trim()
     const currentPhoto = attachedImage
+
     if ((!prompt && !currentPhoto) || loading) return
+
+    const lowerPrompt = (prompt || "").toLowerCase()
+
+    if (['stop', 'chup', 'ruko', 'pause', 'stop speaking', 'shant', 'stop music'].includes(lowerPrompt)) {
+      stopVoicePlayback()
+      setCurrentTrack(null)
+      setMessage("")
+      setAttachedImage(null)
+      return
+    }
+
+    if (lowerPrompt.includes("himo on the training mode")) {
+      setMessage("")
+      setAttachedImage(null)
+      if (textareaRef.current) textareaRef.current.style.height = "auto"
+      setShowPinModal(true)
+      setTimeout(() => pinInputRefs[0].current?.focus(), 150)
+      return
+    }
+
+    const isDirectDeleteCommand = 
+      lowerPrompt.startsWith("delete ") || 
+      lowerPrompt.startsWith("forget ") || 
+      lowerPrompt.startsWith("remove ") || 
+      lowerPrompt.startsWith("delete memory ") || 
+      lowerPrompt.includes("clear all memory")
 
     setMessage("")
     setAttachedImage(null)
     if (textareaRef.current) textareaRef.current.style.height = "auto"
 
-    const newMsgs = [...messages, { role: "user", content: prompt || "Photo shared 📷", attachedPhoto: currentPhoto }]
+    const userMsgObj = { 
+      role: "user", 
+      content: prompt || (currentPhoto ? "Photo shared 📷" : ""),
+      attachedPhoto: currentPhoto || null
+    }
+
+    const newMsgs = [...messages, userMsgObj]
     setMessages(newMsgs)
     setLoading(true)
+
     await persistChatSession(newMsgs)
 
     try {
-      let answer = await think(prompt || "Explain photo", !!currentPhoto)
-      if (typeof answer !== "object") speakVoice(answer)
+      let answer = ""
+
+      if (isTrainingModeActive || isDirectDeleteCommand) {
+        answer = await processTrainingOrDeletion(prompt)
+      } else {
+        answer = await think(prompt || "Explain this photo", !!currentPhoto)
+      }
+
+      if (typeof answer !== "object") {
+        speakVoice(answer)
+      }
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
       setMessages(finalMsgs)
       await persistChatSession(finalMsgs)
     } catch (error) {
-      setMessages([...newMsgs, { role: "assistant", content: "Ooo error ho gaya, dubara bol." }])
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Kuch issue ho gaya bhai, dubara bolo." }]
+      setMessages(errorMsgs)
+      await persistChatSession(errorMsgs)
     } finally {
       setLoading(false)
     }
@@ -396,14 +585,28 @@ export default function Home() {
     try {
       await signOut(auth)
       localStorage.removeItem("himo_cached_user")
+      sessionStorage.clear()
       setCurrentUser(null)
-    } catch (e) {}
+      setSettingsMenuOpen(false)
+      setSidebarOpen(false)
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
-  if (authChecking) return <div className="auth-loading-screen"><div className="loader-spinner"></div></div>
-  if (!currentUser) return <LoginPage onLoginSuccess={(u) => setCurrentUser(u)} />
+  if (authChecking) {
+    return (
+      <div className="auth-loading-screen">
+        <div className="loader-spinner"></div>
+      </div>
+    )
+  }
 
-  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : "U"
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={(user) => setCurrentUser(user)} />
+  }
+
+  const userInitial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (currentUser.email ? currentUser.email.charAt(0).toUpperCase() : "U")
   const isTyping = message.trim().length > 0 || !!attachedImage
   const isCurrentChatPinned = savedSessions.find(s => s.id === currentChatId)?.pinned
 
@@ -412,16 +615,80 @@ export default function Home() {
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
-      <input type="file" ref={fileInputRef} accept="image/*" style={{ display: "none" }} onChange={handleImageSelect} />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        accept="image/*" 
+        style={{ display: "none" }} 
+        onChange={handleImageSelect} 
+      />
 
+      {/* Fullscreen Image Preview & Save Modal */}
       {previewModalImg && (
         <div className="image-viewer-modal" onClick={() => setPreviewModalImg(null)}>
           <div className="viewer-content-card" onClick={(e) => e.stopPropagation()}>
             <button className="viewer-close-btn" onClick={() => setPreviewModalImg(null)}>✕</button>
-            <div className="viewer-img-holder"><img src={previewModalImg} alt="Preview" className="viewer-full-img" /></div>
-            <div className="viewer-bottom-bar">
-              <a href={previewModalImg} target="_blank" rel="noreferrer" download="himo_ai_art.jpg" className="viewer-save-btn">Save HD Image</a>
+            <div className="viewer-img-holder">
+              <img src={previewModalImg} alt="Preview" className="viewer-full-img" />
             </div>
+            <div className="viewer-bottom-bar">
+              <a href={previewModalImg} target="_blank" rel="noreferrer" download="himo_image.jpg" className="viewer-save-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Save Image
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {currentTrack && (
+        <div className="in-app-media-player">
+          <div className="player-top-header">
+            <div className="track-title-tag">
+              <span className="equalizer-bar"></span>
+              <span>Playing: {currentTrack.title}</span>
+            </div>
+            <button type="button" onClick={() => setCurrentTrack(null)} className="close-player-btn">✕</button>
+          </div>
+          <iframe 
+            src={currentTrack.url} 
+            title="Music Player" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowFullScreen
+            className="player-iframe"
+          />
+        </div>
+      )}
+
+      {showPinModal && (
+        <div className="modal-backdrop" onClick={() => setShowPinModal(false)}>
+          <div className="pin-card-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pin-header">
+              <h3>Human Newton Engine</h3>
+              <p>Training Mode chalu karne ke liye PIN enter karein</p>
+            </div>
+
+            <div className="pin-boxes-row">
+              {pinDigits.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={pinInputRefs[idx]}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handlePinChange(e.target.value, idx)}
+                  onKeyDown={(e) => handlePinKeyDown(e, idx)}
+                  className="pin-digit-box"
+                />
+              ))}
+            </div>
+
+            {pinError && <p className="pin-error-text">{pinError}</p>}
+
+            <button type="button" className="mode-on-btn" onClick={handleVerifyPinAndActivateMode}>
+              Mode on
+            </button>
           </div>
         </div>
       )}
@@ -436,19 +703,29 @@ export default function Home() {
         <div className="sidebar-section">
           <p className="sidebar-label">Recent</p>
           <div className="recent-list">
-            {savedSessions.map((s) => (
-              <div key={s.id} className={`recent-item ${s.id === currentChatId ? "active-chat-item" : ""}`} onClick={() => { setCurrentChatId(s.id); setMessages(s.messages || []); setSidebarOpen(false); }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                <span className="truncate flex-1">{s.title}</span>
-                {s.pinned && <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="pin-tag-icon"><path d="M16 12V4H17V2H7V4H8V12L6 14V16H11V22L12 23L13 22V16H18V14L16 12Z" /></svg>}
-              </div>
-            ))}
+            {savedSessions.length === 0 ? (
+              <span className="no-chats-hint">No saved chats yet</span>
+            ) : (
+              savedSessions.map((session) => (
+                <div key={session.id} className={`recent-item ${session.id === currentChatId ? "active-chat-item" : ""}`} onClick={() => { setCurrentChatId(session.id); setMessages(session.messages || []); setSidebarOpen(false); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  <span className="truncate flex-1">{session.title}</span>
+                  {session.pinned && <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="pin-tag-icon"><path d="M16 12V4H17V2H7V4H8V12L6 14V16H11V22L12 23L13 22V16H18V14L16 12Z" /></svg>}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         <div className="sidebar-footer">
           <div className="user-info-wrapper">
-            <div className="avatar-chip footer-avatar-circle">{userInitial}</div>
+            <div className="avatar-chip footer-avatar-circle">
+              {currentUser.photoURL ? (
+                <img src={currentUser.photoURL} alt="DP" className="avatar-img-circle" />
+              ) : (
+                userInitial
+              )}
+            </div>
             <div className="user-email-text" title={currentUser.email || ""}>{currentUser.email || "User"}</div>
           </div>
           <div className="settings-container">
@@ -467,21 +744,32 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <div className="left-nav">
-            <button className="icon-btn" onClick={() => setSidebarOpen(true)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            </button>
+            <button className="icon-btn" onClick={() => setSidebarOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
             <span className="brand-name">Himo Omni</span>
+
+            {isTrainingModeActive && (
+              <div className="training-active-tag">
+                <span className="tag-dot"></span>
+                Training Mode ON
+                <button 
+                  type="button" 
+                  className="exit-train-btn" 
+                  onClick={() => { setIsTrainingModeActive(false); speakVoice("Training mode band kar diya bhai."); }}
+                  title="Exit Training Mode"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="top-right-actions">
-            <button type="button" className="icon-btn" onClick={(e) => { e.stopPropagation(); setTopMenuOpen(!topMenuOpen); }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
-            </button>
+            <button type="button" className="icon-btn" onClick={(e) => { e.stopPropagation(); setTopMenuOpen(!topMenuOpen); }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg></button>
             {topMenuOpen && (
               <div className="popup-card top-dropdown">
                 <button type="button" className="popup-menu-item" onClick={async () => { if (currentChatId) await deleteChatFromDB(currentChatId); setSavedSessions(p => p.filter(s => s.id !== currentChatId)); setMessages([]); setCurrentChatId(null); setTopMenuOpen(false); }}>Delete Chat</button>
-                <button type="button" className="popup-menu-item" onClick={async () => { const t = prompt("Rename chat:"); if (t && currentChatId) { const s = savedSessions.find(x => x.id === currentChatId); if (s) { const u = { ...s, title: t }; await saveChatToDB(u); setSavedSessions(p => p.map(x => x.id === currentChatId ? u : x)); } } setTopMenuOpen(false); }}>Rename</button>
-                <button type="button" className="popup-menu-item" onClick={async () => { if (currentChatId) { const s = savedSessions.find(x => x.id === currentChatId); if (s) { const u = { ...s, pinned: !s.pinned }; await saveChatToDB(u); setSavedSessions(p => p.map(x => x.id === currentChatId ? u : x).sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0))); } } setTopMenuOpen(false); }}>{isCurrentChatPinned ? "Unpin" : "Pin"}</button>
+                <button type="button" className="popup-menu-item" onClick={async () => { const t = prompt("Rename chat:"); if (t) { const s = savedSessions.find(x => x.id === currentChatId); if (s) { const u = { ...s, title: t }; await saveChatToDB(u); setSavedSessions(p => p.map(x => x.id === currentChatId ? u : x)); } } setTopMenuOpen(false); }}>Rename</button>
+                <button type="button" className="popup-menu-item" onClick={async () => { const s = savedSessions.find(x => x.id === currentChatId); if (s) { const u = { ...s, pinned: !s.pinned }; await saveChatToDB(u); setSavedSessions(p => p.map(x => x.id === currentChatId ? u : x).sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0))); } setTopMenuOpen(false); }}>{isCurrentChatPinned ? "Unpin" : "Pin"}</button>
               </div>
             )}
           </div>
@@ -492,7 +780,9 @@ export default function Home() {
             <div className="hero-screen-top-left">
               <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
-                <h1 className="hero-main-title">How can I help you today?</h1>
+                <h1 className="hero-main-title">
+                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "How can I help you today?"}
+                </h1>
               </div>
             </div>
           )}
@@ -506,17 +796,40 @@ export default function Home() {
                       <img src={msg.attachedPhoto} alt="Shared" className="user-chat-img" />
                     </div>
                   )}
+
                   <div className="message-text">
-                    {renderMessageContent(msg.content, (url) => setPreviewModalImg(url))}
+                    {typeof msg.content === "object" && msg.content?.type === "image_card" ? (
+                      <ImageCard 
+                        imageUrl={msg.content.imageUrl} 
+                        onImageClick={(url) => setPreviewModalImg(url)} 
+                      />
+                    ) : typeof msg.content === "string" && msg.content.includes("```") ? (
+                      <CodeBlock codeText="{msg.content}"/>
+                    ) : (
+                      cleanFormatting(typeof msg.content === "string" ? msg.content : "").split("\n").map((line, i) => (
+                        <p key={i}>{line || "\u00A0"}</p>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
             ))}
-            {loading && <div className="message-row assistant"><div className="message-bubble">Thinking...</div></div>}
+
+            {loading && (
+              <div className="message-row assistant">
+                <div className="message-bubble">
+                  <div className="gemini-shimmer-loader">
+                    <div className="shimmer-line line-1"></div>
+                    <div className="shimmer-line line-2"></div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         </div>
 
+        {/* Composer Dock */}
         <div className="dock-container">
           {attachedImage && (
             <div className="attached-photo-preview-bar">
@@ -534,7 +847,7 @@ export default function Home() {
                 type="button"
                 className="plus-action-btn"
                 onClick={(e) => { e.stopPropagation(); setPlusMenuOpen(!plusMenuOpen); }}
-                title="Upload Photo"
+                title="Add photo or AI action"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -548,6 +861,10 @@ export default function Home() {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     <span>Upload Image</span>
                   </button>
+                  <button type="button" className="popup-menu-item plus-item" onClick={() => { setMessage("Create image of "); setPlusMenuOpen(false); textareaRef.current?.focus(); }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    <span>Generate AI Image</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -557,7 +874,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening..." : "Ask Himo..."} 
+              placeholder={isListening ? "Listening..." : (isTrainingModeActive ? "Train mode..." : "Ask Himo...")} 
               rows={1} 
             />
             
@@ -589,20 +906,43 @@ export default function Home() {
 
       <style jsx>{`
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        .app-shell { display: flex; height: 100dvh; width: 100vw; background: #ffffff; color: #1f2937; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: fixed; inset: 0; }
+        
+        .app-shell { 
+          display: flex; 
+          height: 100dvh; 
+          width: 100vw;
+          background: #ffffff; 
+          color: #1f2937; 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+          overflow: hidden; 
+          position: fixed; 
+          inset: 0;
+          padding-top: env(safe-area-inset-top, 0px);
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
         .top-glow-mesh { position: absolute; top: 0; left: 0; right: 0; height: 35vh; pointer-events: none; z-index: 1; background: radial-gradient(circle at 15% 30%, rgba(96, 165, 250, 0.4), transparent 60%), radial-gradient(circle at 45% 20%, rgba(244, 114, 182, 0.35), transparent 55%), radial-gradient(circle at 75% 35%, rgba(52, 211, 153, 0.3), transparent 55%), radial-gradient(circle at 90% 15%, rgba(192, 132, 252, 0.35), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 100%); filter: blur(24px); }
         .workspace { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; width: 100%; z-index: 2; overflow: hidden; }
-        .topbar { height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; position: relative; }
+        .topbar { height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; position: relative; flex-shrink: 0; }
         .left-nav { display: flex; align-items: center; gap: 10px; }
         .brand-name { font-size: 1.2rem; font-weight: 700; color: #111827; }
+
+        .training-active-tag {
+          display: flex; align-items: center; gap: 6px;
+          background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8;
+          padding: 3px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;
+        }
+        .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: #2563eb; animation: blink 1.2s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .exit-train-btn { background: transparent; border: none; color: #1d4ed8; font-size: 0.8rem; cursor: pointer; padding: 0 2px; }
+
         .icon-btn { background: transparent; border: none; color: #374151; cursor: pointer; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
         .popup-card { position: absolute; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); padding: 6px; min-width: 160px; z-index: 100; display: flex; flex-direction: column; gap: 2px; }
-        .top-dropdown { top: 48px; right: 16px; }
+        .top-dropdown { top: 48px; right: 0; }
         .settings-popup { bottom: 50px; right: 0; min-width: 140px; }
-        .plus-dropdown-menu { bottom: 46px; left: 0; min-width: 170px; }
-        .popup-menu-item { background: transparent; border: none; padding: 10px 14px; font-size: 0.9rem; color: #374151; border-radius: 10px; cursor: pointer; text-align: left; width: 100%; display: flex; align-items: center; gap: 8px; }
+        .popup-menu-item { background: transparent; border: none; padding: 10px 14px; font-size: 0.9rem; color: #374151; border-radius: 10px; cursor: pointer; text-align: left; width: 100%; display: flex; align-items: center; gap: 10px; }
         .logout-item { color: #dc2626; }
-
+        
         .sidebar { position: fixed; top: 0; left: -320px; width: 280px; height: 100dvh; background: #ffffff; border-right: 1px solid #e5e7eb; transition: left 0.25s ease; z-index: 100; padding: 16px; display: flex; flex-direction: column; }
         .sidebar.open { left: 0; }
         .sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(2px); z-index: 99; }
@@ -611,177 +951,178 @@ export default function Home() {
         .sidebar-label { font-size: 0.72rem; font-weight: 600; color: #9ca3af; margin-bottom: 10px; text-transform: uppercase; }
         .recent-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; font-size: 0.85rem; color: #4b5563; cursor: pointer; }
         .active-chat-item { background: #eff6ff; color: #2563eb; font-weight: 600; }
-        .sidebar-footer { border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; position: relative; }
+        
+        .sidebar-footer { border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; }
         .user-info-wrapper { display: flex; align-items: center; gap: 8px; overflow: hidden; max-width: 190px; }
-        .footer-avatar-circle { width: 36px; height: 36px; border-radius: 50%; background: #3b82f6; color: #ffffff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .footer-avatar-circle {
+          width: 36px; height: 36px; min-width: 36px;
+          border-radius: 50%; background: #3b82f6; color: #ffffff;
+          font-weight: 700; font-size: 0.9rem;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden; aspect-ratio: 1 / 1;
+        }
+        .avatar-img-circle { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .user-email-text { font-size: 0.82rem; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .settings-icon-btn { background: transparent; border: none; color: #6b7280; cursor: pointer; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
-
-        .canvas { flex: 1; overflow-y: auto; padding: 0 16px 130px 16px; max-width: 800px; width: 100%; margin: 0 auto; }
+        
+        .canvas { flex: 1; overflow-y: auto; padding: 0 16px 130px 16px; max-width: 800px; width: 100%; margin: 0 auto; -webkit-overflow-scrolling: touch; }
         .hero-screen-top-left { margin-top: 24px; }
         .gradient-text { font-size: 3rem; font-weight: 800; display: inline-block; margin-bottom: 4px; }
         .animated-shimmer { background: linear-gradient(90deg, #2563eb 0%, #7c3aed 20%, #ec4899 40%, #06b6d4 60%, #10b981 80%, #2563eb 100%); background-size: 300% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: fluidShimmer 4s linear infinite; }
         @keyframes fluidShimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .hero-main-title { font-size: 2.2rem; font-weight: 700; color: #111827; }
+        .hero-main-title { font-size: 2.2rem; font-weight: 700; color: #111827; line-height: 1.15; }
 
         .messages-list { display: flex; flex-direction: column; gap: 14px; padding-top: 16px; }
         .message-row { display: flex; width: 100%; }
         .message-row.user { justify-content: flex-end; }
         .message-row.assistant { justify-content: flex-start; }
-        .message-bubble { max-width: 100%; width: 100%; }
-        .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; max-width: 85%; width: fit-content; }
-        .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; width: 100%; }
-        .text-prose-row { margin-bottom: 6px; }
+        
+        .message-bubble { max-width: 90%; }
+        .message-row.user .message-bubble { background: #f3f4f6; padding: 10px 16px; border-radius: 18px; border-top-right-radius: 4px; }
+        .message-row.assistant .message-bubble { background: transparent; padding: 2px 0; }
+        .message-text { font-size: 0.96rem; line-height: 1.55; color: #1f2937; }
 
-        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 220px; border-radius: 14px; overflow: hidden; cursor: pointer; }
+        .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 260px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        /* STRICT 100px x 100px IMAGE CARD */
-        .strict-100px-img-wrapper {
-          width: 100px !important;
-          height: 100px !important;
-          min-width: 100px !important;
-          min-height: 100px !important;
-          max-width: 100px !important;
-          max-height: 100px !important;
-          border-radius: 14px;
-          overflow: hidden;
-          margin: 6px 0;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-          cursor: pointer;
-          border: 1.5px solid #e2e8f0;
-          background: #0f172a;
-          position: relative;
-          display: inline-block;
-          flex-shrink: 0;
+        /* Clean AI Image Card & Animation */
+        .ai-image-wrapper {
+          position: relative; max-width: 340px; width: 100%; min-height: 280px;
+          border-radius: 18px; overflow: hidden; margin: 4px 0;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12); cursor: pointer;
+          background: #f1f5f9;
         }
-        .strict-100px-img-elem {
-          width: 100% !important;
-          height: 100% !important;
-          object-fit: cover !important;
-          display: block !important;
-          border-radius: 12px !important;
-          transition: opacity 0.2s ease;
+        .image-generating-skeleton {
+          position: absolute; inset: 0; background: #e2e8f0;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 12px; z-index: 2;
         }
-        .img-visible { opacity: 1; }
-        .img-hidden { opacity: 0; }
-        .strict-loader {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #1e293b;
+        .ai-shimmer-sparkle {
+          width: 42px; height: 42px; border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+          animation: pulseRotate 1.5s infinite ease-in-out;
         }
-        .tiny-spinner {
-          width: 18px;
-          height: 18px;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-top-color: #38bdf8;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
+        @keyframes pulseRotate {
+          0% { transform: scale(0.9) rotate(0deg); opacity: 0.8; }
+          50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
+          100% { transform: scale(0.9) rotate(360deg); opacity: 0.8; }
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .generating-text { font-size: 0.85rem; font-weight: 600; color: #64748b; letter-spacing: 0.3px; }
 
-        /* PROPER SOLID BLACK CODE FILE CONTAINER */
-        .dark-code-card {
-          background: #0d1117 !important;
-          border: 1px solid #30363d;
-          border-radius: 12px;
-          overflow: hidden;
-          margin: 10px 0;
-          width: 100%;
-          max-width: 100%;
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        .ai-rendered-img { width: 100%; height: auto; display: block; border-radius: 18px; transition: opacity 0.4s ease; }
+        .ai-rendered-img.hidden { opacity: 0; }
+        .ai-rendered-img.loaded { opacity: 1; }
+
+        /* Fullscreen Image Preview Modal */
+        .image-viewer-modal {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px);
+          z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px;
         }
-        .dark-code-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: #161b22 !important;
-          padding: 8px 12px;
-          border-bottom: 1px solid #30363d;
+        .viewer-content-card {
+          position: relative; max-width: 480px; width: 100%; background: #0f172a;
+          border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 1px solid #1e293b;
         }
-        .file-indicator {
-          display: flex;
-          align-items: center;
-          gap: 6px;
+        .viewer-close-btn {
+          position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6);
+          color: #ffffff; border: none; width: 32px; height: 32px; border-radius: 50%;
+          font-size: 16px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;
         }
-        .dot-circle {
-          width: 9px;
-          height: 9px;
-          border-radius: 50%;
-        }
-        .dot-circle.red { background: #ff5f56; }
-        .dot-circle.yellow { background: #ffbd2e; }
-        .dot-circle.green { background: #27c93f; }
-        .lang-badge-tag {
-          font-size: 0.72rem;
-          font-weight: 700;
-          color: #8b949e;
-          font-family: ui-monospace, SFMono-Regular, monospace;
-          margin-left: 6px;
-        }
-        .copy-icon-btn {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          color: #c9d1d9;
-          padding: 3px 8px;
-          border-radius: 6px;
-          font-size: 0.72rem;
-          cursor: pointer;
-        }
-        .copied-tag {
-          color: #3fb950;
-          font-weight: 600;
-        }
-        .dark-code-scroll {
-          padding: 12px 14px;
-          overflow-x: auto;
-          background: #0d1117 !important;
-          max-width: 100%;
-          -webkit-overflow-scrolling: touch;
-        }
-        .dark-pre-text {
-          margin: 0;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-size: 0.84rem;
-          line-height: 1.5;
-          color: #e6edf3;
-          white-space: pre-wrap;
-          word-break: break-word;
+        .viewer-img-holder { width: 100%; max-height: 70vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; }
+        .viewer-full-img { width: 100%; height: 100%; object-fit: contain; }
+        .viewer-bottom-bar { padding: 14px; background: #1e293b; display: flex; justify-content: center; }
+        .viewer-save-btn {
+          display: inline-flex; align-items: center; gap: 8px; background: #2563eb;
+          color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 12px;
+          font-size: 0.9rem; font-weight: 600;
         }
 
+        /* Floating Media Player */
+        .in-app-media-player {
+          position: fixed; bottom: 84px; right: 14px; width: 280px; height: 180px;
+          background: #0f172a; border-radius: 14px; overflow: hidden;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid #1e293b;
+          z-index: 150; display: flex; flex-direction: column;
+        }
+        .player-top-header {
+          display: flex; justify-content: space-between; align-items: center;
+          background: #1e293b; padding: 5px 10px; color: #f8fafc; font-size: 0.75rem; font-weight: 600;
+        }
+        .track-title-tag { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 220px; }
+        .equalizer-bar { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+        .close-player-btn { background: transparent; border: none; color: #94a3b8; font-size: 1rem; cursor: pointer; }
+        .player-iframe { width: 100%; flex: 1; border: none; }
+
+        .code-container-card { background: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; margin: 8px 0; width: 100%; }
+        .code-card-header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 6px 14px; border-bottom: 1px solid #334155; }
+        .code-lang-label { font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; }
+        .copy-action-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.74rem; cursor: pointer; }
+        .copy-inner { display: flex; align-items: center; gap: 4px; }
+        .copied-text { color: #34d399; font-weight: 600; }
+        .code-pre-block { padding: 12px 14px; margin: 0; color: #e2e8f0; font-family: monospace; font-size: 0.85rem; line-height: 1.5; overflow-x: auto; white-space: pre; }
+        
         .dock-container { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 14px 14px; background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 40%); display: flex; flex-direction: column; align-items: center; z-index: 10; }
-        .attached-photo-preview-bar { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 800px; margin-bottom: 6px; padding: 0 4px; }
+        
+        .attached-photo-preview-bar {
+          display: flex; align-items: center; gap: 10px; width: 100%; max-width: 800px;
+          margin-bottom: 6px; padding: 0 4px;
+        }
         .preview-thumb-box { position: relative; width: 44px; height: 44px; border-radius: 10px; overflow: hidden; border: 1.5px solid #3b82f6; }
         .thumb-img { width: 100%; height: 100%; object-fit: cover; }
-        .remove-thumb-btn { position: absolute; top: 1px; right: 1px; background: rgba(0,0,0,0.7); color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .remove-thumb-btn {
+          position: absolute; top: 1px; right: 1px; background: rgba(0,0,0,0.7);
+          color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px;
+          font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
         .preview-caption-hint { font-size: 0.78rem; color: #4b5563; font-weight: 500; }
 
         .composer-shell { width: 100%; max-width: 800px; background: #ffffff; border-radius: 26px; padding: 6px 12px; display: flex; align-items: flex-end; gap: 8px; border: 1.5px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .composer-shell.typing-active { border-color: transparent; background: linear-gradient(#ffffff, #ffffff) padding-box, linear-gradient(90deg, #2563eb, #9333ea, #ec4899, #06b6d4, #2563eb) border-box; background-size: 100% 100%, 300% 100%; animation: borderGlowFlow 3s linear infinite; }
         @keyframes borderGlowFlow { 0% { background-position: 0% 0%, 0% 50%; } 50% { background-position: 0% 0%, 100% 50%; } 100% { background-position: 0% 0%, 0% 50%; } }
-
+        
         .plus-btn-wrapper { position: relative; display: flex; align-items: center; }
-        .plus-action-btn { width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, transform 0.15s; }
+        .plus-action-btn {
+          width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563;
+          border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
+          transition: background 0.2s, transform 0.15s;
+        }
         .plus-action-btn:hover { background: #e5e7eb; color: #111827; }
-        .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #111827; font-size: 0.95rem; resize: none; max-height: 140px; padding: 6px 0; }
+        .plus-dropdown-menu { bottom: 46px; left: 0; min-width: 190px; }
+        .plus-item { font-size: 0.85rem; font-weight: 500; }
+
+        .composer-shell textarea { flex: 1; background: transparent; border: none; outline: none; color: #111827; font-size: 0.95rem; font-family: inherit; resize: none; max-height: 140px; line-height: 1.35; padding: 6px 0; }
         .composer-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-        .chat-mic-button { width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .mic-active-pulse { background: #dc2626 !important; color: #ffffff !important; animation: micPulse 1.2s infinite ease-in-out; }
-        @keyframes micPulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.2); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); } }
+        
+        .chat-mic-button {
+          width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563;
+          border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .mic-active-pulse {
+          background: #dc2626 !important; color: #ffffff !important;
+          animation: micPulse 1.2s infinite ease-in-out;
+        }
+        @keyframes micPulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+          50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.2); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); }
+        }
 
         .send-button-gemini { width: 34px; height: 34px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
 
-        .image-viewer-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; }
-        .viewer-content-card { position: relative; max-width: 480px; width: 100%; background: #0f172a; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 1px solid #1e293b; }
-        .viewer-close-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); color: #ffffff; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; }
-        .viewer-img-holder { width: 100%; max-height: 70vh; display: flex; align-items: center; justify-content: center; background: #000; }
-        .viewer-full-img { width: 100%; height: 100%; object-fit: contain; }
-        .viewer-bottom-bar { padding: 14px; background: #1e293b; display: flex; justify-content: center; }
-        .viewer-save-btn { background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; }
+        .pin-card-modal { background: #ffffff; border-radius: 20px; padding: 26px 20px; max-width: 320px; width: 100%; text-align: center; }
+        .pin-header h3 { font-size: 1.15rem; font-weight: 700; color: #111827; margin-bottom: 4px; }
+        .pin-header p { font-size: 0.8rem; color: #6b7280; margin-bottom: 18px; }
+        .pin-boxes-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 16px; }
+        .pin-digit-box { width: 46px; height: 50px; text-align: center; font-size: 1.4rem; font-weight: 700; border: 1.5px solid #e5e7eb; border-radius: 12px; outline: none; }
+        .pin-digit-box:focus { border-color: #2563eb; background: #eff6ff; }
+        .pin-error-text { font-size: 0.78rem; color: #dc2626; font-weight: 600; margin-bottom: 10px; }
+        .mode-on-btn { width: 100%; padding: 12px; background: #2563eb; color: #ffffff; font-size: 0.95rem; font-weight: 700; border-radius: 12px; border: none; cursor: pointer; }
+
+        .auth-loading-screen { height: 100dvh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #fff; }
+        .loader-spinner { width: 34px; height: 34px; border: 3px solid #f3f4f6; border-top: 3px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
     </main>
   )
