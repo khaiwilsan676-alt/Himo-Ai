@@ -1,38 +1,28 @@
-// ==========================================
-// HIMO CLEAN KNOWLEDGE & WEB SEARCH ENGINE
-// ==========================================
-
 export async function fetchLiveWebData(query) {
   if (!query) return null;
 
-  // Clean query: remove filler words like 'kya hai', 'what is', 'tell me about'
-  let cleanQuery = query
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .trim();
-
-  const entityQuery = cleanQuery
-    .replace(/\b(kya hai|kya hota hai|batao|kisko bolte hai|what is|define|who is|tell me about|explain)\b/gi, '')
+  const cleanQuery = query
+    .replace(/\b(kya hai|kya hota hai|batao|kisko bolte hai|what is|define|who is|tell me about|explain|meaning of)\b/gi, '')
     .replace(/[?!.,]/g, '')
     .trim();
 
-  const searchQuery = entityQuery.length > 1 ? entityQuery : cleanQuery;
+  const target = cleanQuery.length > 1 ? cleanQuery : query.trim();
 
   try {
-    // 1. Direct Wikipedia REST Summary API (Super fast & ultra clean definition)
-    const summaryRes = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchQuery)}`
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(target)}`
     );
 
-    if (summaryRes.ok) {
-      const data = await summaryRes.json();
+    if (res.ok) {
+      const data = await res.json();
       if (data.extract && data.type !== "disambiguation") {
         return `**${data.title}**\n\n${data.extract}`;
       }
     }
 
-    // 2. Fallback Search API if direct page not found
+    // Search query fallback
     const searchRes = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&utf8=&format=json&origin=*`
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(target)}&utf8=&format=json&origin=*`
     );
 
     if (searchRes.ok) {
@@ -41,7 +31,6 @@ export async function fetchLiveWebData(query) {
 
       if (results.length > 0) {
         const topResult = results[0];
-        // Fetch direct summary of top matched page
         const topPageRes = await fetch(
           `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topResult.title)}`
         );
@@ -53,7 +42,6 @@ export async function fetchLiveWebData(query) {
           }
         }
 
-        // Clean raw snippet fallback
         let cleanSnippet = topResult.snippet
           .replace(/<[^>]+>/g, '')
           .replace(/Wikipedia|Britannica|Dictionary/gi, '')
@@ -67,5 +55,5 @@ export async function fetchLiveWebData(query) {
     console.error("Web Search Error:", err);
   }
 
-  return `Himo:\n\n'${cleanQuery}' ke baare mein koi seedhi jaankari nahi mili. Please topic ka specific naam likhein.`;
+  return null;
 }
