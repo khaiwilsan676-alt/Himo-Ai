@@ -153,7 +153,7 @@ export default function Home() {
     return () => window.removeEventListener("click", handleOutsideClick)
   }, [])
 
-  // Live Camera Handlers
+  // Camera Handlers
   const openLiveCamera = async () => {
     setShowCameraModal(true)
     setCapturedPhoto(null)
@@ -197,11 +197,10 @@ export default function Home() {
     setCapturedPhoto(null)
   }
 
-  // Real Snapshot via HTML2Canvas Loader
+  // Real Screenshot Handler
   const captureScreenshot = () => {
     if (typeof window === "undefined") return
     
-    // Load html2canvas if not present
     const takeSnap = () => {
       if (window.html2canvas) {
         window.html2canvas(document.body).then((canvas) => {
@@ -379,22 +378,26 @@ export default function Home() {
     recognition.start()
   }
 
-  // Play Song / Bhajan inside App Engine
+  // Robust In-App Song / Bhajan Player Engine
   const handleInAppMusicPlay = (query) => {
-    const cleanTrack = query
-      .replace(/^(play|chalao|suno|gana|song|bhajan|lagao)\s+/i, "")
-      .replace(/\b(song|gana|bhajan|music|audio|video|play)\b/gi, "")
+    let cleanTrack = query
+      .replace(/^(play\s+a\s+song|play\s+song|play\s+music|play\s+bhajan|play|chalao|suno|lagao)\s*/i, "")
+      .replace(/\b(please|sunao|chalao|play|karo)\b/gi, "")
       .trim()
 
-    const songTitle = cleanTrack || "Top Bhajan & Music"
-    const embedSearchUrl = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(songTitle)}&autoplay=1`
+    if (!cleanTrack || cleanTrack === "a" || cleanTrack === "song") {
+      cleanTrack = "Hanuman Chalisa"
+    }
+
+    // Use Clean Search Embed Feed that doesn't get blocked
+    const embedUrl = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(cleanTrack)}`
 
     setCurrentTrack({
-      title: songTitle,
-      url: embedSearchUrl
+      title: cleanTrack,
+      url: embedUrl
     })
 
-    return `Playing "${songTitle}" on main screen...`
+    return `Playing "${cleanTrack}" on main screen...`
   }
 
   async function think(prompt) {
@@ -405,7 +408,7 @@ export default function Home() {
       return "Yo! Himo Omni Engine ready hai. Kya solve, play, ya capture karna hai?"
     }
 
-    // 1. In-App Music / Song / Bhajan Player Trigger
+    // 1. In-App Music / Song / Bhajan Player
     if (
       qLower.startsWith("play ") || 
       qLower.includes("gana chalao") || 
@@ -552,7 +555,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* In-App Floating Music / Video Player on Main Screen */}
+      {/* In-App Floating Music Player */}
       {currentTrack && (
         <div className="in-app-media-player">
           <div className="player-top-header">
@@ -560,12 +563,12 @@ export default function Home() {
               <span className="equalizer-bar"></span>
               <span>Playing: {currentTrack.title}</span>
             </div>
-            <button type="button" onClick={() => setCurrentTrack(null)} className="close-player-btn" title="Close Player">✕</button>
+            <button type="button" onClick={() => setCurrentTrack(null)} className="close-player-btn">✕</button>
           </div>
           <iframe 
             src={currentTrack.url} 
             title="Music Player" 
-            allow="autoplay; encrypted-media" 
+            allow="autoplay; encrypted-media; picture-in-picture" 
             className="player-iframe"
           />
         </div>
@@ -676,7 +679,7 @@ export default function Home() {
           </div>
           <div className="settings-container">
             <button type="button" className="settings-icon-btn" onClick={(e) => { e.stopPropagation(); setSettingsMenuOpen(!settingsMenuOpen); }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </button>
             {settingsMenuOpen && (
               <div className="popup-card settings-popup">
@@ -875,7 +878,7 @@ export default function Home() {
         .message-row.assistant .message-bubble { background: transparent; padding: 4px 0; }
         .message-text { font-size: 1rem; line-height: 1.6; color: #1f2937; }
         
-        /* Floating In-App Media Player */
+        /* Floating In-App Media Player Frame */
         .in-app-media-player {
           position: fixed; bottom: 84px; right: 20px; width: 310px; height: 210px;
           background: #0f172a; border-radius: 16px; overflow: hidden;
@@ -887,7 +890,7 @@ export default function Home() {
           background: #1e293b; padding: 6px 12px; color: #f8fafc; font-size: 0.78rem; font-weight: 600;
         }
         .track-title-tag { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 240px; }
-        .equalizer-bar { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulseWave 1s infinite; }
+        .equalizer-bar { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
         .close-player-btn { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; }
         .player-iframe { width: 100%; flex: 1; border: none; }
 
@@ -920,7 +923,7 @@ export default function Home() {
         @keyframes micPulse {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
           50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.2); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); }
         }
 
         .send-button-gemini { width: 36px; height: 36px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
