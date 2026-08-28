@@ -6,6 +6,7 @@ import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { generateCodeFromPrompt } from "../src/lib/codeMasterEngine"
 import { fetchLiveWebData } from "../src/lib/webSearchEngine"
 import { handleDeviceAction } from "../src/lib/deviceControlEngine"
+import { getHumanReply } from "../src/lib/humanTalkEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { 
@@ -56,32 +57,56 @@ function cleanFormatting(text) {
   return text.replace(/\*\*/g, "").replace(/\*/g, "")
 }
 
+// Global Streaming Audio Object (Bypasses WebView restrictions)
+let nativeVoicePlayer = null
+
 function stopVoicePlayback() {
   try {
+    if (nativeVoicePlayer) {
+      nativeVoicePlayer.pause()
+      nativeVoicePlayer.currentTime = 0
+    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel()
     }
   } catch (e) {}
 }
 
+// 100% Guaranteed Audio Speaker for APK & Web
 function speakVoice(text) {
   if (!text || typeof window === "undefined") return
   try {
     stopVoicePlayback()
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.resume()
-      const cleanText = text.replace(/```[\s\S]*?```/g, "Code ready.")
-        .replace(/[#*•_`]/g, "")
-        .trim()
-      if (!cleanText) return
 
-      const utterance = new SpeechSynthesisUtterance(cleanText)
-      utterance.rate = 1.0
-      utterance.lang = "hi-IN"
+    const cleanText = text.replace(/```[\s\S]*?```/g, "Code output ready hai bhai.")
+      .replace(/[#*•_`]/g, "")
+      .trim()
+
+    if (!cleanText) return
+
+    // 1. Direct High-Quality Audio Stream
+    const encoded = encodeURIComponent(cleanText.slice(0, 200))
+    const streamUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=hi&client=tw-ob&q=${encoded}`
+
+    if (!nativeVoicePlayer) {
+      nativeVoicePlayer = new Audio()
+    }
+    nativeVoicePlayer.src = streamUrl
+    nativeVoicePlayer.play().catch(() => {
+      // 2. Fallback to Browser SpeechSynthesis
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.resume()
+        const utterance = new SpeechSynthesisUtterance(cleanText)
+        utterance.rate = 1.0
+        utterance.lang = "hi-IN"
+        window.speechSynthesis.speak(utterance)
+      }
+    })
+  } catch (err) {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text.slice(0, 100))
       window.speechSynthesis.speak(utterance)
     }
-  } catch (err) {
-    console.warn("Audio speech catch:", err)
   }
 }
 
@@ -105,9 +130,6 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false)
 
   // Hardware States
-  const [showCameraModal, setShowCameraModal] = useState(false)
-  const [capturedPhoto, setCapturedPhoto] = useState(null)
-  const [screenshotToast, setScreenshotToast] = useState(null)
   const [currentTrack, setCurrentTrack] = useState(null)
 
   const mediaStreamRef = useRef(null)
@@ -221,7 +243,7 @@ export default function Home() {
       setPinDigits(["", "", "", ""])
       setPinError("")
       setIsTrainingModeActive(true)
-      speakVoice("Training mode activated.")
+      speakVoice("Training mode chaloo ho gaya hai bhai. Kuch bhi sikha ya delete kar.")
     } else {
       setPinError("Galat Password! (5656 enter karein)")
     }
@@ -234,7 +256,7 @@ export default function Home() {
 
       if (lower.includes("clear all memory") || lower.includes("reset memory") || lower.includes("delete all memory")) {
         await clearAllTrainedKnowledge()
-        const reply = "Saari custom trained memory permanently clear ho chuki hai."
+        const reply = "Saari memory permanently clear ho chuki hai bhai!"
         speakVoice(reply)
         return reply
       }
@@ -254,11 +276,11 @@ export default function Home() {
         if (targetQuery) {
           const deletedTopic = await deleteTrainedKnowledge(targetQuery)
           if (deletedTopic) {
-            const reply = `Maine "${deletedTopic}" ki memory permanently dimag se delete kar di hai.`
+            const reply = `Maine "${deletedTopic}" ki memory delete kar di hai bhai!`
             speakVoice(reply)
             return reply
           } else {
-            const reply = `"${targetQuery}" naam ki koi memory nahi mili.`
+            const reply = `"${targetQuery}" naam ki koi memory nahi mili bhai.`
             speakVoice(reply)
             return reply
           }
@@ -273,7 +295,7 @@ export default function Home() {
         const answer = match[2].trim()
 
         await saveTrainedKnowledge(topic, answer)
-        const reply = `Got it! When you say "${topic}", I will say "${answer}". Saved in memory.`
+        const reply = `Got it bhai! Jab bolega "${topic}", main bolunga "${answer}".`
         speakVoice(reply)
         return reply
       }
@@ -281,20 +303,20 @@ export default function Home() {
       const parts = text.split("=")
       if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
         await saveTrainedKnowledge(parts[0].trim(), parts[1].trim())
-        const reply = `Got it! "${parts[0].trim()}" is now permanently learned.`
+        const reply = `Got it bhai! "${parts[0].trim()}" hamesha ke liye yaad kar liya.`
         speakVoice(reply)
         return reply
       }
 
-      const helpMsg = "Bolkar sikhayein: 'When I say [Question] you say [Answer]' ya hatane ke liye bolein: 'Delete [Question]'"
+      const helpMsg = "Bolkar sikha bhai: 'When I say [Question] you say [Answer]'"
       speakVoice(helpMsg)
       return helpMsg
     } catch (e) {
-      return "Command processed."
+      return "Processed bhai."
     }
   }
 
-  // Universal WebView & Browser Voice Engine
+  // Guaranteed Speech Recognition Engine for APK & Web
   const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return
 
@@ -310,21 +332,22 @@ export default function Home() {
     }
 
     try {
-      // 1. Request hardware mic permission (Works in WebView & Chrome)
+      // 1. Hardware Mic Permission & Stream
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         mediaStreamRef.current = stream
       }
 
-      // 2. Initialize Speech Recognition
+      // 2. Setup Speech Recognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
         recognition.continuous = false
         recognition.interimResults = false
-        recognition.lang = "en-US"
+        recognition.lang = "hi-IN" // Native Hindi & English dual recognition
 
         recognition.onstart = () => setIsListening(true)
+        
         recognition.onresult = (event) => {
           try {
             const transcript = event.results[0][0].transcript
@@ -333,12 +356,14 @@ export default function Home() {
             }
           } catch (e) {}
         }
+
         recognition.onend = () => {
           if (mediaStreamRef.current) {
             mediaStreamRef.current.getTracks().forEach(t => t.stop())
           }
           setIsListening(false)
         }
+
         recognition.onerror = () => {
           setIsListening(false)
         }
@@ -346,11 +371,10 @@ export default function Home() {
         recognitionRef.current = recognition
         recognition.start()
       } else {
-        alert("Speech Recognition engine not supported in this Android WebView.")
+        alert("Microphone recognition engine unavailable in this APK view.")
         setIsListening(false)
       }
     } catch (err) {
-      console.warn("Speech error:", err)
       setIsListening(false)
     }
   }
@@ -372,17 +396,20 @@ export default function Home() {
       url: embedUrl
     })
 
-    return `Playing "${cleanTrack}" on main screen...`
+    return `Mast gana "${cleanTrack}" screen par play kar diya bhai!`
   }
 
   async function think(prompt) {
     const q = prompt.trim()
-    const qLower = q.toLowerCase()
 
-    if (['hi', 'hii', 'hello', 'hii himo', 'hi himo', 'hey'].includes(qLower)) {
-      return "Yo! Himo Omni Engine ready hai. Kya solve, play, ya capture karna hai?"
+    // 1. Human Talk & Emotional Engine
+    const humanTalk = getHumanReply(q)
+    if (humanTalk) {
+      return humanTalk
     }
 
+    // 2. In-App Music / Bhajan
+    const qLower = q.toLowerCase()
     if (
       qLower.startsWith("play ") || 
       qLower.includes("gana chalao") || 
@@ -393,32 +420,37 @@ export default function Home() {
       return handleInAppMusicPlay(q)
     }
 
+    // 3. Hardware Actions
     try {
       const deviceAction = await handleDeviceAction(q, null, null)
       if (deviceAction) return deviceAction
     } catch (e) {}
 
+    // 4. Memory
     try {
       const memoryAns = await getTrainedKnowledge(q)
       if (memoryAns) return cleanFormatting(memoryAns)
     } catch (e) {}
 
+    // 5. Math Master
     try {
       const mathResult = MathMasterEngine.evaluate(q)
       if (mathResult) return cleanFormatting(mathResult)
     } catch (e) {}
 
+    // 6. Code Engine
     try {
       const codeResult = generateCodeFromPrompt(q)
       if (codeResult) return codeResult
     } catch (e) {}
 
+    // 7. Web Search Engine
     try {
       const searchData = await fetchLiveWebData(q)
       if (searchData) return cleanFormatting(searchData)
     } catch (e) {}
 
-    return `'${q}' par exact information nahi mili. Specific question poochhein.`
+    return `Bhai '${q}' par exact information nahi mili. Ek baar specific sawaal poochh na!`
   }
 
   async function handleSend(textToSend, isVoice = false) {
@@ -465,16 +497,16 @@ export default function Home() {
         answer = await processTrainingOrDeletion(prompt)
       } else {
         answer = await think(prompt)
-        if (isVoice || (await getTrainedKnowledge(prompt))) {
-          speakVoice(answer)
-        }
       }
+
+      // Har reply par aawaaz se bol kar jawaab dega
+      speakVoice(answer)
 
       const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
       setMessages(finalMsgs)
       await persistChatSession(finalMsgs)
     } catch (error) {
-      const errorMsgs = [...newMsgs, { role: "assistant", content: "Error processing request." }]
+      const errorMsgs = [...newMsgs, { role: "assistant", content: "Kuch issue ho gaya bhai, dubara bolo." }]
       setMessages(errorMsgs)
       await persistChatSession(errorMsgs)
     } finally {
@@ -633,7 +665,7 @@ export default function Home() {
                 <button 
                   type="button" 
                   className="exit-train-btn" 
-                  onClick={() => { setIsTrainingModeActive(false); speakVoice("Training mode closed."); }}
+                  onClick={() => { setIsTrainingModeActive(false); speakVoice("Training mode band kar diya bhai."); }}
                   title="Exit Training Mode"
                 >
                   ✕
@@ -661,7 +693,7 @@ export default function Home() {
               <div className="hero-greeting-left">
                 <span className="gradient-text animated-shimmer">Himo Omni</span>
                 <h1 className="hero-main-title">
-                  {isTrainingModeActive ? "Train me or control apps..." : "How can I help you today?"}
+                  {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "Bol bhai! Kya scene hai aaj?"}
                 </h1>
                 {isTrainingModeActive && (
                   <p className="training-guide-text">
@@ -711,7 +743,7 @@ export default function Home() {
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening to your voice..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Ask Himo, play music, or tap mic...")} 
+              placeholder={isListening ? "Sun raha hoon bhai bol..." : (isTrainingModeActive ? "Train: When I say X you say Y... or Delete X" : "Bol bhai, kuch bhi pooch ya gana sun...")} 
               rows={1} 
             />
             
