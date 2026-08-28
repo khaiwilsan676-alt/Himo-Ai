@@ -62,7 +62,6 @@ function ImageCard({ imageUrl, onImageClick }) {
       {!loaded && (
         <div className="image-generating-skeleton">
           <div className="ai-shimmer-sparkle"></div>
-          <span className="generating-text">Generating visual...</span>
         </div>
       )}
       <img
@@ -623,7 +622,6 @@ export default function Home() {
         onChange={handleImageSelect} 
       />
 
-      {/* Fullscreen Image Preview & Save Modal */}
       {previewModalImg && (
         <div className="image-viewer-modal" onClick={() => setPreviewModalImg(null)}>
           <div className="viewer-content-card" onClick={(e) => e.stopPropagation()}>
@@ -985,20 +983,31 @@ export default function Home() {
         .chat-attached-image-wrapper { margin-bottom: 8px; max-width: 260px; border-radius: 14px; overflow: hidden; cursor: pointer; }
         .user-chat-img { width: 100%; height: auto; display: block; border-radius: 14px; }
 
-        /* Clean AI Image Card & Animation */
+        /* STRICT 60px x 60px COMPACT AI IMAGE CARD */
         .ai-image-wrapper {
-          position: relative; max-width: 340px; width: 100%; min-height: 280px;
-          border-radius: 18px; overflow: hidden; margin: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.12); cursor: pointer;
+          position: relative; 
+          width: 60px !important; 
+          height: 60px !important;
+          min-width: 60px !important;
+          min-height: 60px !important;
+          max-width: 60px !important;
+          max-height: 60px !important;
+          border-radius: 12px; 
+          overflow: hidden; 
+          margin: 4px 0;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+          cursor: pointer;
           background: #f1f5f9;
+          display: inline-block;
+          flex-shrink: 0;
         }
         .image-generating-skeleton {
           position: absolute; inset: 0; background: #e2e8f0;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 12px; z-index: 2;
+          display: flex; align-items: center; justify-content: center;
+          z-index: 2;
         }
         .ai-shimmer-sparkle {
-          width: 42px; height: 42px; border-radius: 50%;
+          width: 20px; height: 20px; border-radius: 50%;
           background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
           animation: pulseRotate 1.5s infinite ease-in-out;
         }
@@ -1007,9 +1016,15 @@ export default function Home() {
           50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
           100% { transform: scale(0.9) rotate(360deg); opacity: 0.8; }
         }
-        .generating-text { font-size: 0.85rem; font-weight: 600; color: #64748b; letter-spacing: 0.3px; }
 
-        .ai-rendered-img { width: 100%; height: auto; display: block; border-radius: 18px; transition: opacity 0.4s ease; }
+        .ai-rendered-img { 
+          width: 100% !important; 
+          height: 100% !important; 
+          object-fit: cover !important; 
+          display: block; 
+          border-radius: 12px; 
+          transition: opacity 0.4s ease; 
+        }
         .ai-rendered-img.hidden { opacity: 0; }
         .ai-rendered-img.loaded { opacity: 1; }
 
