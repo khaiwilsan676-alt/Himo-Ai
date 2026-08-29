@@ -612,6 +612,9 @@ export default function Home() {
 
   return (
     <main className="app-shell">
+      {/* Gemini Live Border Aura Lighting */}
+      <div className={`screen-border-glow ${isListening ? "glow-active" : ""}`} />
+
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
 
@@ -778,7 +781,7 @@ export default function Home() {
                     {typeof msg.content === "object" && msg.content?.type === "code_file" ? (
                       <CodeBlock codeText={msg.content.code} fileName={msg.content.fileName} />
                     ) : typeof msg.content === "string" && msg.content.includes("```") ? (
-                      <CodeBlock codeText={msg.content} fileName="code.txt" />
+                      <CodeBlock codeText="{msg.content}" fileName="code.txt"/>
                     ) : (
                       cleanFormatting(typeof msg.content === "string" ? msg.content : "").split("\n").map((line, i) => (
                         <p key={i}>{line || "\u00A0"}</p>
@@ -843,14 +846,33 @@ export default function Home() {
                 </svg>
               </button>
 
-              <button 
-                type="button" 
-                className={`send-button-gemini ${isTyping ? "active-glow-btn" : ""}`} 
-                disabled={!message.trim() || loading} 
-                onClick={() => handleSend()}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg>
-              </button>
+              {isTyping ? (
+                <button 
+                  type="button" 
+                  className="send-button-gemini active-glow-btn" 
+                  disabled={loading} 
+                  onClick={() => handleSend()}
+                  title="Send message"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  className={`gemini-live-pulse-btn ${isListening ? "live-speaking" : ""}`}
+                  onClick={toggleVoiceRecording}
+                  title="Gemini Live Voice Mode"
+                >
+                  <div className="live-bars-group">
+                    <span className="live-bar bar-1"></span>
+                    <span className="live-bar bar-2"></span>
+                    <span className="live-bar bar-3"></span>
+                    <span className="live-bar bar-4"></span>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -871,6 +893,46 @@ export default function Home() {
           inset: 0;
           padding-top: env(safe-area-inset-top, 0px);
           padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        /* Screen Edge Glowing Border (Gemini Live Aura) */
+        .screen-border-glow {
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 9999;
+          opacity: 0;
+          transition: opacity 0.4s ease-in-out;
+        }
+
+        .screen-border-glow.glow-active {
+          opacity: 1;
+        }
+
+        .screen-border-glow::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          box-sizing: border-box;
+          border: 4px solid transparent;
+          border-radius: 0px;
+          background: 
+            linear-gradient(#fff, #fff) padding-box,
+            linear-gradient(90deg, #2563eb, #9333ea, #ec4899, #06b6d4, #10b981, #f59e0b, #2563eb) border-box;
+          background-size: 100% 100%, 300% 300%;
+          animation: geminiBorderPulse 2.8s linear infinite;
+          -webkit-mask: 
+            linear-gradient(#fff 0 0) content-box, 
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          box-shadow: inset 0 0 25px rgba(37, 99, 235, 0.45), 0 0 30px rgba(236, 72, 153, 0.45);
+        }
+
+        @keyframes geminiBorderPulse {
+          0% { background-position: 0% 0%, 0% 50%; }
+          50% { background-position: 0% 0%, 100% 50%; }
+          100% { background-position: 0% 0%, 0% 50%; }
         }
 
         .world-container canvas {
@@ -990,6 +1052,44 @@ export default function Home() {
         .send-button-gemini { width: 34px; height: 34px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
 
+        /* Gemini Live Waveform Icon Styles */
+        .gemini-live-pulse-btn {
+          width: 34px; height: 34px; border-radius: 50%;
+          background: #f1f5f9; border: 1px solid #e2e8f0;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all 0.2s ease;
+        }
+        .gemini-live-pulse-btn:hover {
+          background: #e2e8f0;
+          transform: scale(1.05);
+        }
+        .live-bars-group {
+          display: flex; align-items: center; justify-content: center;
+          gap: 2.5px; height: 16px;
+        }
+        .live-bar {
+          width: 2.5px; border-radius: 9999px;
+          background: linear-gradient(180deg, #2563eb, #7c3aed);
+          animation: liveWave 1.4s ease-in-out infinite;
+        }
+        .bar-1 { height: 7px; animation-delay: 0.0s; }
+        .bar-2 { height: 14px; animation-delay: 0.2s; }
+        .bar-3 { height: 10px; animation-delay: 0.4s; }
+        .bar-4 { height: 6px; animation-delay: 0.1s; }
+
+        .live-speaking .live-bar {
+          background: linear-gradient(180deg, #ec4899, #ef4444);
+          animation: liveWaveFast 0.6s ease-in-out infinite;
+        }
+        @keyframes liveWave {
+          0%, 100% { transform: scaleY(0.6); opacity: 0.7; }
+          50% { transform: scaleY(1.3); opacity: 1; }
+        }
+        @keyframes liveWaveFast {
+          0%, 100% { transform: scaleY(0.4); }
+          50% { transform: scaleY(1.5); }
+        }
+
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; }
         .pin-card-modal { background: #ffffff; border-radius: 20px; padding: 26px 20px; max-width: 320px; width: 100%; text-align: center; }
         .pin-header h3 { font-size: 1.15rem; font-weight: 700; color: #111827; margin-bottom: 4px; }
@@ -1006,4 +1106,5 @@ export default function Home() {
       `}</style>
     </main>
   )
-    }
+}
+
