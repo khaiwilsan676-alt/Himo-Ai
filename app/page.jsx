@@ -162,12 +162,13 @@ export default function Home() {
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinDigits, setPinDigits] = useState(["", "", "", ""])
   const [pinError, setPinError] = useState("")
-  const [isListening, setIsListening] = useState(false)
   const [currentTrack, setCurrentTrack] = useState(null)
 
-  // Realtime live speech states
-  const [liveTranscript, setLiveTranscript] = useState("")
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false)
+  // Modes State
+  const [isDictating, setIsDictating] = useState(false) // Mic Mode (Dictation Only)
+  const [isLiveMode, setIsLiveMode] = useState(false) // Wave Mode (Two-Way Live Voice)
+  const [liveTranscript, setLiveTranscript] = useState("") // Top subtitle
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false) // Wave AI Speaking State
 
   // World Engine States
   const [showWorld, setShowWorld] = useState(false)
@@ -175,15 +176,26 @@ export default function Home() {
 
   const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
-  const isListeningRef = useRef(false)
+  const isLiveModeRef = useRef(false)
+  const isDictatingRef = useRef(false)
+  const isAiSpeakingRef = useRef(false)
+
   const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const worldContainerRef = useRef(null)
 
   useEffect(() => {
-    isListeningRef.current = isListening
-  }, [isListening])
+    isLiveModeRef.current = isLiveMode
+  }, [isLiveMode])
+
+  useEffect(() => {
+    isDictatingRef.current = isDictating
+  }, [isDictating])
+
+  useEffect(() => {
+    isAiSpeakingRef.current = isAiSpeaking
+  }, [isAiSpeaking])
 
   useEffect(() => {
     try {
@@ -378,83 +390,165 @@ export default function Home() {
     }
   }
 
-  const startListeningSession = async () => {
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  // Helper: Request Mic
+  const initAudioStream = async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !mediaStreamRef.current) {
+      try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         mediaStreamRef.current = stream
-      }
-
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition()
-        recognition.continuous = true
-        recognition.interimResults = true
-        recognition.lang = "hi-IN"
-
-        recognition.onstart = () => {
-          setIsListening(true)
-        }
-
-        recognition.onresult = (event) => {
-          try {
-            let interim = ""
-            let finalTranscript = ""
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-              if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript
-              } else {
-                interim += event.results[i][0].transcript
-              }
-            }
-
-            const currentText = (finalTranscript || interim).trim()
-            if (currentText) {
-              setLiveTranscript(currentText)
-            }
-
-            if (finalTranscript && finalTranscript.trim()) {
-              try { recognition.stop() } catch (e) {}
-              handleSend(finalTranscript.trim(), true)
-            }
-          } catch (e) {}
-        }
-
-        recognition.onend = () => {
-          if (isListeningRef.current) {
-            try { recognition.start() } catch (e) {}
-          } else {
-            if (mediaStreamRef.current) {
-              mediaStreamRef.current.getTracks().forEach(t => t.stop())
-            }
-            setIsListening(false)
-            setLiveTranscript("")
-          }
-        }
-
-        recognition.onerror = () => {
-          if (!isListeningRef.current) {
-            setIsListening(false)
-          }
-        }
-
-        recognitionRef.current = recognition
-        recognition.start()
-      } else {
-        alert("Speech Recognition engine not supported on this device.")
-        setIsListening(false)
-      }
-    } catch (err) {
-      setIsListening(false)
+      } catch (e) {}
     }
   }
 
-  const stopLiveVoice = () => {
-    isListeningRef.current = false
-    setIsListening(false)
-    setLiveTranscript("")
+  // --- 1. MIC ONLY MODE (Listen & Type Realtime in Top Header / Textarea) ---
+  const toggleDictationMode = async () => {
+    if (typeof window === "undefined") return
+
+    if (isLiveMode) {
+      stopLiveMode()
+    }
+
+    if (isDictating) {
+      stopDictationMode()
+      return
+    }
+
+    await initAudioStream()
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.")
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = "hi-IN"
+
+    recognition.onstart = () => {
+      setIsDictating(true)
+    }
+
+    recognition.onresult = (event) => {
+      let currentText = ""
+      for (let i = 0; i < event.results.length; ++i) {
+        currentText += event.results[i][0].transcript
+      }
+      if (currentText) {
+        setLiveTranscript(currentText)
+        setMessage(currentText)
+      }
+    }
+
+    recognition.onend = () => {
+      if (isDictatingRef.current) {
+        try { recognition.start() } catch (e) {}
+      } else {
+        setIsDictating(false)
+      }
+    }
+
+    recognition.onerror = () => {
+      if (!isDictatingRef.current) setIsDictating(false)
+    }
+
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+    } catch (e) {
+      setIsDictating(false)
+    }
+  }
+
+  const stopDictationMode = () => {
+    isDictatingRef.current = false
+    setIsDictating(false)
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop() } catch (e) {}
+    }
+  }
+
+  // --- 2. VOICE WAVE MODE (Continuous Live Two-Way Conversation) ---
+  const toggleLiveMode = async () => {
+    if (typeof window === "undefined") return
+
+    if (isDictating) {
+      stopDictationMode()
+    }
+
+    if (isLiveMode) {
+      stopLiveMode()
+      return
+    }
+
+    await initAudioStream()
+    startLiveRecognition()
+  }
+
+  const startLiveRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.")
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = "hi-IN"
+
+    recognition.onstart = () => {
+      setIsLiveMode(true)
+    }
+
+    recognition.onresult = (event) => {
+      if (isAiSpeakingRef.current) return // AI bol raha hai to ignore karo
+
+      let interim = ""
+      let finalTranscript = ""
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript
+        } else {
+          interim += event.results[i][0].transcript
+        }
+      }
+
+      const activeText = (finalTranscript || interim).trim()
+      if (activeText) {
+        setLiveTranscript(activeText)
+      }
+
+      if (finalTranscript && finalTranscript.trim()) {
+        try { recognition.stop() } catch (e) {}
+        handleSend(finalTranscript.trim(), true)
+      }
+    }
+
+    recognition.onend = () => {
+      if (isLiveModeRef.current && !isAiSpeakingRef.current) {
+        try { recognition.start() } catch (e) {}
+      }
+    }
+
+    recognition.onerror = () => {
+      if (!isLiveModeRef.current) {
+        setIsLiveMode(false)
+      }
+    }
+
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+    } catch (e) {}
+  }
+
+  const stopLiveMode = () => {
+    isLiveModeRef.current = false
+    setIsLiveMode(false)
     setIsAiSpeaking(false)
+    setLiveTranscript("")
     stopVoicePlayback()
 
     if (recognitionRef.current) {
@@ -462,16 +556,7 @@ export default function Home() {
     }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(t => t.stop())
-    }
-  }
-
-  const toggleVoiceRecording = async () => {
-    if (typeof window === "undefined") return
-
-    if (isListening) {
-      stopLiveVoice()
-    } else {
-      startListeningSession()
+      mediaStreamRef.current = null
     }
   }
 
@@ -575,7 +660,7 @@ export default function Home() {
       stopVoicePlayback()
       setCurrentTrack(null)
       setMessage("")
-      if (isVoice) stopLiveVoice()
+      if (isVoice) stopLiveMode()
       return
     }
 
@@ -620,24 +705,31 @@ export default function Home() {
       if (answer === "WORLD_3D_ENGINE") {
         setShowWorld(true)
         const worldMsg = "🌍 3D World Engine activated! Use mouse to rotate and scroll to zoom."
-        speakVoice(worldMsg, () => {
-          if (isListeningRef.current) {
-            try { recognitionRef.current?.start() } catch (e) {}
-          }
-        })
+        if (isVoice || isLiveModeRef.current) {
+          setIsAiSpeaking(true)
+          speakVoice(worldMsg, () => {
+            setIsAiSpeaking(false)
+            if (isLiveModeRef.current) {
+              setLiveTranscript("")
+              try { startLiveRecognition() } catch (e) {}
+            }
+          })
+        }
         const finalMsgs = [...newMsgs, { role: "assistant", content: worldMsg, isWorld: true }]
         setMessages(finalMsgs)
         await persistChatSession(finalMsgs)
       } else {
         if (typeof answer !== "object") {
-          setIsAiSpeaking(true)
-          speakVoice(answer, () => {
-            setIsAiSpeaking(false)
-            if (isListeningRef.current) {
-              setLiveTranscript("")
-              try { recognitionRef.current?.start() } catch (e) {}
-            }
-          })
+          if (isVoice || isLiveModeRef.current) {
+            setIsAiSpeaking(true)
+            speakVoice(answer, () => {
+              setIsAiSpeaking(false)
+              if (isLiveModeRef.current) {
+                setLiveTranscript("")
+                try { startLiveRecognition() } catch (e) {}
+              }
+            })
+          }
         }
         const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
         setMessages(finalMsgs)
@@ -688,8 +780,13 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      {/* Gemini Live Border Aura Lighting Mixing with White */}
-      <div className={`screen-border-glow ${isListening ? "glow-active" : ""}`} />
+      {/* Dynamic Gemini Live Fluid Wave Light around screen */}
+      <div className={`screen-wave-aurora ${isLiveMode ? "aurora-active" : ""}`}>
+        <div className="aurora-beam top-beam"></div>
+        <div className="aurora-beam right-beam"></div>
+        <div className="aurora-beam bottom-beam"></div>
+        <div className="aurora-beam left-beam"></div>
+      </div>
 
       <div className="top-glow-mesh" />
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
@@ -825,8 +922,8 @@ export default function Home() {
             )}
           </div>
 
-          {/* Kikaroo-style Single Line Realtime Header Subtitle */}
-          {isListening && liveTranscript && (
+          {/* Top Header Live Realtime Subtitle for Dictation / Live */}
+          {(isDictating || isLiveMode) && liveTranscript && (
             <div className="header-live-transcript-pill">
               <span className="live-typing-dot"></span>
               <span className="live-transcript-text truncate">{liveTranscript}</span>
@@ -906,27 +1003,27 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Live Bottom Control Capsule when Voice Mode is ON */}
-        {isListening ? (
+        {/* Live Bottom All-Blue Floating Widget with Cross Button */}
+        {isLiveMode ? (
           <div className="gemini-live-bottom-dock">
-            <div className="gemini-live-capsule">
-              <div className="capsule-visualizer">
-                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
-                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
-                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
-                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
-                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
+            <div className="gemini-live-capsule-blue">
+              <div className="capsule-blue-visualizer">
+                <span className="blue-wave-bar bar-1"></span>
+                <span className="blue-wave-bar bar-2"></span>
+                <span className="blue-wave-bar bar-3"></span>
+                <span className="blue-wave-bar bar-4"></span>
+                <span className="blue-wave-bar bar-5"></span>
               </div>
-              <span className="live-status-label">
-                {isAiSpeaking ? "Himo speaking..." : (liveTranscript ? "Listening..." : "Speak now...")}
+              <span className="capsule-blue-label">
+                {isAiSpeaking ? "Himo speaking..." : (liveTranscript ? "Listening..." : "Live listening...")}
               </span>
               <button 
                 type="button" 
-                className="live-close-circle-btn" 
-                onClick={stopLiveVoice}
-                title="End Live Session"
+                className="capsule-blue-close-btn" 
+                onClick={stopLiveMode}
+                title="Exit Live Mode"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
@@ -941,16 +1038,17 @@ export default function Home() {
                 value={message} 
                 onChange={(e) => setMessage(e.target.value)} 
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-                placeholder={isTrainingModeActive ? "Train mode..." : "Ask Himo..."} 
+                placeholder={isDictating ? "Listening and typing..." : (isTrainingModeActive ? "Train mode..." : "Ask Himo...")} 
                 rows={1} 
               />
               
               <div className="composer-actions">
+                {/* 1. Mic Button: Only Listens & Types */}
                 <button
                   type="button"
-                  className="chat-mic-button"
-                  onClick={toggleVoiceRecording}
-                  title="Voice Input"
+                  className={`chat-mic-button ${isDictating ? "dictate-active-pulse" : ""}`}
+                  onClick={toggleDictationMode}
+                  title="Voice Type (Dictation)"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
@@ -958,6 +1056,7 @@ export default function Home() {
                   </svg>
                 </button>
 
+                {/* 2. Text Present -> Send Button | Empty Text -> All Blue Voice Wave Mode */}
                 {isTyping ? (
                   <button 
                     type="button" 
@@ -973,15 +1072,15 @@ export default function Home() {
                 ) : (
                   <button 
                     type="button" 
-                    className="gemini-live-pulse-btn"
-                    onClick={toggleVoiceRecording}
-                    title="Gemini Live Voice Mode"
+                    className="gemini-live-pulse-btn-blue"
+                    onClick={toggleLiveMode}
+                    title="Himo Live Conversation"
                   >
-                    <div className="live-bars-group">
-                      <span className="live-bar bar-1"></span>
-                      <span className="live-bar bar-2"></span>
-                      <span className="live-bar bar-3"></span>
-                      <span className="live-bar bar-4"></span>
+                    <div className="live-bars-group-blue">
+                      <span className="live-bar-blue bar-1"></span>
+                      <span className="live-bar-blue bar-2"></span>
+                      <span className="live-bar-blue bar-3"></span>
+                      <span className="live-bar-blue bar-4"></span>
                     </div>
                   </button>
                 )}
@@ -1008,51 +1107,70 @@ export default function Home() {
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
 
-        /* Screen Edge Glowing Border Mixing With White */
-        .screen-border-glow {
+        /* Fluid Gemini Live Edge Wave Aurora */
+        .screen-wave-aurora {
           position: fixed;
           inset: 0;
           pointer-events: none;
           z-index: 9999;
           opacity: 0;
-          transition: opacity 0.4s ease-in-out;
+          transition: opacity 0.5s ease-in-out;
         }
 
-        .screen-border-glow.glow-active {
+        .screen-wave-aurora.aurora-active {
           opacity: 1;
         }
 
-        .screen-border-glow::before {
-          content: "";
+        .aurora-beam {
           position: absolute;
-          inset: 0;
-          box-sizing: border-box;
-          border: 4.5px solid transparent;
-          background: 
-            linear-gradient(#ffffff, #ffffff) padding-box,
-            linear-gradient(90deg, #ffffff, #38bdf8, #818cf8, #ffffff, #ec4899, #60a5fa, #ffffff) border-box;
-          background-size: 100% 100%, 300% 300%;
-          animation: geminiBorderWave 3s linear infinite;
-          -webkit-mask: 
-            linear-gradient(#fff 0 0) content-box, 
-            linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.9), 0 0 35px rgba(96, 165, 250, 0.4);
+          filter: blur(18px);
+          opacity: 0.85;
         }
 
-        @keyframes geminiBorderWave {
-          0% { background-position: 0% 0%, 0% 50%; }
-          50% { background-position: 0% 0%, 100% 50%; }
-          100% { background-position: 0% 0%, 0% 50%; }
+        .top-beam {
+          top: -12px; left: 0; right: 0; height: 35px;
+          background: linear-gradient(90deg, transparent, #ffffff, #60a5fa, #3b82f6, #ffffff, transparent);
+          background-size: 200% 100%;
+          animation: waveBeamFlow 2.8s ease-in-out infinite alternate;
         }
 
-        /* Top Header Realtime Subtitle Pill */
+        .bottom-beam {
+          bottom: -12px; left: 0; right: 0; height: 35px;
+          background: linear-gradient(90deg, transparent, #3b82f6, #60a5fa, #ffffff, #2563eb, transparent);
+          background-size: 200% 100%;
+          animation: waveBeamFlow 2.8s ease-in-out infinite alternate-reverse;
+        }
+
+        .left-beam {
+          top: 0; bottom: 0; left: -12px; width: 35px;
+          background: linear-gradient(180deg, transparent, #ffffff, #3b82f6, #60a5fa, transparent);
+          background-size: 100% 200%;
+          animation: waveBeamFlowVert 3s ease-in-out infinite alternate;
+        }
+
+        .right-beam {
+          top: 0; bottom: 0; right: -12px; width: 35px;
+          background: linear-gradient(180deg, transparent, #60a5fa, #ffffff, #2563eb, transparent);
+          background-size: 100% 200%;
+          animation: waveBeamFlowVert 3s ease-in-out infinite alternate-reverse;
+        }
+
+        @keyframes waveBeamFlow {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 100% 50%; }
+        }
+
+        @keyframes waveBeamFlowVert {
+          0% { background-position: 50% 0%; }
+          100% { background-position: 50% 100%; }
+        }
+
+        /* Top Header Live Transcript Pill */
         .header-live-transcript-pill {
           max-width: 48%;
-          background: rgba(243, 244, 246, 0.92);
+          background: rgba(243, 244, 246, 0.95);
           backdrop-filter: blur(8px);
-          border: 1px solid #e5e7eb;
+          border: 1px solid #dbeafe;
           padding: 5px 12px;
           border-radius: 9999px;
           display: flex;
@@ -1072,8 +1190,8 @@ export default function Home() {
 
         .live-transcript-text {
           font-size: 0.82rem;
-          color: #1f2937;
-          font-weight: 500;
+          color: #1e3a8a;
+          font-weight: 600;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1084,10 +1202,10 @@ export default function Home() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Live Bottom Floating Capsule */
+        /* Live Bottom All-Blue Floating Widget with Cross Button */
         .gemini-live-bottom-dock {
           position: absolute;
-          bottom: 16px;
+          bottom: 20px;
           left: 0;
           right: 0;
           display: flex;
@@ -1097,16 +1215,16 @@ export default function Home() {
           padding: 0 16px;
         }
 
-        .gemini-live-capsule {
-          background: #0f172a;
+        .gemini-live-capsule-blue {
+          background: linear-gradient(135deg, #1d4ed8, #2563eb, #1e40af);
           color: #ffffff;
-          padding: 8px 16px;
+          padding: 8px 10px 8px 16px;
           border-radius: 9999px;
           display: flex;
           align-items: center;
-          gap: 14px;
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25), 0 0 15px rgba(56, 189, 248, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          gap: 12px;
+          box-shadow: 0 10px 25px rgba(29, 78, 216, 0.4), 0 0 18px rgba(96, 165, 250, 0.35);
+          border: 1.5px solid rgba(255, 255, 255, 0.35);
           animation: capsulePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
@@ -1115,59 +1233,112 @@ export default function Home() {
           to { transform: translateY(0) scale(1); opacity: 1; }
         }
 
-        .capsule-visualizer {
+        .capsule-blue-visualizer {
           display: flex;
           align-items: center;
           gap: 3px;
-          height: 20px;
+          height: 22px;
         }
 
-        .wave-bar {
-          width: 3px;
+        .blue-wave-bar {
+          width: 3.5px;
           border-radius: 9999px;
-          background: #38bdf8;
-          animation: capsuleWave 1.2s ease-in-out infinite;
+          background: #ffffff;
+          animation: liveBlueWave 1.1s ease-in-out infinite;
         }
 
-        .wave-bar:nth-child(1) { height: 6px; animation-delay: 0.0s; }
-        .wave-bar:nth-child(2) { height: 16px; animation-delay: 0.15s; }
-        .wave-bar:nth-child(3) { height: 22px; animation-delay: 0.3s; }
-        .wave-bar:nth-child(4) { height: 14px; animation-delay: 0.45s; }
-        .wave-bar:nth-child(5) { height: 8px; animation-delay: 0.2s; }
+        .blue-wave-bar.bar-1 { height: 7px; animation-delay: 0.0s; }
+        .blue-wave-bar.bar-2 { height: 16px; animation-delay: 0.15s; }
+        .blue-wave-bar.bar-3 { height: 22px; animation-delay: 0.3s; }
+        .blue-wave-bar.bar-4 { height: 14px; animation-delay: 0.45s; }
+        .blue-wave-bar.bar-5 { height: 8px; animation-delay: 0.2s; }
 
-        .wave-bar.ai-speaking {
-          background: #ec4899;
-          animation-duration: 0.7s;
-        }
-
-        @keyframes capsuleWave {
-          0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+        @keyframes liveBlueWave {
+          0%, 100% { transform: scaleY(0.4); opacity: 0.7; }
           50% { transform: scaleY(1.3); opacity: 1; }
         }
 
-        .live-status-label {
-          font-size: 0.86rem;
-          font-weight: 500;
-          color: #f8fafc;
+        .capsule-blue-label {
+          font-size: 0.88rem;
+          font-weight: 600;
+          color: #ffffff;
           letter-spacing: 0.2px;
         }
 
-        .live-close-circle-btn {
-          width: 30px;
-          height: 30px;
+        .capsule-blue-close-btn {
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.15);
+          background: rgba(255, 255, 255, 0.22);
           border: none;
           color: #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: background 0.2s, transform 0.2s;
         }
 
-        .live-close-circle-btn:hover {
-          background: rgba(239, 68, 68, 0.8);
+        .capsule-blue-close-btn:hover {
+          background: rgba(255, 255, 255, 0.4);
+          transform: scale(1.08);
+        }
+
+        /* Mic Button Dictation Pulse */
+        .dictate-active-pulse {
+          background: #2563eb !important;
+          color: #ffffff !important;
+          animation: dictatePulse 1.2s infinite ease-in-out;
+        }
+
+        @keyframes dictatePulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+          50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.0); }
+        }
+
+        /* All-Blue Gemini Wave Button inside Input */
+        .gemini-live-pulse-btn-blue {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: #eff6ff;
+          border: 1.5px solid #bfdbfe;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .gemini-live-pulse-btn-blue:hover {
+          background: #dbeafe;
+          transform: scale(1.06);
+        }
+
+        .live-bars-group-blue {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2.5px;
+          height: 16px;
+        }
+
+        .live-bar-blue {
+          width: 2.5px;
+          border-radius: 9999px;
+          background: #2563eb;
+          animation: liveWaveBlue 1.3s ease-in-out infinite;
+        }
+
+        .live-bar-blue.bar-1 { height: 6px; animation-delay: 0.0s; }
+        .live-bar-blue.bar-2 { height: 14px; animation-delay: 0.2s; }
+        .live-bar-blue.bar-3 { height: 10px; animation-delay: 0.4s; }
+        .live-bar-blue.bar-4 { height: 5px; animation-delay: 0.1s; }
+
+        @keyframes liveWaveBlue {
+          0%, 100% { transform: scaleY(0.5); opacity: 0.7; }
+          50% { transform: scaleY(1.3); opacity: 1; }
         }
 
         .world-container canvas {
@@ -1277,36 +1448,6 @@ export default function Home() {
 
         .send-button-gemini { width: 34px; height: 34px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
-
-        /* Gemini Live Waveform Icon Styles */
-        .gemini-live-pulse-btn {
-          width: 34px; height: 34px; border-radius: 50%;
-          background: #f1f5f9; border: 1px solid #e2e8f0;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; transition: all 0.2s ease;
-        }
-        .gemini-live-pulse-btn:hover {
-          background: #e2e8f0;
-          transform: scale(1.05);
-        }
-        .live-bars-group {
-          display: flex; align-items: center; justify-content: center;
-          gap: 2.5px; height: 16px;
-        }
-        .live-bar {
-          width: 2.5px; border-radius: 9999px;
-          background: linear-gradient(180deg, #2563eb, #7c3aed);
-          animation: liveWave 1.4s ease-in-out infinite;
-        }
-        .bar-1 { height: 7px; animation-delay: 0.0s; }
-        .bar-2 { height: 14px; animation-delay: 0.2s; }
-        .bar-3 { height: 10px; animation-delay: 0.4s; }
-        .bar-4 { height: 6px; animation-delay: 0.1s; }
-
-        @keyframes liveWave {
-          0%, 100% { transform: scaleY(0.6); opacity: 0.7; }
-          50% { transform: scaleY(1.3); opacity: 1; }
-        }
 
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; }
         .pin-card-modal { background: #ffffff; border-radius: 20px; padding: 26px 20px; max-width: 320px; width: 100%; text-align: center; }
