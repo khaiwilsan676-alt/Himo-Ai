@@ -98,8 +98,11 @@ async function stopVoicePlayback() {
   } catch (e) {}
 }
 
-async function speakVoice(text) {
-  if (!text || typeof window === "undefined") return
+async function speakVoice(text, onEndCallback = null) {
+  if (!text || typeof window === "undefined") {
+    if (onEndCallback) onEndCallback()
+    return
+  }
   try {
     await stopVoicePlayback()
 
@@ -107,7 +110,10 @@ async function speakVoice(text) {
       .replace(/[#*•_`]/g, "")
       .trim()
 
-    if (!cleanText) return
+    if (!cleanText) {
+      if (onEndCallback) onEndCallback()
+      return
+    }
 
     try {
       const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
@@ -119,6 +125,7 @@ async function speakVoice(text) {
         volume: 1.0,
         category: "ambient"
       })
+      if (onEndCallback) onEndCallback()
       return
     } catch (nativeErr) {}
 
@@ -127,9 +134,17 @@ async function speakVoice(text) {
       const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 250))
       utterance.rate = 1.0
       utterance.lang = "hi-IN"
+      if (onEndCallback) {
+        utterance.onend = () => onEndCallback()
+        utterance.onerror = () => onEndCallback()
+      }
       window.speechSynthesis.speak(utterance)
+    } else {
+      if (onEndCallback) onEndCallback()
     }
-  } catch (err) {}
+  } catch (err) {
+    if (onEndCallback) onEndCallback()
+  }
 }
 
 export default function Home() {
@@ -150,16 +165,25 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false)
   const [currentTrack, setCurrentTrack] = useState(null)
 
+  // Realtime live speech states
+  const [liveTranscript, setLiveTranscript] = useState("")
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false)
+
   // World Engine States
   const [showWorld, setShowWorld] = useState(false)
   const [worldEngineInstance, setWorldEngineInstance] = useState(null)
 
   const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
+  const isListeningRef = useRef(false)
   const pinInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const worldContainerRef = useRef(null)
+
+  useEffect(() => {
+    isListeningRef.current = isListening
+  }, [isListening])
 
   useEffect(() => {
     try {
@@ -354,20 +378,7 @@ export default function Home() {
     }
   }
 
-  const toggleVoiceRecording = async () => {
-    if (typeof window === "undefined") return
-
-    if (isListening) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop() } catch (e) {}
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(t => t.stop())
-      }
-      setIsListening(false)
-      return
-    }
-
+  const startListeningSession = async () => {
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -377,28 +388,56 @@ export default function Home() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
-        recognition.continuous = false
-        recognition.interimResults = false
+        recognition.continuous = true
+        recognition.interimResults = true
         recognition.lang = "hi-IN"
 
-        recognition.onstart = () => setIsListening(true)
+        recognition.onstart = () => {
+          setIsListening(true)
+        }
+
         recognition.onresult = (event) => {
           try {
-            const transcript = event.results[0][0].transcript
-            if (transcript && transcript.trim()) {
-              handleSend(transcript.trim(), true)
+            let interim = ""
+            let finalTranscript = ""
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript
+              } else {
+                interim += event.results[i][0].transcript
+              }
+            }
+
+            const currentText = (finalTranscript || interim).trim()
+            if (currentText) {
+              setLiveTranscript(currentText)
+            }
+
+            if (finalTranscript && finalTranscript.trim()) {
+              try { recognition.stop() } catch (e) {}
+              handleSend(finalTranscript.trim(), true)
             }
           } catch (e) {}
         }
 
         recognition.onend = () => {
-          if (mediaStreamRef.current) {
-            mediaStreamRef.current.getTracks().forEach(t => t.stop())
+          if (isListeningRef.current) {
+            try { recognition.start() } catch (e) {}
+          } else {
+            if (mediaStreamRef.current) {
+              mediaStreamRef.current.getTracks().forEach(t => t.stop())
+            }
+            setIsListening(false)
+            setLiveTranscript("")
           }
-          setIsListening(false)
         }
 
-        recognition.onerror = () => setIsListening(false)
+        recognition.onerror = () => {
+          if (!isListeningRef.current) {
+            setIsListening(false)
+          }
+        }
 
         recognitionRef.current = recognition
         recognition.start()
@@ -408,6 +447,31 @@ export default function Home() {
       }
     } catch (err) {
       setIsListening(false)
+    }
+  }
+
+  const stopLiveVoice = () => {
+    isListeningRef.current = false
+    setIsListening(false)
+    setLiveTranscript("")
+    setIsAiSpeaking(false)
+    stopVoicePlayback()
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop() } catch (e) {}
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(t => t.stop())
+    }
+  }
+
+  const toggleVoiceRecording = async () => {
+    if (typeof window === "undefined") return
+
+    if (isListening) {
+      stopLiveVoice()
+    } else {
+      startListeningSession()
     }
   }
 
@@ -511,6 +575,7 @@ export default function Home() {
       stopVoicePlayback()
       setCurrentTrack(null)
       setMessage("")
+      if (isVoice) stopLiveVoice()
       return
     }
 
@@ -555,13 +620,24 @@ export default function Home() {
       if (answer === "WORLD_3D_ENGINE") {
         setShowWorld(true)
         const worldMsg = "🌍 3D World Engine activated! Use mouse to rotate and scroll to zoom."
-        speakVoice(worldMsg)
+        speakVoice(worldMsg, () => {
+          if (isListeningRef.current) {
+            try { recognitionRef.current?.start() } catch (e) {}
+          }
+        })
         const finalMsgs = [...newMsgs, { role: "assistant", content: worldMsg, isWorld: true }]
         setMessages(finalMsgs)
         await persistChatSession(finalMsgs)
       } else {
         if (typeof answer !== "object") {
-          speakVoice(answer)
+          setIsAiSpeaking(true)
+          speakVoice(answer, () => {
+            setIsAiSpeaking(false)
+            if (isListeningRef.current) {
+              setLiveTranscript("")
+              try { recognitionRef.current?.start() } catch (e) {}
+            }
+          })
         }
         const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
         setMessages(finalMsgs)
@@ -612,7 +688,7 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      {/* Gemini Live Border Aura Lighting */}
+      {/* Gemini Live Border Aura Lighting Mixing with White */}
       <div className={`screen-border-glow ${isListening ? "glow-active" : ""}`} />
 
       <div className="top-glow-mesh" />
@@ -749,6 +825,14 @@ export default function Home() {
             )}
           </div>
 
+          {/* Kikaroo-style Single Line Realtime Header Subtitle */}
+          {isListening && liveTranscript && (
+            <div className="header-live-transcript-pill">
+              <span className="live-typing-dot"></span>
+              <span className="live-transcript-text truncate">{liveTranscript}</span>
+            </div>
+          )}
+
           <div className="top-right-actions">
             <button type="button" className="icon-btn" onClick={(e) => { e.stopPropagation(); setTopMenuOpen(!topMenuOpen); }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg></button>
             {topMenuOpen && (
@@ -822,60 +906,89 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="dock-container">
-          <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
-            <textarea 
-              ref={textareaRef} 
-              value={message} 
-              onChange={(e) => setMessage(e.target.value)} 
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-              placeholder={isListening ? "Listening..." : (isTrainingModeActive ? "Train mode..." : "Ask Himo...")} 
-              rows={1} 
-            />
-            
-            <div className="composer-actions">
-              <button
-                type="button"
-                className={`chat-mic-button ${isListening ? "mic-active-pulse" : ""}`}
-                onClick={toggleVoiceRecording}
-                title="Voice Input"
+        {/* Live Bottom Control Capsule when Voice Mode is ON */}
+        {isListening ? (
+          <div className="gemini-live-bottom-dock">
+            <div className="gemini-live-capsule">
+              <div className="capsule-visualizer">
+                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
+                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
+                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
+                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
+                <span className={`wave-bar ${isAiSpeaking ? "ai-speaking" : "listening"}`}></span>
+              </div>
+              <span className="live-status-label">
+                {isAiSpeaking ? "Himo speaking..." : (liveTranscript ? "Listening..." : "Speak now...")}
+              </span>
+              <button 
+                type="button" 
+                className="live-close-circle-btn" 
+                onClick={stopLiveVoice}
+                title="End Live Session"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
-
-              {isTyping ? (
-                <button 
-                  type="button" 
-                  className="send-button-gemini active-glow-btn" 
-                  disabled={loading} 
-                  onClick={() => handleSend()}
-                  title="Send message"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                  </svg>
-                </button>
-              ) : (
-                <button 
-                  type="button" 
-                  className={`gemini-live-pulse-btn ${isListening ? "live-speaking" : ""}`}
-                  onClick={toggleVoiceRecording}
-                  title="Gemini Live Voice Mode"
-                >
-                  <div className="live-bars-group">
-                    <span className="live-bar bar-1"></span>
-                    <span className="live-bar bar-2"></span>
-                    <span className="live-bar bar-3"></span>
-                    <span className="live-bar bar-4"></span>
-                  </div>
-                </button>
-              )}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="dock-container">
+            <div className={`composer-shell ${isTyping ? "typing-active" : ""}`}>
+              <textarea 
+                ref={textareaRef} 
+                value={message} 
+                onChange={(e) => setMessage(e.target.value)} 
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
+                placeholder={isTrainingModeActive ? "Train mode..." : "Ask Himo..."} 
+                rows={1} 
+              />
+              
+              <div className="composer-actions">
+                <button
+                  type="button"
+                  className="chat-mic-button"
+                  onClick={toggleVoiceRecording}
+                  title="Voice Input"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </button>
+
+                {isTyping ? (
+                  <button 
+                    type="button" 
+                    className="send-button-gemini active-glow-btn" 
+                    disabled={loading} 
+                    onClick={() => handleSend()}
+                    title="Send message"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button 
+                    type="button" 
+                    className="gemini-live-pulse-btn"
+                    onClick={toggleVoiceRecording}
+                    title="Gemini Live Voice Mode"
+                  >
+                    <div className="live-bars-group">
+                      <span className="live-bar bar-1"></span>
+                      <span className="live-bar bar-2"></span>
+                      <span className="live-bar bar-3"></span>
+                      <span className="live-bar bar-4"></span>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <style jsx>{`
@@ -895,7 +1008,7 @@ export default function Home() {
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
 
-        /* Screen Edge Glowing Border (Gemini Live Aura) */
+        /* Screen Edge Glowing Border Mixing With White */
         .screen-border-glow {
           position: fixed;
           inset: 0;
@@ -914,25 +1027,147 @@ export default function Home() {
           position: absolute;
           inset: 0;
           box-sizing: border-box;
-          border: 4px solid transparent;
-          border-radius: 0px;
+          border: 4.5px solid transparent;
           background: 
-            linear-gradient(#fff, #fff) padding-box,
-            linear-gradient(90deg, #2563eb, #9333ea, #ec4899, #06b6d4, #10b981, #f59e0b, #2563eb) border-box;
+            linear-gradient(#ffffff, #ffffff) padding-box,
+            linear-gradient(90deg, #ffffff, #38bdf8, #818cf8, #ffffff, #ec4899, #60a5fa, #ffffff) border-box;
           background-size: 100% 100%, 300% 300%;
-          animation: geminiBorderPulse 2.8s linear infinite;
+          animation: geminiBorderWave 3s linear infinite;
           -webkit-mask: 
             linear-gradient(#fff 0 0) content-box, 
             linear-gradient(#fff 0 0);
           -webkit-mask-composite: xor;
           mask-composite: exclude;
-          box-shadow: inset 0 0 25px rgba(37, 99, 235, 0.45), 0 0 30px rgba(236, 72, 153, 0.45);
+          box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.9), 0 0 35px rgba(96, 165, 250, 0.4);
         }
 
-        @keyframes geminiBorderPulse {
+        @keyframes geminiBorderWave {
           0% { background-position: 0% 0%, 0% 50%; }
           50% { background-position: 0% 0%, 100% 50%; }
           100% { background-position: 0% 0%, 0% 50%; }
+        }
+
+        /* Top Header Realtime Subtitle Pill */
+        .header-live-transcript-pill {
+          max-width: 48%;
+          background: rgba(243, 244, 246, 0.92);
+          backdrop-filter: blur(8px);
+          border: 1px solid #e5e7eb;
+          padding: 5px 12px;
+          border-radius: 9999px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          animation: fadeIn 0.25s ease;
+        }
+
+        .live-typing-dot {
+          width: 7px;
+          height: 7px;
+          min-width: 7px;
+          border-radius: 50%;
+          background: #2563eb;
+          animation: blink 0.9s infinite;
+        }
+
+        .live-transcript-text {
+          font-size: 0.82rem;
+          color: #1f2937;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Live Bottom Floating Capsule */
+        .gemini-live-bottom-dock {
+          position: absolute;
+          bottom: 16px;
+          left: 0;
+          right: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 10000;
+          padding: 0 16px;
+        }
+
+        .gemini-live-capsule {
+          background: #0f172a;
+          color: #ffffff;
+          padding: 8px 16px;
+          border-radius: 9999px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25), 0 0 15px rgba(56, 189, 248, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          animation: capsulePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes capsulePop {
+          from { transform: translateY(20px) scale(0.9); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .capsule-visualizer {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          height: 20px;
+        }
+
+        .wave-bar {
+          width: 3px;
+          border-radius: 9999px;
+          background: #38bdf8;
+          animation: capsuleWave 1.2s ease-in-out infinite;
+        }
+
+        .wave-bar:nth-child(1) { height: 6px; animation-delay: 0.0s; }
+        .wave-bar:nth-child(2) { height: 16px; animation-delay: 0.15s; }
+        .wave-bar:nth-child(3) { height: 22px; animation-delay: 0.3s; }
+        .wave-bar:nth-child(4) { height: 14px; animation-delay: 0.45s; }
+        .wave-bar:nth-child(5) { height: 8px; animation-delay: 0.2s; }
+
+        .wave-bar.ai-speaking {
+          background: #ec4899;
+          animation-duration: 0.7s;
+        }
+
+        @keyframes capsuleWave {
+          0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+          50% { transform: scaleY(1.3); opacity: 1; }
+        }
+
+        .live-status-label {
+          font-size: 0.86rem;
+          font-weight: 500;
+          color: #f8fafc;
+          letter-spacing: 0.2px;
+        }
+
+        .live-close-circle-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.15);
+          border: none;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .live-close-circle-btn:hover {
+          background: rgba(239, 68, 68, 0.8);
         }
 
         .world-container canvas {
@@ -943,8 +1178,8 @@ export default function Home() {
 
         .top-glow-mesh { position: absolute; top: 0; left: 0; right: 0; height: 35vh; pointer-events: none; z-index: 1; background: radial-gradient(circle at 15% 30%, rgba(96, 165, 250, 0.4), transparent 60%), radial-gradient(circle at 45% 20%, rgba(244, 114, 182, 0.35), transparent 55%), radial-gradient(circle at 75% 35%, rgba(52, 211, 153, 0.3), transparent 55%), radial-gradient(circle at 90% 15%, rgba(192, 132, 252, 0.35), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 100%); filter: blur(24px); }
         .workspace { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; width: 100%; z-index: 2; overflow: hidden; }
-        .topbar { height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; position: relative; flex-shrink: 0; }
-        .left-nav { display: flex; align-items: center; gap: 10px; }
+        .topbar { height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; position: relative; flex-shrink: 0; gap: 8px; }
+        .left-nav { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .brand-name { font-size: 1.2rem; font-weight: 700; color: #111827; }
 
         .training-active-tag {
@@ -1039,15 +1274,6 @@ export default function Home() {
           width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; color: #4b5563;
           border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
-        .mic-active-pulse {
-          background: #dc2626 !important; color: #ffffff !important;
-          animation: micPulse 1.2s infinite ease-in-out;
-        }
-        @keyframes micPulse {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
-          50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.2); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); }
-        }
 
         .send-button-gemini { width: 34px; height: 34px; border-radius: 50%; background: #111827; color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .active-glow-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); }
@@ -1077,17 +1303,9 @@ export default function Home() {
         .bar-3 { height: 10px; animation-delay: 0.4s; }
         .bar-4 { height: 6px; animation-delay: 0.1s; }
 
-        .live-speaking .live-bar {
-          background: linear-gradient(180deg, #ec4899, #ef4444);
-          animation: liveWaveFast 0.6s ease-in-out infinite;
-        }
         @keyframes liveWave {
           0%, 100% { transform: scaleY(0.6); opacity: 0.7; }
           50% { transform: scaleY(1.3); opacity: 1; }
-        }
-        @keyframes liveWaveFast {
-          0%, 100% { transform: scaleY(0.4); }
-          50% { transform: scaleY(1.5); }
         }
 
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; }
