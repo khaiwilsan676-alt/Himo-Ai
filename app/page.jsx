@@ -103,6 +103,7 @@ async function speakVoice(text, onEndCallback = null) {
     if (onEndCallback) onEndCallback()
     return
   }
+
   try {
     await stopVoicePlayback()
 
@@ -118,7 +119,7 @@ async function speakVoice(text, onEndCallback = null) {
     try {
       const { TextToSpeech } = await import("@capacitor-community/text-to-speech")
       await TextToSpeech.speak({
-        text: cleanText.slice(0, 250),
+        text: cleanText.slice(0, 300),
         lang: "hi-IN",
         rate: 1.0,
         pitch: 1.0,
@@ -130,14 +131,26 @@ async function speakVoice(text, onEndCallback = null) {
     } catch (nativeErr) {}
 
     if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel()
       window.speechSynthesis.resume()
-      const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 250))
+
+      const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 300))
       utterance.rate = 1.0
       utterance.lang = "hi-IN"
-      if (onEndCallback) {
-        utterance.onend = () => onEndCallback()
-        utterance.onerror = () => onEndCallback()
+
+      let callbackFired = false
+      const safeCallback = () => {
+        if (!callbackFired) {
+          callbackFired = true
+          if (onEndCallback) onEndCallback()
+        }
       }
+
+      utterance.onend = safeCallback
+      utterance.onerror = safeCallback
+
+      setTimeout(safeCallback, 8000)
+
       window.speechSynthesis.speak(utterance)
     } else {
       if (onEndCallback) onEndCallback()
@@ -164,17 +177,16 @@ export default function Home() {
   const [pinError, setPinError] = useState("")
   const [currentTrack, setCurrentTrack] = useState(null)
 
-  // Modes State
-  const [isDictating, setIsDictating] = useState(false) // Mic Mode (Dictation Only)
-  const [isLiveMode, setIsLiveMode] = useState(false) // Wave Mode (Two-Way Live Voice)
-  const [liveTranscript, setLiveTranscript] = useState("") // Top subtitle
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false) // Wave AI Speaking State
+  // Voice States
+  const [isDictating, setIsDictating] = useState(false)
+  const [isLiveMode, setIsLiveMode] = useState(false)
+  const [liveTranscript, setLiveTranscript] = useState("")
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false)
 
   // World Engine States
   const [showWorld, setShowWorld] = useState(false)
   const [worldEngineInstance, setWorldEngineInstance] = useState(null)
 
-  const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
   const isLiveModeRef = useRef(false)
   const isDictatingRef = useRef(false)
@@ -390,53 +402,46 @@ export default function Home() {
     }
   }
 
-  // Helper: Request Mic
-  const initAudioStream = async () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !mediaStreamRef.current) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        mediaStreamRef.current = stream
-      } catch (e) {}
-    }
+  // --- Recognition Factory ---
+  const createSpeechInstance = () => {
+    if (typeof window === "undefined") return null
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) return null
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = "hi-IN"
+    return recognition
   }
 
   // --- 1. MIC ONLY MODE (Listen & Type Realtime in Top Header / Textarea) ---
-  const toggleDictationMode = async () => {
-    if (typeof window === "undefined") return
-
-    if (isLiveMode) {
-      stopLiveMode()
-    }
+  const toggleDictationMode = () => {
+    if (isLiveMode) stopLiveMode()
 
     if (isDictating) {
       stopDictationMode()
       return
     }
 
-    await initAudioStream()
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser.")
+    const recognition = createSpeechInstance()
+    if (!recognition) {
+      alert("Microphone speech recognition is not supported on this browser.")
       return
     }
 
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = "hi-IN"
-
-    recognition.onstart = () => {
-      setIsDictating(true)
-    }
+    recognitionRef.current = recognition
+    setIsDictating(true)
 
     recognition.onresult = (event) => {
-      let currentText = ""
+      let fullTranscript = ""
       for (let i = 0; i < event.results.length; ++i) {
-        currentText += event.results[i][0].transcript
+        fullTranscript += event.results[i][0].transcript
       }
-      if (currentText) {
-        setLiveTranscript(currentText)
-        setMessage(currentText)
+      const clean = fullTranscript.trim()
+      if (clean) {
+        setLiveTranscript(clean)
+        setMessage(clean)
       }
     }
 
@@ -448,11 +453,12 @@ export default function Home() {
       }
     }
 
-    recognition.onerror = () => {
-      if (!isDictatingRef.current) setIsDictating(false)
+    recognition.onerror = (e) => {
+      if (e.error !== "no-speech") {
+        setIsDictating(false)
+      }
     }
 
-    recognitionRef.current = recognition
     try {
       recognition.start()
     } catch (e) {
@@ -465,44 +471,45 @@ export default function Home() {
     setIsDictating(false)
     if (recognitionRef.current) {
       try { recognitionRef.current.stop() } catch (e) {}
+      recognitionRef.current = null
     }
   }
 
   // --- 2. VOICE WAVE MODE (Continuous Live Two-Way Conversation) ---
-  const toggleLiveMode = async () => {
-    if (typeof window === "undefined") return
-
-    if (isDictating) {
-      stopDictationMode()
-    }
+  const toggleLiveMode = () => {
+    if (isDictating) stopDictationMode()
 
     if (isLiveMode) {
       stopLiveMode()
       return
     }
 
-    await initAudioStream()
-    startLiveRecognition()
+    setIsLiveMode(true)
+    setIsAiSpeaking(true)
+
+    // Voice Greetings when opening Live Wave Mode
+    speakVoice("Hi I'm Himo, tell me your question, I can assist you", () => {
+      setIsAiSpeaking(false)
+      if (isLiveModeRef.current) {
+        startLiveCycle()
+      }
+    })
   }
 
-  const startLiveRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser.")
+  const startLiveCycle = () => {
+    if (isAiSpeakingRef.current) return
+
+    const recognition = createSpeechInstance()
+    if (!recognition) {
+      alert("Live Voice is not supported on this browser.")
+      setIsLiveMode(false)
       return
     }
 
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = "hi-IN"
-
-    recognition.onstart = () => {
-      setIsLiveMode(true)
-    }
+    recognitionRef.current = recognition
 
     recognition.onresult = (event) => {
-      if (isAiSpeakingRef.current) return // AI bol raha hai to ignore karo
+      if (isAiSpeakingRef.current) return
 
       let interim = ""
       let finalTranscript = ""
@@ -532,13 +539,13 @@ export default function Home() {
       }
     }
 
-    recognition.onerror = () => {
-      if (!isLiveModeRef.current) {
-        setIsLiveMode(false)
+    recognition.onerror = (e) => {
+      if (e.error === "not-allowed") {
+        alert("Microphone permission allowed nahi hai bhai! Settings me check karo.")
+        stopLiveMode()
       }
     }
 
-    recognitionRef.current = recognition
     try {
       recognition.start()
     } catch (e) {}
@@ -553,10 +560,7 @@ export default function Home() {
 
     if (recognitionRef.current) {
       try { recognitionRef.current.stop() } catch (e) {}
-    }
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop())
-      mediaStreamRef.current = null
+      recognitionRef.current = null
     }
   }
 
@@ -711,7 +715,7 @@ export default function Home() {
             setIsAiSpeaking(false)
             if (isLiveModeRef.current) {
               setLiveTranscript("")
-              try { startLiveRecognition() } catch (e) {}
+              setTimeout(startLiveCycle, 200)
             }
           })
         }
@@ -726,7 +730,7 @@ export default function Home() {
               setIsAiSpeaking(false)
               if (isLiveModeRef.current) {
                 setLiveTranscript("")
-                try { startLiveRecognition() } catch (e) {}
+                setTimeout(startLiveCycle, 200)
               }
             })
           }
@@ -951,6 +955,35 @@ export default function Home() {
                   {isTrainingModeActive ? "Kuch naya sikha ya delete kar bhai..." : "How can I help you today?"}
                 </h1>
               </div>
+
+              {/* Single Row 3 Modern Action Cards */}
+              {!isTrainingModeActive && (
+                <div className="hero-cards-row">
+                  <div className="hero-action-card" onClick={() => handleSend("Calculate 25 * 48 + 120 / 4")}>
+                    <div className="card-icon-bubble math-bubble">📐</div>
+                    <div className="card-info">
+                      <h3>Maths Master</h3>
+                      <p>Solve complex equations & calculations</p>
+                    </div>
+                  </div>
+
+                  <div className="hero-action-card" onClick={() => handleSend("Explain quantum computing in simple words")}>
+                    <div className="card-icon-bubble qa-bubble">💡</div>
+                    <div className="card-info">
+                      <h3>Q & A</h3>
+                      <p>Ask smart questions & get accurate answers</p>
+                    </div>
+                  </div>
+
+                  <div className="hero-action-card live-card" onClick={toggleLiveMode}>
+                    <div className="card-icon-bubble live-bubble">🎙️</div>
+                    <div className="card-info">
+                      <h3>Live Conversation</h3>
+                      <p>Real-time instant voice chat with Himo</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1163,6 +1196,79 @@ export default function Home() {
         @keyframes waveBeamFlowVert {
           0% { background-position: 50% 0%; }
           100% { background-position: 50% 100%; }
+        }
+
+        /* Hero Cards Row */
+        .hero-cards-row {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-top: 24px;
+          width: 100%;
+        }
+
+        .hero-action-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 14px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          cursor: pointer;
+          transition: all 0.22s ease-in-out;
+        }
+
+        .hero-action-card:hover {
+          background: #ffffff;
+          border-color: #93c5fd;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+        }
+
+        .hero-action-card.live-card {
+          border-color: #bfdbfe;
+          background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+        }
+
+        .card-icon-bubble {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.1rem;
+        }
+
+        .math-bubble { background: #dbeafe; }
+        .qa-bubble { background: #fef3c7; }
+        .live-bubble { background: #e0e7ff; }
+
+        .card-info h3 {
+          font-size: 0.92rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 2px;
+        }
+
+        .card-info p {
+          font-size: 0.74rem;
+          color: #64748b;
+          line-height: 1.35;
+        }
+
+        @media (max-width: 600px) {
+          .hero-cards-row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+          .hero-action-card {
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+          }
         }
 
         /* Top Header Live Transcript Pill */
