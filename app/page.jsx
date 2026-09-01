@@ -98,8 +98,8 @@ async function stopVoicePlayback() {
   } catch (e) {}
 }
 
-async function speakVoice(text, onEndCallback = null) {
-  if (!text || typeof window === "undefined") {
+async function speakVoice(textInput, onEndCallback = null) {
+  if (!textInput || typeof window === "undefined") {
     if (onEndCallback) onEndCallback()
     return
   }
@@ -107,13 +107,34 @@ async function speakVoice(text, onEndCallback = null) {
   try {
     await stopVoicePlayback()
 
-    const cleanText = text.replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
-      .replace(/[#*•_`]/g, "")
+    let rawText = textInput
+    if (typeof textInput === "object") {
+      if (textInput.type === "code_file") {
+        rawText = "Code bana diya hai bhai! Interactive code box check karo."
+      } else if (textInput.code) {
+        rawText = "Code write kar diya hai bhai."
+      } else {
+        rawText = JSON.stringify(textInput)
+      }
+    }
+
+    const cleanText = String(rawText)
+      .replace(/```[\s\S]*?```/g, "Code bana diya hai bhai.")
+      .replace(/[#*•_`~]/g, "")
+      .replace(/\s+/g, " ")
       .trim()
 
     if (!cleanText) {
       if (onEndCallback) onEndCallback()
       return
+    }
+
+    let callbackFired = false
+    const safeCallback = () => {
+      if (!callbackFired) {
+        callbackFired = true
+        if (onEndCallback) onEndCallback()
+      }
     }
 
     try {
@@ -126,7 +147,7 @@ async function speakVoice(text, onEndCallback = null) {
         volume: 1.0,
         category: "ambient"
       })
-      if (onEndCallback) onEndCallback()
+      safeCallback()
       return
     } catch (nativeErr) {}
 
@@ -136,24 +157,32 @@ async function speakVoice(text, onEndCallback = null) {
 
       const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 300))
       utterance.rate = 1.0
-      utterance.lang = "hi-IN"
+      utterance.pitch = 1.0
 
-      let callbackFired = false
-      const safeCallback = () => {
-        if (!callbackFired) {
-          callbackFired = true
-          if (onEndCallback) onEndCallback()
-        }
+      // Select best natural voice (Hindi hi-IN or English en-IN/en-US)
+      const voices = window.speechSynthesis.getVoices()
+      const preferredVoice = voices.find(v => v.lang.includes("hi-IN") || v.lang.includes("hi_IN")) ||
+                             voices.find(v => v.lang.includes("en-IN") || v.lang.includes("en_IN")) ||
+                             voices.find(v => v.lang.includes("en-US")) ||
+                             voices[0]
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice
+        utterance.lang = preferredVoice.lang
+      } else {
+        utterance.lang = "hi-IN"
       }
 
       utterance.onend = safeCallback
       utterance.onerror = safeCallback
 
-      setTimeout(safeCallback, 8000)
+      // Dynamic calculation for safety timeout callback
+      const estimatedTimeout = Math.max(3000, cleanText.length * 100 + 2000)
+      setTimeout(safeCallback, estimatedTimeout)
 
       window.speechSynthesis.speak(utterance)
     } else {
-      if (onEndCallback) onEndCallback()
+      safeCallback()
     }
   } catch (err) {
     if (onEndCallback) onEndCallback()
@@ -594,7 +623,13 @@ export default function Home() {
     }
 
     // Code Generation Check - Code Engine
-    const codeKeywords = ['code', 'kode', 'program', 'script', 'function', 'app', 'application', 'calculator', 'game', 'website', 'webpage', 'html', 'css', 'python', 'react', 'javascript', 'java', 'todo', 'form', 'database', 'sql', 'banao', 'make', 'create', 'generate', 'likho', 'write']
+    const codeKeywords = [
+      'code', 'kode', 'program', 'script', 'function', 'app', 'application',
+      'calculator', 'game', 'website', 'webpage', 'html', 'css', 'python',
+      'react', 'javascript', 'js', 'java', 'todo', 'form', 'database', 'sql',
+      'banao', 'make', 'create', 'generate', 'likho', 'write', 'snake',
+      'component', 'node', 'express', 'cpp', 'c++', 'c#', 'php', 'bash'
+    ]
     
     if (codeKeywords.some(keyword => qLower.includes(keyword))) {
       try {
@@ -604,7 +639,7 @@ export default function Home() {
           return {
             type: "code_file",
             code: generatedCode,
-            fileName: codeEngine.fileName
+            fileName: codeEngine.fileName || "code.txt"
           }
         }
       } catch (e) {}
@@ -723,17 +758,15 @@ export default function Home() {
         setMessages(finalMsgs)
         await persistChatSession(finalMsgs)
       } else {
-        if (typeof answer !== "object") {
-          if (isVoice || isLiveModeRef.current) {
-            setIsAiSpeaking(true)
-            speakVoice(answer, () => {
-              setIsAiSpeaking(false)
-              if (isLiveModeRef.current) {
-                setLiveTranscript("")
-                setTimeout(startLiveCycle, 200)
-              }
-            })
-          }
+        if (isVoice || isLiveModeRef.current) {
+          setIsAiSpeaking(true)
+          speakVoice(answer, () => {
+            setIsAiSpeaking(false)
+            if (isLiveModeRef.current) {
+              setLiveTranscript("")
+              setTimeout(startLiveCycle, 200)
+            }
+          })
         }
         const finalMsgs = [...newMsgs, { role: "assistant", content: answer }]
         setMessages(finalMsgs)
@@ -995,7 +1028,7 @@ export default function Home() {
                     {typeof msg.content === "object" && msg.content?.type === "code_file" ? (
                       <CodeBlock codeText={msg.content.code} fileName={msg.content.fileName} />
                     ) : typeof msg.content === "string" && msg.content.includes("```") ? (
-                      <CodeBlock codeText="{msg.content}" fileName="code.txt"/>
+                      <CodeBlock codeText={msg.content} fileName="code.txt"/>
                     ) : (
                       cleanFormatting(typeof msg.content === "string" ? msg.content : "").split("\n").map((line, i) => (
                         <p key={i}>{line || "\u00A0"}</p>
