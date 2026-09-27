@@ -2,134 +2,27 @@
 
 import { useState, useRef, useEffect } from "react"
 import LoginPage from "../components/LoginPage"
-import MathMasterEngine from "../src/lib/mathMasterEngine"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import WorldEngine from "../src/lib/WorldEngine"
-import CodeEngine from "../src/lib/CodeEngine"
 
-// Advanced AI Response Engine
-async function think(prompt) {
-  const q = prompt.trim()
-  const qLower = q.toLowerCase()
+// Open-language AI client. The backend automatically selects the response style from the user's request.
+async function think(prompt, history = []) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: prompt,
+      history: history.slice(-20)
+    })
+  });
 
-  // Greetings
-  if (['hi', 'hii', 'hello', 'hey', 'hii himo', 'hi himo', 'namaste', 'hola'].includes(qLower)) {
-    return "👋 Hello! Main Himo Omni hoon - aapka advanced AI assistant.\n\nMain yeh kar sakta hoon:\n• 💬 General baatein aur sawaal\n• 🧮 Math calculations\n• 🌍 3D World explore\n• 📚 Wikipedia search\n• 💻 Code generate karna\n• 💡 Knowledge share\n\nAap kya jaanna chahenge?"
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok && !data.response) {
+    throw new Error(data?.error || "AI request failed");
   }
 
-  // How are you
-  if (qLower.includes('how are you') || qLower.includes('kaise ho') || qLower.includes('kya haal')) {
-    return "Main bilkul badhiya hoon! 🤖✨\n\nHamesha ready hoon aapki help karne ke liye. Aap batao, aaj kya karna hai?"
-  }
-
-  // Who are you
-  if (qLower.includes('who are you') || qLower.includes('tum kaun') || qLower.includes('what are you') || qLower.includes('tum kya')) {
-    return "🤖 Main Himo Omni V17.1 hoon!\n\nMain ek advanced AI assistant hoon jo:\n\n✨ Features:\n• Real-time Wikipedia search\n• Advanced math calculations\n• 3D World Engine\n• Code Generation Engine\n• Multiple language support\n• Smart conversation\n\nAap mujhse kuch bhi pooch sakte ho!"
-  }
-
-  // Thank you
-  if (qLower.includes('thank') || qLower.includes('thanks') || qLower.includes('dhanyavad') || qLower.includes('shukriya')) {
-    return "🙏 Aapka swagat hai!\n\nAgar aur koi sawaal ho toh bina jhijhak poochiye. Main hamesha yahan hoon aapki madad ke liye! 😊"
-  }
-
-  // What can you do
-  if (qLower.includes('what can you do') || qLower.includes('kya kar sakte') || qLower.includes('features') || qLower.includes('help')) {
-    return "🚀 Himo Omni ke Features:\n\n1. 📚 Live Wikipedia Search\n2. 🧮 Math Engine\n3. 🌍 3D World Engine\n4. 💻 Code Generator\n5. 💬 Smart Conversation\n\nCode generate karne ke liye likho:\n• \"Make a calculator\"\n• \"Python code banao\"\n• \"HTML form create karo\"\n• \"React todo app\""
-  }
-
-  // Code Generation Check
-  const codeKeywords = ['code', 'kode', 'program', 'script', 'function', 'app', 'application', 'calculator', 'game', 'website', 'webpage', 'html', 'css', 'python', 'react', 'javascript', 'java', 'todo', 'form', 'database', 'sql']
-  
-  if (codeKeywords.some(keyword => qLower.includes(keyword)) && 
-      ['banao', 'make', 'create', 'generate', 'likho', 'write', 'code', 'program'].some(word => qLower.includes(word))) {
-    return "CODE_ENGINE";
-  }
-
-  // World Map Check
-  if (qLower.includes('world') || qLower.includes('3d world') || qLower.includes('world map') || qLower.includes('map') || qLower.includes('3d map') || qLower.includes('earth') || qLower.includes('terrain')) {
-    return "WORLD_3D_ENGINE"
-  }
-
-  // Time check
-  if (qLower.includes('time') || qLower.includes('samay') || qLower.includes('baje')) {
-    const now = new Date()
-    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    return `🕐 Current Time: ${timeStr}\n📅 Aaj ki date: ${dateStr}`
-  }
-
-  // Date check
-  if (qLower.includes('date') || qLower.includes('aaj ki date') || qLower.includes('tarikh') || qLower.includes('din')) {
-    const now = new Date()
-    const dateStr = now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    return `📅 Aaj ki date: ${dateStr}`
-  }
-
-  // Jokes
-  if (qLower.includes('joke') || qLower.includes('chutkula') || qLower.includes('hasi') || qLower.includes('funny')) {
-    const jokes = [
-      "😄 Teacher: \"Baccho, Mumbai kahan hai?\"\nStudent: \"Sir, mere paas hai!\"\nTeacher: \"Kya?!\"\nStudent: \"Mumbai meri jaan!\"",
-      "🤣 Santa: \"Doctor sahab, mujhe roz subah 6 baje bathroom jana hota hai.\"\nDoctor: \"Toh problem kya hai?\"\nSanta: \"Meri neend 7 baje khulti hai!\"",
-      "😆 Pappu: \"Mummy, aaj school mein sab bachon ne mujhe patthar mara.\"\nMummy: \"Toh tune wapas nahi mara?\"\nPappu: \"Wapas kya marta, wahan patthar hi khatam ho gaye!\""
-    ]
-    const randomJoke = jokes[Math.floor(Math.random() * jokes.length)]
-    return randomJoke
-  }
-
-  // Motivation
-  if (qLower.includes('motivat') || qLower.includes('prerna') || qLower.includes('himmat') || qLower.includes('motivation')) {
-    return "💪 Motivation for you:\n\n\"Success ka koi shortcut nahi hota. Har successful insaan ke peeche mehnat, lagan aur consistency hoti hai.\"\n\nRemember:\n• 🌟 Believe in yourself\n• 🎯 Stay focused on your goals\n• 🚀 Never give up\n• 💪 Hard work always pays off"
-  }
-
-  // 1. Math Calculation Check
-  const mathPattern = /^[0-9+\-*/÷×().\s*%^$€]+$/
-  const hasOperatorOrDigits = /[0-9]/.test(q) && /[+\-*/÷×%^$€]/.test(q)
-
-  if (mathPattern.test(q) && hasOperatorOrDigits) {
-    try {
-      const calcResult = MathMasterEngine.evaluate(q)
-      if (typeof calcResult === "number" && !isNaN(calcResult)) {
-        return `🧮 Calculation Result:\n\n${q} = ${calcResult}`
-      }
-    } catch (e) {
-      // Evaluation fallback to search
-    }
-  }
-
-  // 2. Wikipedia Live Search Logic
-  try {
-    const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=&format=json&origin=*`)
-    if (res.ok) {
-      const data = await res.json()
-      const searchResults = data?.query?.search || []
-      if (searchResults.length > 0) {
-        const queryKeywords = qLower.split(" ").filter(w => w.length > 2)
-        const matchedSnippets = searchResults
-          .map(item => {
-            let text = item.snippet.replace(/<[^>]+>/g, '')
-            text = text.replace(/Wikipedia|Merriam-Webster|Britannica|Dictionary/gi, '')
-            return text.replace(/\s{2,}/g, ' ').trim()
-          })
-          .filter(snippet => {
-            if (snippet.length < 20) return false
-            const snipLower = snippet.toLowerCase()
-            return queryKeywords.some(kw => snipLower.includes(kw))
-          })
-          .slice(0, 3)
-
-        if (matchedSnippets.length > 0) {
-          let output = "📚 According to Himo:\n\n"
-          matchedSnippets.forEach(s => { output += `• ${s}\n\n` })
-          return output.trim()
-        }
-      }
-    }
-  } catch (err) {
-    console.error("Search fetch error:", err)
-  }
-
-  return `🤔 According to Himo:\n\n'${q}' par koi exact information nahi mili.\n\nTry karo:\n• "Make a calculator" - Code generate hoga\n• "World map" - 3D world dekho\n• "15 * 25" - Math calculation\n• Ya koi aur sawaal poocho!`
+  return data.response || "I could not generate a response. Please try again.";
 }
 
 export default function Home() {
@@ -198,26 +91,9 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const answer = await think(prompt)
-      
-      if (answer === "WORLD_3D_ENGINE") {
-        setShowWorld(true)
-        setMessages((current) => [...current, { 
-          role: "assistant", 
-          content: "🌍 3D World Engine activated! Use mouse to rotate and scroll to zoom.",
-          isWorld: true 
-        }])
-      } else if (answer === "CODE_ENGINE") {
-        const codeEngine = new CodeEngine()
-        const generatedCode = codeEngine.generateCode(prompt)
-        setMessages((current) => [...current, { 
-          role: "assistant", 
-          content: `💻 Generated Code:\n\n${generatedCode}`,
-          isCode: true 
-        }])
-      } else {
-        setMessages((current) => [...current, { role: "assistant", content: answer }])
-      }
+      const conversationHistory = messages.slice(-20)
+      const answer = await think(prompt, conversationHistory)
+      setMessages((current) => [...current, { role: "assistant", content: answer }])
     } catch (error) {
       setMessages((current) => [...current, { role: "assistant", content: "Error processing request." }])
     } finally {
