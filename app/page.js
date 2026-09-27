@@ -5,11 +5,19 @@ import LoginPage from "../components/LoginPage"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import WorldEngine from "../src/lib/WorldEngine"
-import { findAnswer } from "../components/Himoanswer"
+import { findAnswer, shouldUseWebSearch } from "../components/Himoanswer"
 
-// Fast local Himo response engine — no external AI API.
+// Local-first Himo. Web search is used only when the prompt clearly needs fresh/external information.
 async function think(prompt) {
-  return findAnswer(prompt)
+  if (!shouldUseWebSearch(prompt)) return findAnswer(prompt)
+
+  try {
+    const response = await fetch("/api/search?q=" + encodeURIComponent(prompt), { cache: "no-store" })
+    const data = await response.json()
+    return data.answer || findAnswer(prompt)
+  } catch {
+    return findAnswer(prompt)
+  }
 }
 
 export default function Home() {
