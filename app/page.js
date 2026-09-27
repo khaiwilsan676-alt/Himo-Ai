@@ -5,24 +5,11 @@ import LoginPage from "../components/LoginPage"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import WorldEngine from "../src/lib/WorldEngine"
+import { findAnswer } from "../components/Himoanswer"
 
-// Open-language AI client. The backend automatically selects the response style from the user's request.
-async function think(prompt, history = []) {
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query: prompt,
-      history: history.slice(-20)
-    })
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok && !data.response) {
-    throw new Error(data?.error || "AI request failed");
-  }
-
-  return data.response || "I could not generate a response. Please try again.";
+// Fast local Himo response engine — no external AI API.
+async function think(prompt) {
+  return findAnswer(prompt)
 }
 
 export default function Home() {
@@ -91,11 +78,10 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const conversationHistory = messages.slice(-20)
-      const answer = await think(prompt, conversationHistory)
+      const answer = await think(prompt)
       setMessages((current) => [...current, { role: "assistant", content: answer }])
     } catch (error) {
-      setMessages((current) => [...current, { role: "assistant", content: "Error processing request." }])
+      setMessages((current) => [...current, { role: "assistant", content: "Something went wrong. Please try again." }])
     } finally {
       setLoading(false)
     }
