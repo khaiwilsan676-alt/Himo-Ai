@@ -239,6 +239,66 @@ export function findAnswer(question) {
   ]
   for (const [pattern, answer] of rules) if (pattern.test(q)) return answer
 
+  // Expanded everyday Q&A — local Himo knowledge, no external AI API.
+  const expanded = [
+    [/\b(good morning|gm)\b/, "Good morning bhai ☀️ Aaj kya karna hai?"],
+    [/\b(good night|gn)\b/, "Good night bhai 🌙 Achhi neend lena!"],
+    [/\b(good evening)\b/, "Good evening bhai 😊 Kya help chahiye?"],
+    [/\b(who made you|who created you|kisne banaya|tumhe kisne banaya)\b/, "Mujhe Himo ke own local answer engine ke roop mein build kiya gaya hai. Main external AI API par depend nahi karta."],
+    [/\b(are you real|kya tum real ho|are you human|kya tum insaan ho)\b/, "Main human nahi hoon; main Himo ka software-based AI assistant hoon."],
+    [/\b(do you sleep|sote ho|do you eat|khana khate ho)\b/, "Nahi 😄 Main software hoon, isliye mujhe sleep ya food ki zarurat nahi hoti."],
+    [/\b(do you remember|yaad rakhte ho|remember me)\b/, "Main is chat mein available context ke basis par conversation follow kar sakta hoon."],
+    [/\b(help me|meri help|madad karo|help chahiye)\b/, "Bilkul bhai 🤝 Problem batao — main step-by-step help karunga."],
+    [/\b(why|kyu|kyun|because)\b/, "Why ka answer situation par depend karta hai. Pura question bhejo, main reason simple language mein explain karunga."],
+    [/\b(how|kaise|kis tarah)\b/, "Kaise karna hai uska exact task bhejo; main steps mein explain karunga."],
+    [/\b(when|kab)\b/, "Kab ka exact answer event ya situation par depend karta hai. Topic/date batao."],
+    [/\b(where|kahan|kidhar)\b/, "Location ka exact answer place aur context par depend karta hai. Kis cheez ki location chahiye?"],
+    [/\b(which|kaunsa|kaunsi|konsa)\b/, "Options bhejo, main unke differences clearly compare kar dunga bina guess kiye."],
+    [/\b(can i|kya main|may i)\b/, "Haan, context batao. Main possible options, requirements aur risks samjha dunga."],
+    [/\b(should i|mujhe kya karna chahiye|kya karu)\b/, "Situation batao bhai. Main pros, cons aur practical options clearly rakhunga."],
+    [/\b(what is love|love kya hai|pyaar kya hai)\b/, "Love ek strong emotional connection, care, trust aur attachment ka combination ho sakta hai. Har person ka experience alag hota hai."],
+    [/\b(what is friendship|dosti kya hai)\b/, "Friendship trust, respect, support aur shared connection par based relationship hoti hai."],
+    [/\b(what is life|zindagi kya hai)\b/, "Life ko biological sense mein living organism ka existence kaha ja sakta hai; philosophical sense mein iska meaning har person ke liye alag ho sakta hai."],
+    [/\b(what is success|success kya hai)\b/, "Success ka meaning universal nahi hai. Kisi ke liye goals achieve karna, kisi ke liye learning, stability ya personal happiness ho sakta hai."],
+    [/\b(what is failure|failure kya hai)\b/, "Failure usually expected result na milne ko kehte hain. Isse feedback lekar approach improve ki ja sakti hai."],
+    [/\b(what is time|time kya hai)\b/, "Time events ke sequence aur duration ko describe karne ka concept hai."],
+    [/\b(what is energy|energy kya hai)\b/, "Energy work karne ki capacity ko describe karti hai. Iske forms kinetic, potential, thermal, chemical aur electrical ho sakte hain."],
+    [/\b(what is gravity|gravity kya hai)\b/, "Gravity mass wali objects ke beech attraction hai. Earth ki gravity objects ko surface ki taraf accelerate karti hai."],
+    [/\b(what is internet|internet kya hai)\b/, "Internet interconnected computer networks ka global system hai jo devices ko data exchange karne deta hai."],
+    [/\b(what is website|website kya hai)\b/, "Website related web pages aur resources ka collection hoti hai jo browser ke through access ki ja sakti hai."],
+    [/\b(what is app|application kya hai|app kya hai)\b/, "App ek software application hai jo kisi specific task ya service ke liye banayi jaati hai."],
+    [/\b(what is database|database kya hai)\b/, "Database structured data ko store, organize aur retrieve karne ke liye use hota hai."],
+    [/\b(what is api|api kya hai)\b/, "API software components ke beech communication ka defined interface hota hai."],
+    [/\b(what is algorithm|algorithm kya hai)\b/, "Algorithm kisi problem ko solve karne ke liye ordered, finite steps ka procedure hota hai."],
+    [/\b(what is variable|variable kya hai)\b/, "Programming mein variable ek named storage/reference hota hai jisme value rakhi ya access ki ja sakti hai."],
+    [/\b(what is array|array kya hai)\b/, "Array elements ka ordered collection hota hai, usually same data type ke values ko efficiently store/access karne ke liye."],
+    [/\b(what is stack|stack kya hai)\b/, "Stack LIFO data structure hai: last inserted item sabse pehle remove hota hai."],
+    [/\b(what is queue|queue kya hai)\b/, "Queue FIFO data structure hai: first inserted item sabse pehle remove hota hai."],
+    [/\b(what is binary tree|binary tree kya hai)\b/, "Binary tree mein har node ke maximum two children hote hain: left aur right."],
+    [/\b(what is string|string kya hai)\b/, "Programming mein string characters ka sequence hota hai, jaise 'Himo'."],
+    [/\b(what is html|html kya hai)\b/, "HTML web page ki structure aur content define karne ke liye markup language hai."],
+    [/\b(what is css|css kya hai)\b/, "CSS web pages ki presentation, layout, spacing, fonts aur visual styling control karta hai."],
+    [/\b(what is javascript|javascript kya hai)\b/, "JavaScript web aur other environments mein interactive behavior aur application logic ke liye use hone wali programming language hai."],
+    [/\b(what is react|react kya hai)\b/, "React UI banane ke liye component-based JavaScript library hai."],
+    [/\b(what is github|github kya hai)\b/, "GitHub software projects ko host, collaborate, review aur manage karne ke liye platform hai."],
+    [/\b(what is cloud|cloud computing kya hai)\b/, "Cloud computing internet ke through computing resources jaise servers, storage aur databases provide karne ka model hai."],
+    [/\b(what is bitcoin|bitcoin kya hai)\b/, "Bitcoin ek decentralized digital currency/network hai jo blockchain technology use karta hai. Price time ke saath change hoti hai."],
+    [/\b(what is blockchain|blockchain kya hai)\b/, "Blockchain shared digital ledger technology hai jisme transactions/data blocks mein record hote hain aur cryptographic linking use hoti hai."],
+    [/\b(what is ai|ai kya hai|artificial intelligence kya hai)\b/, "AI computer systems ko tasks perform karne ke liye techniques deta hai jo traditionally human intelligence se associated hain, jaise language understanding, prediction aur pattern recognition."],
+    [/\b(what is machine learning|machine learning kya hai)\b/, "Machine learning AI ka area hai jahan systems data se patterns learn karke predictions ya decisions karte hain."],
+    [/\b(what is password|password kya hai)\b/, "Password authentication ke liye secret credential hota hai. Strong password unique, long aur hard-to-guess hona chahiye."],
+    [/\b(what is otp|otp kya hai)\b/, "OTP one-time password/code hota hai jo usually temporary verification ke liye use hota hai."],
+    [/\b(what is qr code|qr code kya hai)\b/, "QR code two-dimensional machine-readable code hai jo text, links ya other encoded information store kar sakta hai."],
+    [/\b(convert|conversion)\b.*\b(km|kilometer|meter|mile|kg|gram|pound|celsius|fahrenheit)\b/, "Conversion ke liye exact value aur units bhejo, jaise '10 km in miles'."],
+    [/\b(define|definition of)\b/, "Term bhejo; main uski short definition aur example dono dunga."],
+    [/\b(compare|difference between|difference|farq)\b/, "Dono terms/products/options ke naam bhejo; main point-by-point difference bata dunga."],
+    [/\b(example|example do|udaharan)\b/, "Topic bhejo, main simple real-world example ke saath samjhaunga."],
+    [/\b(step by step|steps|stepwise|procedure)\b/, "Task batao; main numbered step-by-step process dunga."],
+    [/\b(pros and cons|advantages and disadvantages|faayde|nuksan)\b/, "Topic bhejo; main advantages aur disadvantages ko separately list kar dunga."],
+    [/\b(meaning of|translate)\b/, "Word, sentence aur target language bhejo; main exact meaning/translation dunga."]
+  ]
+  for (const [pattern, answer] of expanded) if (pattern.test(q)) return answer
+
   // Broad fallback: still answers conversationally instead of returning unrelated search content.
   return "Haan bhai, samajh gaya. Apna question thoda detail mein bhejo — main Himo ke through answer, explanation, example ya step-by-step solution dunga."
 }
