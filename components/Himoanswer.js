@@ -299,6 +299,55 @@ export function findAnswer(question) {
   ]
   for (const [pattern, answer] of expanded) if (pattern.test(q)) return answer
 
+  // More A-Z local human Q&A.
+  const more = [
+    [/\b(welcome|you're welcome|ur welcome)\b/, "You're welcome bhai 😊"],
+    [/\b(congratulations|congrats|mubarak)\b/, "Thank you bhai! 🎉 Tumhe bhi congratulations agar celebration tumhari hai!"],
+    [/\b(happy birthday|birthday wish|janamdin)\b/, "Happy Birthday! 🎂🎉 Hamesha khush raho aur apne goals achieve karo!"],
+    [/\b(i love you|love you|i luv u)\b/, "Aww 😄 Main Himo hoon, but tumhari friendly energy appreciate karta hoon!"],
+    [/\b(i hate you|i am angry|gussa|naraz)\b/, "Theek hai bhai. Agar mujhse koi mistake hui hai toh batao, main usi ko fix karne par focus karunga."],
+    [/\b(i am bored|boring|bore ho raha)\b/, "Bored ho? 😄 Quiz, joke, coding challenge, game idea ya random interesting topic try kar sakte ho."],
+    [/\b(what should i do today|aaj kya karu|kya karu aaj)\b/, "Aaj ek small goal choose karo: study, coding, workout, creative work ya pending task. 25 minutes se start karo."],
+    [/\b(tips|advice|suggestion|idea do|ideas)\b/, "Bilkul. Topic aur tumhara goal batao, main practical ideas ki list bana dunga."],
+    [/\b(plan|planning|schedule|routine)\b/, "Goal, available time aur deadline batao; main simple schedule/routine bana dunga."],
+    [/\b(problem solving|solve my problem|issue solve)\b/, "Problem ko exactly describe karo: kya hua, expected kya tha aur ab kya result mil raha hai. Main steps mein troubleshoot karunga."],
+    [/\b(prove|proof|show that)\b/, "Question bhejo; main proof ko logically step-by-step explain karunga."],
+    [/\b(formula|sutra)\b/, "Kis topic ka formula chahiye? Topic/quantity ka naam bhejo, main formula aur example dunga."],
+    [/\b(unit|units)\b/, "Value aur unit bhejo. Main relevant unit conversion ya unit explanation dunga."],
+    [/\b(binary|decimal|octal|hexadecimal|number system)\b/, "Number system conversion kar sakta hoon. Number aur source/target base bhejo, jaise binary to decimal."],
+    [/\b(k map|karnaugh|boolean algebra|logic gate|and gate|or gate|not gate|nand|nor|xor|xnor)\b/, "Digital logic mein K-Map, Boolean algebra aur logic gates explain/solve kar sakta hoon. Expression ya truth table bhejo."],
+    [/\b(stack|queue|deque|circular queue|postfix|prefix|infix|linked list|graph|tree|sorting|searching|data structure)\b/, "Data Structures & Algorithms ka concept, definition, operation aur example explain kar sakta hoon. Topic/question bhejo."],
+    [/\b(os|operating system|process|thread|deadlock|memory management)\b/, "Operating Systems ke concepts jaise process, thread, scheduling, deadlock aur memory management explain kar sakta hoon."],
+    [/\b(network|computer network|tcp|udp|http|https|dns|ip address|router|server)\b/, "Computer networking ka concept simple example ke saath explain kar sakta hoon — TCP/UDP, HTTP/HTTPS, DNS, IP, routers aur servers."],
+    [/\b(cyber security|cybersecurity|hacking|phishing|malware|virus|firewall)\b/, "Cybersecurity concepts aur safe defensive practices explain kar sakta hoon, jaise phishing awareness, malware basics, passwords aur firewalls."],
+    [/\b(database|dbms|mysql|postgresql|mongodb|sql query|normalization|primary key|foreign key)\b/, "DBMS/database topics mein SQL, keys, relationships, normalization aur queries explain/debug kar sakta hoon."],
+    [/\b(git|git commit|git branch|git merge|pull request|repository|repo)\b/, "Git/GitHub workflow mein commit, branch, merge, pull request aur repository concepts explain kar sakta hoon."],
+    [/\b(fitness|exercise|workout|gym|running)\b/, "General fitness planning mein goals, schedule aur beginner-friendly exercise ideas discuss kar sakta hoon. Personal medical issues ke liye qualified professional se advice lena better hai."],
+    [/\b(sleep|neend|healthy sleep)\b/, "Good sleep ke liye consistent sleep/wake time, comfortable dark room aur bedtime se pehle relaxing routine helpful ho sakta hai."],
+    [/\b(stress|anxiety|tension|worried|pareshan)\b/, "Thoda pause lo, slow breathing karo aur problem ko small steps mein break karo. Agar distress severe ya persistent ho, trusted person ya qualified professional se baat karna useful hai."],
+    [/\b(money|budget|saving|savings|expense|kharcha)\b/, "Budget ke liye income, fixed expenses, variable expenses aur savings goal list karo. Numbers bhejo toh main budget structure bana dunga."],
+    [/\b(percentage increase|increase percentage|decrease percentage|discount)\b/, "Percentage change = (new − old) ÷ old × 100. Discount ke liye discount amount = marked price × discount%."],
+    [/\b(simple interest|compound interest|si|ci)\b/, "Simple Interest = P×R×T/100. Compound interest mein interest principal ke saath periodically add hota hai; values bhejo toh calculate kar dunga."],
+    [/\b(binary search|linear search|bubble sort|merge sort|quick sort)\b/, "Algorithm ka naam bhejo; main idea, time complexity aur simple example explain kar dunga."],
+    [/\b(recursion|function|loop|for loop|while loop|if else)\b/, "Programming concept ko example ke saath explain kar sakta hoon. Language batao toh syntax bhi de dunga."],
+    [/\b(json|xml|regex|regular expression|npm|package|dependency)\b/, "Development concept ka use aur example explain kar sakta hoon. Exact term/problem bhejo."],
+    [/\b(what is a country|country kya hai|nation kya hai)\b/, "Country ek defined territory aur governing political system wala sovereign ya recognized political entity ho sakta hai."],
+    [/\b(democracy|constitution|government|law|court)\b/, "Civics/legal concepts ko neutral, general-information style mein explain kar sakta hoon. Specific current law ke liye jurisdiction aur date important hoti hai."],
+    [/\b(environment|pollution|climate|global warming|recycling)\b/, "Environment topic mein causes, effects aur practical solutions ko simple points mein explain kar sakta hoon."],
+    [/\b(photosynthesis|respiration|cell|dna|evolution|ecosystem)\b/, "Biology concept bhejo; main definition, process aur simple example ke saath explain karunga."],
+    [/\b(force|motion|newton|velocity|acceleration|momentum|electricity|current|voltage|resistance)\b/, "Physics concept bhejo; main formula, units aur example ke saath explain karunga."],
+    [/\b(atom|periodic table|acid|base|chemical reaction|mole|ph|organic chemistry)\b/, "Chemistry topic bhejo; main definition, reaction/concept aur example simple language mein explain karunga."],
+    [/\b(essay|paragraph|letter|application|report|article|speech)\b/, "Format aur topic bhejo; main complete draft structure ke saath likhne mein help karunga."],
+    [/\b(english grammar|noun|pronoun|verb|adjective|adverb|tense|preposition|conjunction)\b/, "English grammar topic bhejo; main rule, examples aur practice questions ke saath samjhaunga."],
+    [/\b(hindi|hindi grammar|sangya|sarvanam|kriya|visheshan)\b/, "Hindi language/grammar ka topic bhejo; main simple examples ke saath explain karunga."],
+    [/\b(what is truth|truth kya hai|fact kya hai)\b/, "Truth kisi statement ka reality ke saath correspondence ho sakta hai. Specific claim bhejo toh evidence aur context ke basis par examine kar sakte hain."],
+    [/\b(quiz|quiz me|test me|question pucho)\b/, "Bilkul 😄 Topic aur difficulty batao, main quiz questions ek-ek karke puch sakta hoon."],
+    [/\b(random fact|fun fact|interesting fact)\b/, "Fun fact: Octopus ke teen hearts hote hain. 🐙"],
+    [/\b(riddle|paheli)\b/, "Paheli: Aisi kya cheez hai jo jitni zyada dry hoti hai, utni zyada wet karti hai? Answer: towel 😄"],
+    [/\b(quote|shayari|poem|poetry)\b/, "Bilkul. Mood ya topic batao — motivational, friendship, love, funny ya study — main original lines bana dunga."]
+  ]
+  for (const [pattern, answer] of more) if (pattern.test(q)) return answer
+
   // Broad fallback: still answers conversationally instead of returning unrelated search content.
   return "Haan bhai, samajh gaya. Apna question thoda detail mein bhejo — main Himo ke through answer, explanation, example ya step-by-step solution dunga."
 }
