@@ -5,19 +5,24 @@ import LoginPage from "../components/LoginPage"
 import { auth } from "../src/lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import WorldEngine from "../src/lib/WorldEngine"
-import { findAnswer, shouldUseWebSearch } from "../components/Himoanswer"
+import { shouldUseWebSearch } from "../components/Himoanswer"
 
-// Local-first Himo. Web search is used only when the prompt clearly needs fresh/external information.
-async function think(prompt) {
-  if (!shouldUseWebSearch(prompt)) return findAnswer(prompt)
+// OpenAI API powers Himo. Web search is enabled only when the prompt clearly needs fresh/external information.
+async function think(prompt, history) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      history,
+      useWeb: shouldUseWebSearch(prompt)
+    }),
+    cache: "no-store"
+  })
 
-  try {
-    const response = await fetch("/api/search?q=" + encodeURIComponent(prompt), { cache: "no-store" })
-    const data = await response.json()
-    return data.answer || findAnswer(prompt)
-  } catch {
-    return findAnswer(prompt)
-  }
+  const data = await response.json()
+  if (!response.ok) throw new Error(data?.error || "Himo API request failed")
+  return data.answer
 }
 
 export default function Home() {
@@ -86,7 +91,7 @@ export default function Home() {
     setLoading(true)
 
     try {
-      const answer = await think(prompt)
+      const answer = await think(prompt, messages)
       setMessages((current) => [...current, { role: "assistant", content: answer }])
     } catch (error) {
       setMessages((current) => [...current, { role: "assistant", content: "Something went wrong. Please try again." }])
