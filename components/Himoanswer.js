@@ -166,74 +166,85 @@ const knowledgeBase = [
 ]
 
 export function findAnswer(question) {
-  const q = String(question || "").toLowerCase().trim().replace(/[?!.,]/g, " ")
-  const normalized = q.replace(/\s+/g, " ")
+  const raw = String(question || "").trim()
+  const q = raw.toLowerCase().replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim()
+  if (!q) return "Haan bhai, kuch pucho. Main sun raha hoon."
 
-  // High-priority identity/introduction intents. These must be checked first
-  // so broad keywords cannot return an unrelated answer.
-  if (/^(tu|tuu|tum|aap|ap)\s+(kaun|kon)\s+(ho|hai|hain|ha)|^(who|what|whay)\s+(are|is)\s+(you|himo)|\b(tera|tumhara|aapka)\s+naam\s+(kya|what)/.test(normalized)) {
-    return "Main Himo hoon — tumhara AI assistant. Main questions ka jawab, explanations, coding, maths, writing aur problem-solving mein help karta hoon."
-  }
+  // Greetings / identity / conversation
+  if (/^(hi|hii|hiii|hello|hey|heyy|namaste|salam|hola)\b/.test(q))
+    return "Haan bhai! 👋 Main Himo hoon. Bol, kya help chahiye?"
+  if (/\b(tu|tuu|tum|aap|ap)\s+(kaun|kon)\s+(ho|hai|hain|ha)\b|\b(who|what|whay)\s+(are|is)\s+(you|himo)\b|\b(tera|tumhara|aapka)\s+naam\s+(kya|what)\b/.test(q))
+    return "Main Himo hoon — tumhara own AI assistant. Main questions, maths, coding, study, writing aur everyday problems mein help karta hoon."
+  if (/\b(tu|tuu|tum|aap)\s+kya\s+kar(ta|te|rha|rahe)?\s*(ha|hai|ho)?\b|\b(what|whay|kya)\s+are\s+you\s+doing\b/.test(q))
+    return "Main abhi tumhare message ko samajhkar answer kar raha hoon 😄 Jo puchna hai seedha pucho."
+  if (/\b(how are you|how r u|kaise ho|kya haal|kaisa hai)\b/.test(q))
+    return "Main bilkul theek hoon bhai 😊 Ready hoon tumhari help ke liye."
+  if (/\b(what can you do|tum kya kar sakte|aap kya kar sakte|capabilities|features)\b/.test(q))
+    return "Main general questions, maths, science, coding, study, writing, translation, ideas, explanations aur everyday questions mein help kar sakta hoon."
+  if (/\b(thanks|thank you|shukriya|dhanyavad|thx)\b/.test(q))
+    return "Koi baat nahi bhai 😊"
+  if (/^(bye|goodbye|see you|alvida)\b/.test(q))
+    return "Bye bhai 👋 Phir milte hain!"
 
-  if (/\b(kya|what)\s+(kar|doing|doing\s+right)\s+(raha|rahe|rhe|ho|hai)|\b(what|kya|whay)\s+are\s+you\s+doing|\b(tu|tuu|tum)\s+kya\s+kar(ta|te|rha|rahe)?\s*(ha|hai|ho)?\b/.test(normalized)) {
-    return "Main Himo hoon aur abhi tumhare message ka jawab de raha hoon. Jo puchna hai seedha pucho."
-  }
-
-  if (/^(hello|hi|hey|namaste|hola)\b/.test(normalized)) {
-    return "Hello! Main Himo hoon. Kya help chahiye?"
-  }
-
-  if (/\bhow\s+(are|r)\s+you\b|\bkaise\s+ho\b|\bkya\s+haal\b/.test(normalized)) {
-    return "Main bilkul theek hoon 😊 Tumhara question solve karne ke liye ready hoon."
-  }
-
-  if (/\b(what\s+can\s+you\s+do|tum\s+kya\s+kar\s+sakte|aap\s+kya\s+kar\s+sakte|capabilities|features)\b/.test(normalized)) {
-    return "Main questions answer kar sakta hoon, concepts explain kar sakta hoon, coding/math mein help, writing/translation aur problem-solving kar sakta hoon."
-  }
-
-  // Lightweight local fallback: common A-Z everyday intents + arithmetic when the API is unavailable.
-  const arithmetic = normalized.replace(/,/g, "").replace(/\b(what is|calculate|solve|kitna|find)\b/g, "").trim()
-  if (/^[0-9+\-*/().%\s]+$/.test(arithmetic) && /[0-9]/.test(arithmetic)) {
+  // Exact arithmetic: supports + - * / %, powers and parentheses.
+  const mathText = q
+    .replace(/\b(what is|calculate|solve|answer|find|kitna|kitne|equals|equal to)\b/g, "")
+    .replace(/\bx\b/g, "*")
+    .replace(/\^/g, "**")
+    .trim()
+  if (/^[0-9+\-*/().%\s*]+$/.test(mathText) && /[0-9]/.test(mathText) && /[+\-*/%]/.test(mathText)) {
     try {
-      const result = Function('"use strict"; return (' + arithmetic + ')')()
-      if (Number.isFinite(result)) return "Answer: " + result
+      if (!/[a-z]/.test(mathText)) {
+        const result = Function('"use strict"; return (' + mathText + ')')()
+        if (Number.isFinite(result)) return "Answer: " + result
+      }
     } catch {}
   }
 
-  // Exact/specific topic matching. Avoid broad single-word matches such as
-  // "help", "work", "life" and "play", which caused unrelated replies.
-  const specificRules = [
-    [/\b(joke|funny|hasi|majak)\b/, "Why don't programmers like nature? It has too many bugs! 🐛"],
-    [/\b(time|date|aaj\s+kya|time\s+kya)\b/, `Current time is: ${new Date().toLocaleTimeString()}\\nToday's date is: ${new Date().toLocaleDateString()}`],
-    [/\b(weather|mausam|temperature)\b/, "I don't have real-time weather data."],
-    [/\b(coding|code|programming|developer|javascript|python|react|nextjs|html|css|sql|database|api|debug|bug|error)\b/, "Haan, coding mein help kar sakta hoon. Apna code, error ya requirement bhejo."],
-    [/\b(math|mathematics|calculation|equation|algebra|geometry|percentage)\b|^[0-9+\\-*/().%\\s]+$/, "Math problem bhejo — main calculation step-by-step solve karunga."],
-    [/\b(write|rewrite|email|essay|article|story|caption|translate|grammar)\b/, "Haan, writing/translation mein help kar sakta hoon. Text ya requirement bhejo."],
-    [/\b(study|exam|learning|education)\b/, "Haan, study mein help kar sakta hoon — concept, notes, examples ya questions bhejo."],
-    [/\b(thanks|thank\s+you|shukriya|dhanyavad)\b/, "You're welcome! 😊"],
-    [/\b(bye|goodbye|see\s+you|alvida)\b/, "Bye! 👋"]
+  // Common maths concepts.
+  if (/\b(percentage|percent|pratishat)\b/.test(q))
+    return "Percentage ka formula: (part ÷ whole) × 100. Example: 25 out of 100 = 25%."
+  if (/\b(pythagoras|pythagorean)\b/.test(q))
+    return "Pythagoras theorem: right triangle mein a² + b² = c², jahan c hypotenuse hai."
+  if (/\b(area|perimeter|volume)\b/.test(q))
+    return "Area/perimeter/volume ka exact formula shape par depend karta hai. Shape aur values bhejo, main step-by-step solve kar dunga."
+  if (/\b(average|mean|median|mode)\b/.test(q))
+    return "Mean = values ka sum ÷ number of values. Median middle value hoti hai; mode sabse zyada repeat hone wali value."
+  if (/\b(algebra|equation|quadratic|linear equation|factor)\b/.test(q))
+    return "Algebra problem bhejo. Main equation ko step-by-step simplify, solve aur verify kar sakta hoon."
+  if (/\b(math|mathematics|calculation|calculus|geometry|trigonometry|statistics|probability|matrix|integral|derivative|fraction|decimal|ratio|logarithm)\b/.test(q))
+    return "Haan bhai, maths mein help karunga — arithmetic se calculus, algebra, geometry, trigonometry, statistics aur probability tak. Exact question bhejo."
+
+  // Everyday / knowledge categories
+  const rules = [
+    [/\b(joke|funny|hasi|majak)\b/, "Why don't programmers like nature? Too many bugs! 🐛"],
+    [/\b(meaning|matlab)\s+(of|ka)\b/, "Jis word ya phrase ka meaning chahiye, woh bhejo — main simple Hindi/Hinglish mein samjha dunga."],
+    [/\b(explain|samjha|samjhao|what is|what are|kya hai|define|definition)\b/, "Bilkul. Topic ya term bhejo; main simple explanation, example aur important points ke saath samjhaunga."],
+    [/\b(code|coding|programming|developer|javascript|typescript|python|java|c\+\+|c\s*#|react|nextjs|html|css|sql|api|backend|frontend|github|git|android|kotlin|swift)\b/, "Coding mein help kar sakta hoon — code, debugging, errors, architecture, APIs, frontend/backend aur programming concepts ke saath. Code ya exact problem bhejo."],
+    [/\b(error|bug|issue|problem|fix|not working|crash)\b/, "Haan, issue fix karte hain. Error message, relevant code aur expected result bhejo."],
+    [/\b(study|exam|homework|assignment|education|learn|learning|school|college|notes|question answer)\b/, "Study mein help kar sakta hoon — concept explanation, notes, examples, revision aur practice questions bana sakta hoon."],
+    [/\b(science|physics|chemistry|biology|astronomy|space|planet|atom|molecule)\b/, "Science ka concept simple language mein explain kar sakta hoon. Topic bhejo — definition, reason, example aur key points ke saath."],
+    [/\b(history|historical|ancient|war|civilization|empire|king|queen)\b/, "History topic bhejo. Main timeline, causes, events aur effects ko clearly explain karunga."],
+    [/\b(geography|country|capital|continent|ocean|river|mountain|map)\b/, "Geography ke concepts, countries, capitals, physical features aur maps ke baare mein explain kar sakta hoon."],
+    [/\b(food|recipe|cooking|khana|breakfast|lunch|dinner|dessert)\b/, "Food/recipe ke liye dish ka naam aur available ingredients bhejo; main ingredients aur step-by-step method de dunga."],
+    [/\b(travel|trip|vacation|tour|hotel|flight|destination)\b/, "Travel planning mein destination, dates, budget aur interests batao; main itinerary aur planning ideas de sakta hoon."],
+    [/\b(movie|film|series|tv|show|anime|music|song|artist|game|gaming|book|novel)\b/, "Entertainment topic batao — main discussion, recommendations, explanations aur general information mein help kar sakta hoon."],
+    [/\b(career|job|resume|cv|interview|profession|skill)\b/, "Career mein resume, interview preparation, skills aur career planning par practical help kar sakta hoon."],
+    [/\b(business|startup|entrepreneur|marketing|customer|company)\b/, "Business/startup idea batao. Main problem, audience, product, pricing, marketing aur execution ko structure karne mein help karunga."],
+    [/\b(write|writing|essay|article|story|blog|caption|email|letter|presentation|translate|translation|grammar)\b/, "Writing mein help kar sakta hoon — draft, rewrite, grammar, translation, essay, email, story, article ya presentation ke liye requirement bhejo."],
+    [/\b(love|relationship|dating|friendship|pyaar|dosti)\b/, "Relationship ya friendship situation batao. Main respectful, practical perspective aur communication ideas de sakta hoon."],
+    [/\b(motivation|success|goal|stress|sad|angry|tired)\b/, "Bhai, situation batao. Main calmly sununga aur practical next steps sochne mein help karunga."],
+    [/\b(ai|artificial intelligence|machine learning|deep learning|neural network|robot)\b/, "AI ke concepts jaise machine learning, neural networks, LLMs, computer vision aur NLP ko simple examples ke saath explain kar sakta hoon."],
+    [/\b(time|date|aaj|today)\b/, "Current time/date device ke local time par depend karta hai. Agar exact current time/date chahiye, main available runtime information ke according bata sakta hoon."]
   ]
+  for (const [pattern, answer] of rules) if (pattern.test(q)) return answer
 
-  for (const [pattern, answer] of specificRules) {
-    if (pattern.test(normalized)) return answer
-  }
-
-  return "Haan, main Himo hoon. Apna question seedha batao — main usi ka answer dunga."
+  // Broad fallback: still answers conversationally instead of returning unrelated search content.
+  return "Haan bhai, samajh gaya. Apna question thoda detail mein bhejo — main Himo ke through answer, explanation, example ya step-by-step solution dunga."
 }
 
-export function shouldUseWebSearch(question) {
-  const q = String(question || "").toLowerCase().trim()
-  if (!q) return false
-
-  const signals = [
-    /\b(latest|breaking|current|right now|just now|today|tonight|this week|this month|recent|recently|2026)\b/,
-    /\b(aaj|abhi|filhaal|vartamaan|taaza|nayi|naya)\b/,
-    /\b(news|weather|mausam|temperature|forecast|score|live score|stock price|share price|crypto price|bitcoin price|exchange rate)\b/,
-    /\b(search|google|web|internet|online)\s+(for|about|me|karo|kar|search)\b/,
-    /\b(find|lookup|look up|search)\b.*\b(for|about|me|online|internet)\b/
-  ]
-
-  return signals.some((pattern) => pattern.test(q))
+export function shouldUseWebSearch() {
+  return false
 }
 
 export function getSuggestedQuestions() {
