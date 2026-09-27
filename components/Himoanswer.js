@@ -166,28 +166,50 @@ const knowledgeBase = [
 ]
 
 export function findAnswer(question) {
-  const normalizedQuestion = question.toLowerCase().trim()
-  
-  // First, try exact keyword match
-  for (const item of knowledgeBase) {
-    if (item.keywords.some(keyword => normalizedQuestion.includes(keyword))) {
-      return item.answer
-    }
+  const q = String(question || "").toLowerCase().trim().replace(/[?!.,]/g, " ")
+  const normalized = q.replace(/\s+/g, " ")
+
+  // High-priority identity/introduction intents. These must be checked first
+  // so broad keywords cannot return an unrelated answer.
+  if (/^(tu|tum|aap|ap)\s+(kaun|kon)\s+(ho|hai|hain)|^(who|what)\s+(are|is)\s+(you|himo)|\b(tera|tumhara|aapka)\s+naam\s+(kya|what)/.test(normalized)) {
+    return "Main Himo hoon — tumhara AI assistant. Main questions ka jawab, explanations, coding, maths, writing aur problem-solving mein help karta hoon."
   }
-  
-  // If no match, check for partial matches
-  const words = normalizedQuestion.split(" ")
-  for (const item of knowledgeBase) {
-    for (const keyword of item.keywords) {
-      const keywordWords = keyword.split(" ")
-      if (keywordWords.some(word => words.includes(word))) {
-        return item.answer
-      }
-    }
+
+  if (/\b(kya|what)\s+(kar|doing|doing\s+right)\s+(raha|rahe|rhe|ho|hai)|\b(what|kya)\s+are\s+you\s+doing/.test(normalized)) {
+    return "Main Himo hoon aur abhi tumhare message ka jawab de raha hoon. Jo puchna hai seedha pucho."
   }
-  
-  // Default response
-  return "I understand your question. Can you please provide more details so I can help you better? I'm constantly learning and improving!"
+
+  if (/^(hello|hi|hey|namaste|hola)\b/.test(normalized)) {
+    return "Hello! Main Himo hoon. Kya help chahiye?"
+  }
+
+  if (/\bhow\s+(are|r)\s+you\b|\bkaise\s+ho\b|\bkya\s+haal\b/.test(normalized)) {
+    return "Main bilkul theek hoon 😊 Tumhara question solve karne ke liye ready hoon."
+  }
+
+  if (/\b(what\s+can\s+you\s+do|tum\s+kya\s+kar\s+sakte|aap\s+kya\s+kar\s+sakte|capabilities|features)\b/.test(normalized)) {
+    return "Main questions answer kar sakta hoon, concepts explain kar sakta hoon, coding/math mein help, writing/translation aur problem-solving kar sakta hoon."
+  }
+
+  // Exact/specific topic matching. Avoid broad single-word matches such as
+  // "help", "work", "life" and "play", which caused unrelated replies.
+  const specificRules = [
+    [/\b(joke|funny|hasi|majak)\b/, "Why don't programmers like nature? It has too many bugs! 🐛"],
+    [/\b(time|date|aaj\s+kya|time\s+kya)\b/, `Current time is: ${new Date().toLocaleTimeString()}\\nToday's date is: ${new Date().toLocaleDateString()}`],
+    [/\b(weather|mausam|temperature)\b/, "I don't have real-time weather data."],
+    [/\b(coding|code|programming|developer|javascript|python|react|nextjs|html|css|sql|database|api|debug|bug|error)\b/, "Haan, coding mein help kar sakta hoon. Apna code, error ya requirement bhejo."],
+    [/\b(math|mathematics|calculation|equation|algebra|geometry|percentage)\b|^[0-9+\\-*/().%\\s]+$/, "Math problem bhejo — main calculation step-by-step solve karunga."],
+    [/\b(write|rewrite|email|essay|article|story|caption|translate|grammar)\b/, "Haan, writing/translation mein help kar sakta hoon. Text ya requirement bhejo."],
+    [/\b(study|exam|learning|education)\b/, "Haan, study mein help kar sakta hoon — concept, notes, examples ya questions bhejo."],
+    [/\b(thanks|thank\s+you|shukriya|dhanyavad)\b/, "You're welcome! 😊"],
+    [/\b(bye|goodbye|see\s+you|alvida)\b/, "Bye! 👋"]
+  ]
+
+  for (const [pattern, answer] of specificRules) {
+    if (pattern.test(normalized)) return answer
+  }
+
+  return "Haan, main Himo hoon. Apna question seedha batao — main usi ka answer dunga."
 }
 
 export function getSuggestedQuestions() {
