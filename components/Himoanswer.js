@@ -171,11 +171,11 @@ export function findAnswer(question) {
 
   // High-priority identity/introduction intents. These must be checked first
   // so broad keywords cannot return an unrelated answer.
-  if (/^(tu|tum|aap|ap)\s+(kaun|kon)\s+(ho|hai|hain)|^(who|what)\s+(are|is)\s+(you|himo)|\b(tera|tumhara|aapka)\s+naam\s+(kya|what)/.test(normalized)) {
+  if (/^(tu|tuu|tum|aap|ap)\s+(kaun|kon)\s+(ho|hai|hain|ha)|^(who|what|whay)\s+(are|is)\s+(you|himo)|\b(tera|tumhara|aapka)\s+naam\s+(kya|what)/.test(normalized)) {
     return "Main Himo hoon — tumhara AI assistant. Main questions ka jawab, explanations, coding, maths, writing aur problem-solving mein help karta hoon."
   }
 
-  if (/\b(kya|what)\s+(kar|doing|doing\s+right)\s+(raha|rahe|rhe|ho|hai)|\b(what|kya)\s+are\s+you\s+doing/.test(normalized)) {
+  if (/\b(kya|what)\s+(kar|doing|doing\s+right)\s+(raha|rahe|rhe|ho|hai)|\b(what|kya|whay)\s+are\s+you\s+doing|\b(tu|tuu|tum)\s+kya\s+kar(ta|te|rha|rahe)?\s*(ha|hai|ho)?\b/.test(normalized)) {
     return "Main Himo hoon aur abhi tumhare message ka jawab de raha hoon. Jo puchna hai seedha pucho."
   }
 
@@ -189,6 +189,15 @@ export function findAnswer(question) {
 
   if (/\b(what\s+can\s+you\s+do|tum\s+kya\s+kar\s+sakte|aap\s+kya\s+kar\s+sakte|capabilities|features)\b/.test(normalized)) {
     return "Main questions answer kar sakta hoon, concepts explain kar sakta hoon, coding/math mein help, writing/translation aur problem-solving kar sakta hoon."
+  }
+
+  // Lightweight local fallback: common A-Z everyday intents + arithmetic when the API is unavailable.
+  const arithmetic = normalized.replace(/,/g, "").replace(/\b(what is|calculate|solve|kitna|find)\b/g, "").trim()
+  if (/^[0-9+\-*/().%\s]+$/.test(arithmetic) && /[0-9]/.test(arithmetic)) {
+    try {
+      const result = Function('"use strict"; return (' + arithmetic + ')')()
+      if (Number.isFinite(result)) return "Answer: " + result
+    } catch {}
   }
 
   // Exact/specific topic matching. Avoid broad single-word matches such as
