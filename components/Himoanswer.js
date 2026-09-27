@@ -212,6 +212,21 @@ export function findAnswer(question) {
   return "Haan, main Himo hoon. Apna question seedha batao — main usi ka answer dunga."
 }
 
+export function shouldUseWebSearch(question) {
+  const q = String(question || "").toLowerCase().trim()
+  if (!q) return false
+
+  const signals = [
+    /\b(latest|breaking|current|right now|just now|today|tonight|this week|this month|recent|recently|2026)\b/,
+    /\b(aaj|abhi|filhaal|vartamaan|taaza|nayi|naya)\b/,
+    /\b(news|weather|mausam|temperature|forecast|score|live score|stock price|share price|crypto price|bitcoin price|exchange rate)\b/,
+    /\b(search|google|web|internet|online)\s+(for|about|me|karo|kar|search)\b/,
+    /\b(find|lookup|look up|search)\b.*\b(for|about|me|online|internet)\b/
+  ]
+
+  return signals.some((pattern) => pattern.test(q))
+}
+
 export function getSuggestedQuestions() {
   return [
     "What can you do?",
